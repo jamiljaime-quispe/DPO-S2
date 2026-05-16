@@ -2,6 +2,7 @@ package Business.Services;
 
 import Business.Entities.Config;
 import Business.Entities.ParkingSpace;
+import Business.Entities.Reservation;
 import Business.Entities.Vehicle;
 import Business.Entities.VehicleType;
 
@@ -10,10 +11,10 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Simulates random vehicle traffic in the parking lot using a background thread.
+ * Simulates random vehicle traffic in the parking lot using a background daemon thread.
  * Simulated vehicles only use unreserved spaces.
  */
-public class SimulationService implements Runnable {
+public class SimulationService {
 	private ParkingService parkingService;
 	private Config config;
 	private Random random;
@@ -23,12 +24,10 @@ public class SimulationService implements Runnable {
 	private volatile boolean running = false;
 
 	/**
-	 * Constructs a new SimulationService.
-	 *
-	 * @param parkingService    the parking service for entry/exit operations
-	 * @param config            the application config (provides simulatedVehicleDelay)
-	 * @param random            the random number generator
-	 * @param simulatedVehicles the mutable list tracking currently simulated vehicles
+	 * @param parkingService    parking service for entry/exit operations
+	 * @param config            application config (provides simulatedVehicleDelay)
+	 * @param random            random number generator
+	 * @param simulatedVehicles mutable list tracking currently simulated vehicles
 	 */
 	public SimulationService(ParkingService parkingService, Config config, Random random,
 							 List<Vehicle> simulatedVehicles) {
@@ -38,29 +37,28 @@ public class SimulationService implements Runnable {
 		this.simulatedVehicles = simulatedVehicles != null ? simulatedVehicles : new ArrayList<>();
 	}
 
-	@Override
-	public void run() {
-		while (running) {
-			simulateStep();
-			try {
-				int maxDelay = Math.max(1, config.getSimulatedVehicleDelay());
-				int delay = random.nextInt(maxDelay) + 1;
-				Thread.sleep(delay * 1000L);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				break;
-			}
-		}
-	}
-
 	/**
-	 * Starts the simulation loop in a background thread.
+	 * Starts the simulation loop in a background daemon thread.
 	 * Does nothing if the simulation is already running.
 	 */
 	public void startSimulation() {
 		if (running) return;
 		running = true;
-		simulationThread = new Thread(this);
+		simulationThread = new Thread(() -> {
+			while (running) {
+				simulateStep();
+				try {
+					int maxDelay = Math.max(1, config.getSimulatedVehicleDelay());
+					int delay = random.nextInt(maxDelay) + 1;
+					Thread.sleep(delay * 1000L);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					break;
+				}
+			}
+		});
+		simulationThread.setDaemon(true);
+		simulationThread.setName("SimulationThread");
 		simulationThread.start();
 	}
 

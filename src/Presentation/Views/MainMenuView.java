@@ -1,13 +1,10 @@
 package Presentation.Views;
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.MouseListener;
-
 import Business.Entities.ParkingSpace;
 import Presentation.Controllers.MainController;
+import java.awt.*;
+import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-import Presentation.Views.OccupancyChartView;
 
 public class MainMenuView extends JFrame {
     private MainController controller;
@@ -114,14 +111,11 @@ public class MainMenuView extends JFrame {
      * Mode 1 = Admin, Mode 2 = Regular User.
      */
     public void setMode(int mode, String username) {
-        resetDisplayedContent();
-
         if (mode == 1) { // ADMIN
             titleLabel.setText("Welcome - " + username);
             mgmtGroup.setVisible(true);
             entryExitButton.setVisible(true);
-            reservationButton.setVisible(true);
-            reservationButton.setText("Manage slot booking");
+            reservationButton.setVisible(false);
             visGroup.setBounds(40, 300, 300, 160);
             accountGroup.setBounds(40, 480, 300, 160);
             deleteAccountButton.setVisible(false);
@@ -130,7 +124,6 @@ public class MainMenuView extends JFrame {
             mgmtGroup.setVisible(true);
             entryExitButton.setVisible(false);
             reservationButton.setVisible(true);
-            reservationButton.setText("Manage my bookings");
             visGroup.setBounds(40, 300, 300, 160);
             accountGroup.setBounds(40, 480, 300, 160);
             deleteAccountButton.setVisible(true);
@@ -201,17 +194,6 @@ public class MainMenuView extends JFrame {
                 "Reservation",
                 "License plate"
         };
-
-        /*
-         * Object[][] rows = {
-         * {"A01", 0, "Vacant", "Available", ""},
-         * {"A02", 0, "Occupied", "Available", "1234-ABC"},
-         * {"A03", 0, "Vacant", "Reserved", "5678-DEF"},
-         * {"B01", 1, "Vacant", "Available", ""},
-         * {"B02", 1, "Occupied", "Available", "9012-GHI"},
-         * {"C01", 2, "Vacant", "Reserved", "3456-JKL"}
-         * };
-         */
 
         Object[][] rows = {};
 
@@ -293,30 +275,13 @@ public class MainMenuView extends JFrame {
         return deleteAccountButton;
     }
 
+    public JTable getParkingSlotsTable() {
+        return parkingSlotsTable;
+    }
+
     public void clearParkingSlotsTable() {
         DefaultTableModel model = (DefaultTableModel) parkingSlotsTable.getModel();
         model.setRowCount(0);
-    }
-
-    public void addParkingSlotsTableMouseListener(MouseListener listener) {
-        parkingSlotsTable.addMouseListener(listener);
-    }
-
-    public String getParkingSpaceCodeAtPoint(Point point) {
-        int row = parkingSlotsTable.rowAtPoint(point);
-        if (row < 0) return null;
-
-        int modelRow = parkingSlotsTable.convertRowIndexToModel(row);
-        DefaultTableModel model = (DefaultTableModel) parkingSlotsTable.getModel();
-        return String.valueOf(model.getValueAt(modelRow, 0));
-    }
-
-    public void resetDisplayedContent() {
-        clearParkingSlotsTable();
-        parkingSlotsPanel.setVisible(false);
-        occupancyChartPanel.setVisible(false);
-        revalidate();
-        repaint();
     }
 
     public void showOccupancyChart() {

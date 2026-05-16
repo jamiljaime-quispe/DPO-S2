@@ -19,11 +19,9 @@ public class StatisticsService {
 	private OccupancyDAO occupancyDAO;
 
 	/**
-	 * Constructs a new StatisticsService.
-	 *
-	 * @param occupancyTracker the in-memory occupancy history buffer
-	 * @param parkingSpaceDAO  the DAO used to count occupied spaces
-	 * @param occupancyDAO     the DAO used to persist and retrieve occupancy records
+	 * @param occupancyTracker in-memory occupancy history buffer
+	 * @param parkingSpaceDAO  DAO used to count occupied spaces
+	 * @param occupancyDAO     DAO used to persist and retrieve occupancy records
 	 */
 	public StatisticsService(OccupancyTracker occupancyTracker, ParkingSpaceDAO parkingSpaceDAO,
 							 OccupancyDAO occupancyDAO) {

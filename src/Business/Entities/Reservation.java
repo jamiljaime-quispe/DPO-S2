@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 
 /**
  * Represents a parking space reservation made by a client.
- * Includes admin-cancellation tracking for user notification at next login.
+ * Includes admin-cancellation tracking for user notification.
  */
 public class Reservation {
 	private int id;
@@ -17,13 +17,11 @@ public class Reservation {
 	private boolean isActive;
 
 	/**
-	 * Constructs a new Reservation.
-	 *
-	 * @param id              the reservation ID (0 for new, assigned by the database)
-	 * @param user            the client who made the reservation
-	 * @param vehicle         the vehicle being reserved for
-	 * @param parkingSpace    the parking space being reserved
-	 * @param reservationDate the date and time the reservation was created
+	 * @param id              reservation ID (0 for new, assigned by DB)
+	 * @param user            client who made the reservation
+	 * @param vehicle         reserved vehicle
+	 * @param parkingSpace    reserved space
+	 * @param reservationDate date/time of reservation
 	 */
 	public Reservation(int id, Client user, Vehicle vehicle, ParkingSpace parkingSpace,
 					   LocalDateTime reservationDate) {
@@ -37,103 +35,58 @@ public class Reservation {
 		this.isActive = true;
 	}
 
+	// --- Getters ---
+
 	/**
-	 * Gets the reservation ID.
-	 *
-	 * @return the reservation ID
+	 * @return reservation ID
 	 */
 	public int getId() { return id; }
 
 	/**
-	 * Gets the client who made the reservation.
-	 *
-	 * @return the client who made the reservation
+	 * @return client who made the reservation
 	 */
 	public Client getUser() { return user; }
 
 	/**
-	 * Gets the vehicle associated with this reservation.
-	 *
-	 * @return the reserved vehicle
+	 * @return reserved vehicle
 	 */
 	public Vehicle getVehicle() { return vehicle; }
 
 	/**
-	 * Gets the parking space associated with this reservation.
-	 *
-	 * @return the reserved parking space
+	 * @return reserved parking space
 	 */
 	public ParkingSpace getParkingSpace() { return parkingSpace; }
 
 	/**
-	 * Gets the date and time the reservation was created.
-	 *
-	 * @return the reservation date and time
+	 * @return date and time when the reservation was made
 	 */
 	public LocalDateTime getReservationDate() { return reservationDate; }
 
 	/**
-	 * Returns whether this reservation was cancelled by an admin.
-	 *
 	 * @return true if this reservation was cancelled by an admin
 	 */
 	public boolean isCancelledByAdmin() { return cancelledByAdmin; }
 
 	/**
-	 * Returns whether the user has been notified of the admin cancellation.
-	 *
-	 * @return true if the user has already been notified
+	 * @return true if the user has been notified of admin cancellation
 	 */
 	public boolean isNotified() { return notified; }
 
 	/**
-	 * Returns whether the reservation is currently active.
-	 *
 	 * @return true if the reservation is currently active
 	 */
 	public boolean isActive() { return isActive; }
 
-	/**
-	 * Sets the reservation ID.
-	 *
-	 * @param id the new reservation ID
-	 */
+	// --- Setters ---
+
 	public void setId(int id) { this.id = id; }
-
-	/**
-	 * Sets the client who made the reservation.
-	 *
-	 * @param user the new client
-	 */
 	public void setUser(Client user) { this.user = user; }
-
-	/**
-	 * Sets the parking space associated with this reservation.
-	 *
-	 * @param parkingSpace the new parking space
-	 */
 	public void setParkingSpace(ParkingSpace parkingSpace) { this.parkingSpace = parkingSpace; }
-
-	/**
-	 * Sets whether this reservation was cancelled by an admin.
-	 *
-	 * @param cancelledByAdmin true if cancelled by an admin
-	 */
 	public void setCancelledByAdmin(boolean cancelledByAdmin) { this.cancelledByAdmin = cancelledByAdmin; }
-
-	/**
-	 * Sets whether the user has been notified of the admin cancellation.
-	 *
-	 * @param notified true if the user has been notified
-	 */
 	public void setNotified(boolean notified) { this.notified = notified; }
-
-	/**
-	 * Sets the active status of the reservation.
-	 *
-	 * @param active the new active status
-	 */
 	public void setActive(boolean active) { this.isActive = active; }
+
+	// --- Behaviour ---
 
 	/**
 	 * Marks this reservation as active.
@@ -150,9 +103,7 @@ public class Reservation {
 	}
 
 	/**
-	 * Returns a human-readable summary of this reservation.
-	 *
-	 * @return a string with the key reservation fields
+	 * @return human-readable reservation summary
 	 */
 	public String getReservationInfo() {
 		return "Reservation{"

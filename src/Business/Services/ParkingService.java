@@ -19,11 +19,9 @@ public class ParkingService {
 	private ReservationDAO reservationDAO;
 
 	/**
-	 * Constructs a new ParkingService.
-	 *
-	 * @param parkingSpaceDAO the DAO for parking spaces
-	 * @param vehicleDAO      the DAO for vehicles
-	 * @param reservationDAO  the DAO for reservations
+	 * @param parkingSpaceDAO DAO for parking spaces
+	 * @param vehicleDAO      DAO for vehicles
+	 * @param reservationDAO  DAO for reservations
 	 */
 	public ParkingService(ParkingSpaceDAO parkingSpaceDAO, VehicleDAO vehicleDAO,
 						  ReservationDAO reservationDAO) {
@@ -138,7 +136,7 @@ public class ParkingService {
 	 * @param type  vehicle type (used when there is no reservation)
 	 * @return assigned ParkingSpace, or null if the lot is full
 	 */
-	public synchronized ParkingSpace handleVehicleEntry(String plate, VehicleType type) {
+	public ParkingSpace handleVehicleEntry(String plate, VehicleType type) {
 		// 1. Check for an active reservation
 		Reservation reservation = reservationDAO.findByPlate(plate);
 		if (reservation != null && reservation.isActive()) {
@@ -175,7 +173,7 @@ public class ParkingService {
 	 * Handles a vehicle exiting the lot: finds its occupied space and frees it.
 	 * @param plate license plate of the exiting vehicle
 	 */
-	public synchronized void handleVehicleExit(String plate) {
+	public void handleVehicleExit(String plate) {
 		List<ParkingSpace> allSpaces = parkingSpaceDAO.findAll();
 		for (ParkingSpace space : allSpaces) {
 			if (space.isOccupied()

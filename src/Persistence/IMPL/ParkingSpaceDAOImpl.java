@@ -1,18 +1,17 @@
 package Persistence.IMPL;
 
 import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import Business.Entities.Client;
 import Business.Entities.ParkingSpace;
 import Business.Entities.Reservation;
-import Business.Entities.Client;
 import Business.Entities.Vehicle;
 import Business.Entities.VehicleType;
 import Persistence.DatabaseManager;
 import Persistence.ParkingSpaceDAO;
-
-import java.time.LocalDateTime;
 
 public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
     private final DatabaseManager db;
@@ -23,22 +22,11 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
 
     @Override
     public List<ParkingSpace> findAll() {
-        String sql = """
-                SELECT p.code, p.floor, p.vehicleType, p.isOccupied, p.occupiedByPlate,
-                       r.reservationId, r.licensePlate AS reservedPlate, r.reservationDate,
-                       r.cancelledByAdmin, r.notified, r.isActive,
-                       ru.userId AS reservedUserId, ru.username AS reservedUsername,
-                       ru.email AS reservedEmail, rv.vehicleType AS reservedVehicleType
-                FROM parking_space p
-                LEFT JOIN reservation r ON r.spaceId = p.spaceId AND r.isActive = TRUE
-                LEFT JOIN vehicle rv ON rv.licensePlate = r.licensePlate
-                LEFT JOIN user ru ON ru.userId = rv.userId
-                ORDER BY p.code
-                """;
+        String sql = selectWithActiveReservation() + " ORDER BY ps.code";
         List<ParkingSpace> list = new ArrayList<>();
 
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql);
-                ResultSet rs = ps.executeQuery()) {
+             ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 list.add(mapRow(rs));
             }
@@ -50,18 +38,7 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
 
     @Override
     public ParkingSpace findByCode(String code) {
-        String sql = """
-                SELECT p.code, p.floor, p.vehicleType, p.isOccupied, p.occupiedByPlate,
-                       r.reservationId, r.licensePlate AS reservedPlate, r.reservationDate,
-                       r.cancelledByAdmin, r.notified, r.isActive,
-                       ru.userId AS reservedUserId, ru.username AS reservedUsername,
-                       ru.email AS reservedEmail, rv.vehicleType AS reservedVehicleType
-                FROM parking_space p
-                LEFT JOIN reservation r ON r.spaceId = p.spaceId AND r.isActive = TRUE
-                LEFT JOIN vehicle rv ON rv.licensePlate = r.licensePlate
-                LEFT JOIN user ru ON ru.userId = rv.userId
-                WHERE p.code = ?
-                """;
+        String sql = selectWithActiveReservation() + " WHERE ps.code = ?";
 
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
             ps.setString(1, code);
@@ -77,19 +54,9 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
 
     @Override
     public List<ParkingSpace> findAvailableByType(VehicleType type) {
-        String sql = """
-                SELECT p.code, p.floor, p.vehicleType, p.isOccupied, p.occupiedByPlate,
-                       r.reservationId, r.licensePlate AS reservedPlate, r.reservationDate,
-                       r.cancelledByAdmin, r.notified, r.isActive,
-                       ru.userId AS reservedUserId, ru.username AS reservedUsername,
-                       ru.email AS reservedEmail, rv.vehicleType AS reservedVehicleType
-                FROM parking_space p
-                LEFT JOIN reservation r ON r.spaceId = p.spaceId AND r.isActive = TRUE
-                LEFT JOIN vehicle rv ON rv.licensePlate = r.licensePlate
-                LEFT JOIN user ru ON ru.userId = rv.userId
-                WHERE p.vehicleType = ? AND p.isOccupied = FALSE AND r.reservationId IS NULL
-                ORDER BY p.code
-                """;
+        String sql = selectWithActiveReservation()
+                + " WHERE ps.vehicleType = ? AND ps.isOccupied = FALSE AND r.reservationId IS NULL";
+
         List<ParkingSpace> list = new ArrayList<>();
 
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
@@ -160,50 +127,59 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         }
     }
 
+    private static String selectWithActiveReservation() {
+        return "SELECT ps.code, ps.floor, ps.vehicleType, ps.isOccupied, ps.occupiedByPlate, "
+                + "r.reservationId, r.licensePlate AS resPlate, r.reservationDate, r.cancelledByAdmin, r.notified, r.isActive AS resIsActive, "
+                + "rv.vehicleType AS resVehicleType, "
+                + "u.userId AS ownerUserId, u.username AS ownerUsername, u.email AS ownerEmail, u.password AS ownerPassword, u.isAdmin AS ownerIsAdmin "
+                + "FROM parking_space ps "
+                + "LEFT JOIN reservation r ON r.spaceId = ps.spaceId AND r.isActive = 1 "
+                + "LEFT JOIN vehicle rv ON rv.licensePlate = r.licensePlate "
+                + "LEFT JOIN user u ON u.userId = rv.userId ";
+    }
+
     private ParkingSpace mapRow(ResultSet rs) throws SQLException {
         String code = rs.getString("code");
         int floor = rs.getInt("floor");
         VehicleType type = VehicleType.valueOf(rs.getString("vehicleType"));
         boolean occupied = rs.getBoolean("isOccupied");
         String plate = rs.getString("occupiedByPlate");
-        String reservedPlate = rs.getString("reservedPlate");
 
-        Vehicle vehicle = null;
-
+        Vehicle parkedVehicle = null;
         if (plate != null && !plate.isEmpty()) {
-            vehicle = new Vehicle(plate, type, null, true);
+            parkedVehicle = new Vehicle(plate, type, null, true);
         }
 
-        ParkingSpace space = new ParkingSpace(code, floor, type, occupied, false, vehicle, null);
-
-        if (reservedPlate != null && !reservedPlate.isEmpty()) {
-            String reservedVehicleType = rs.getString("reservedVehicleType");
-            VehicleType vehicleType = reservedVehicleType != null
-                    ? VehicleType.valueOf(reservedVehicleType)
-                    : type;
-            String username = rs.getString("reservedUsername");
-            String email = rs.getString("reservedEmail");
-            String userId = String.valueOf(rs.getInt("reservedUserId"));
-
-            Client reservedUser = null;
-            if (username != null) {
-                reservedUser = new Client(userId, username, email, "", "CLIENT", new ArrayList<>());
-            }
-
-            Vehicle reservedVehicle = new Vehicle(reservedPlate, vehicleType, username, false);
-            LocalDateTime reservationDate = rs.getTimestamp("reservationDate").toLocalDateTime();
-            Reservation reservation = new Reservation(
-                    rs.getInt("reservationId"),
-                    reservedUser,
-                    reservedVehicle,
-                    space,
-                    reservationDate);
-            reservation.setCancelledByAdmin(rs.getBoolean("cancelledByAdmin"));
-            reservation.setNotified(rs.getBoolean("notified"));
-            reservation.setActive(rs.getBoolean("isActive"));
-            space.reserve(reservation);
+        int resId = rs.getInt("reservationId");
+        if (rs.wasNull()) {
+            return new ParkingSpace(code, floor, type, occupied, false, parkedVehicle, null);
         }
 
+        String resPlate = rs.getString("resPlate");
+        Timestamp resTs = rs.getTimestamp("reservationDate");
+        LocalDateTime resWhen = resTs != null ? resTs.toLocalDateTime() : LocalDateTime.now();
+        boolean cancelledByAdmin = rs.getBoolean("cancelledByAdmin");
+        boolean notified = rs.getBoolean("notified");
+        boolean resActive = rs.getBoolean("resIsActive");
+
+        VehicleType resVehType = VehicleType.valueOf(rs.getString("resVehicleType"));
+        String ownerUsername = rs.getString("ownerUsername");
+        Vehicle resVehicle = new Vehicle(resPlate, resVehType, ownerUsername, false);
+
+        int ownerUserId = rs.getInt("ownerUserId");
+        String username = rs.getString("ownerUsername");
+        String email = rs.getString("ownerEmail");
+        String password = rs.getString("ownerPassword");
+        boolean ownerIsAdmin = rs.getBoolean("ownerIsAdmin");
+        String userType = ownerIsAdmin ? "ADMIN" : "CLIENT";
+        Client client = new Client(String.valueOf(ownerUserId), username, email, password, userType, new ArrayList<>());
+
+        ParkingSpace space = new ParkingSpace(code, floor, type, occupied, false, parkedVehicle, null);
+        Reservation reservation = new Reservation(resId, client, resVehicle, space, resWhen);
+        reservation.setCancelledByAdmin(cancelledByAdmin);
+        reservation.setNotified(notified);
+        reservation.setActive(resActive);
+        space.reserve(reservation);
         return space;
     }
 }

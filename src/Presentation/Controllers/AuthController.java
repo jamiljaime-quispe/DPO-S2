@@ -1,10 +1,13 @@
 package Presentation.Controllers;
 
+import Business.Entities.Reservation;
+import Business.Services.ReservationService;
 import Presentation.Views.LoginView;
 import Presentation.Views.MainMenuView;
 import Presentation.Views.SignupView;
 
 import javax.swing.*;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
@@ -14,6 +17,7 @@ public class AuthController {
     private UserService userService;
     private MainController mainController;
     private MainMenuView mainMenuView;
+    private ReservationService reservationService;
 
     // Fixed constructor to use SignupView instead of int
     public AuthController(LoginView loginView, SignupView signupView, UserService userService) {
@@ -83,11 +87,36 @@ public class AuthController {
         // 3. Open the new window
         SwingUtilities.invokeLater(() -> {
             mainMenuView.setVisible(true);
+            if (mode == 2) {
+                showAdminCancellationNotifications();
+            }
         });
 
         System.out.println("Switching to Main Menu...");
 
         System.out.println("Login Success");
+    }
+
+    private void showAdminCancellationNotifications() {
+        if (reservationService == null || userService.lastLoggedInUserId <= 0)
+            return;
+        List<Reservation> cancelled = reservationService.getCancelledByAdminNotNotified(userService.lastLoggedInUserId);
+        if (cancelled.isEmpty())
+            return;
+
+        StringBuilder message = new StringBuilder(
+                "The following reservation(s) were cancelled by an administrator:\n\n");
+        for (Reservation r : cancelled) {
+            String spaceCode = r.getParkingSpace() != null ? r.getParkingSpace().getId() : "unknown";
+            String plate = r.getVehicle() != null ? r.getVehicle().getLicensePlate() : "unknown";
+            message.append("• Space ").append(spaceCode).append(", vehicle ").append(plate).append("\n");
+        }
+        message.append("\nYou may book a new space from Manage slot booking.");
+
+        JOptionPane.showMessageDialog(mainMenuView,
+                message.toString(),
+                "Reservation cancelled by admin",
+                JOptionPane.INFORMATION_MESSAGE);
     }
 
     public void handleSignup() {
@@ -106,8 +135,7 @@ public class AuthController {
     public void logout() {
         System.out.println("Logging out...");
 
-        // 1. Reset and hide the Main Menu
-        mainMenuView.resetDisplayedContent();
+        // 1. Hide the Main Menu
         mainMenuView.setVisible(false);
 
         // 2. Clear the old login data for security reasons
@@ -118,6 +146,10 @@ public class AuthController {
 
         // 4. Show the Login View
         loginView.setVisible(true);
+    }
+
+    /** @deprecated Stub kept for review; use {@link #handleDeleteAccount()} instead. */
+    public void deleteAccount(int userId) {
     }
 
     public void handleDeleteAccount() {
@@ -147,9 +179,11 @@ public class AuthController {
         }.execute();
     }
 
-    public void setMainMenuController(MainController mainController, MainMenuView mainMenuView) {
+    public void setMainMenuController(MainController mainController, MainMenuView mainMenuView,
+                                      ReservationService reservationService) {
         this.mainController = mainController;
         this.mainMenuView = mainMenuView;
+        this.reservationService = reservationService;
     }
 
     public void setSignupView(SignupView signupView) {

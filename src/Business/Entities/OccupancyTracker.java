@@ -6,17 +6,15 @@ import java.util.Queue;
 
 /**
  * Tracks parking occupancy over time using a bounded queue.
- * Holds up to {@code maxHistorySize} entries (one per minute, 60 for the last hour).
+ * Holds up to {@code maxHistorySize} entries (one per minute = 60 for the last hour).
  */
 public class OccupancyTracker {
 	private Queue<Integer> occupancyHistory;
 	private int maxHistorySize;
 
 	/**
-	 * Constructs a new OccupancyTracker.
-	 *
-	 * @param occupancyHistory the backing queue (typically a LinkedList)
-	 * @param maxHistory       the maximum number of entries to retain
+	 * @param occupancyHistory backing queue (typically a LinkedList)
+	 * @param maxHistory       maximum number of entries to retain
 	 */
 	public OccupancyTracker(Queue<Integer> occupancyHistory, int maxHistory) {
 		this.occupancyHistory = occupancyHistory;
@@ -24,10 +22,8 @@ public class OccupancyTracker {
 	}
 
 	/**
-	 * Records a new occupancy count.
-	 * If the queue is full, the oldest entry is removed before adding the new one.
-	 *
-	 * @param count the number of currently occupied spaces
+	 * Records a new occupancy count. If the queue is full, the oldest entry is removed.
+	 * @param count number of currently occupied spaces
 	 */
 	public void recordOccupancy(int count) {
 		if (occupancyHistory.size() >= maxHistorySize) {
@@ -37,18 +33,14 @@ public class OccupancyTracker {
 	}
 
 	/**
-	 * Gets the full occupancy history ordered from oldest to newest.
-	 *
-	 * @return an ordered list of all recorded occupancy values
+	 * @return ordered list of all recorded occupancy values (oldest first)
 	 */
 	public List<Integer> getHistory() {
 		return new ArrayList<>(occupancyHistory);
 	}
 
 	/**
-	 * Gets the most recently recorded occupancy count.
-	 *
-	 * @return the most recent occupancy count, or 0 if no data has been recorded
+	 * @return the most recently recorded occupancy count, or 0 if no data
 	 */
 	public int getCurrentOccupancy() {
 		if (occupancyHistory.isEmpty()) return 0;

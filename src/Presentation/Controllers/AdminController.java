@@ -9,9 +9,6 @@ import javax.swing.SwingWorker;
 import java.util.List;
 
 public class AdminController {
-    private static final int BACKGROUND_TEST_DELAY_MS = 300;
-    private static final int ROW_LOAD_DELAY_MS = 100;
-
     private AdminParkingManagementView adminView;
     private ParkingService parkingService;
 
@@ -27,171 +24,58 @@ public class AdminController {
     }
 
     public void createSpace(String code, int floor, VehicleType type) {
-        adminView.setLoading(true);
-        new SwingWorker<Boolean, Void>() {
-            private String errorMessage;
-
-            @Override
-            protected Boolean doInBackground() {
-                try {
-                    simulateDatabaseDelay();
-                    ParkingSpace space = new ParkingSpace(code, floor, type, false, false, null, null);
-                    parkingService.createParkingSpace(space);
-                    return true;
-                } catch (Exception e) {
-                    errorMessage = "Failed to create space: " + e.getMessage();
-                    return false;
-                }
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    if (get()) {
-                        loadSpaces();
-                    } else {
-                        adminView.setLoading(false);
-                        adminView.showError(errorMessage);
-                    }
-                } catch (Exception e) {
-                    adminView.setLoading(false);
-                    adminView.showError("Failed to create space: " + e.getMessage());
-                }
-            }
-        }.execute();
+        try {
+            ParkingSpace space = new ParkingSpace(code, floor, type, false, false, null, null);
+            parkingService.createParkingSpace(space);
+            loadSpaces();
+        } catch (Exception e) {
+            adminView.showError("Failed to create space: " + e.getMessage());
+        }
     }
 
     public void editSpace(String code, int floor, VehicleType type) {
-        adminView.setLoading(true);
-        new SwingWorker<Boolean, Void>() {
-            private String errorMessage;
-
-            @Override
-            protected Boolean doInBackground() {
-                try {
-                    simulateDatabaseDelay();
-                    ParkingSpace space = parkingService.findByCode(code);
-                    if (space == null) {
-                        errorMessage = "Space not found: " + code;
-                        return false;
-                    }
-                    space.setFloor(floor);
-                    space.setVehicleType(type);
-                    parkingService.updateParkingSpaceDetails(space);
-                    return true;
-                } catch (Exception e) {
-                    errorMessage = "Failed to edit space: " + e.getMessage();
-                    return false;
-                }
+        try {
+            ParkingSpace space = parkingService.findByCode(code);
+            if (space == null) {
+                adminView.showError("Space not found: " + code);
+                return;
             }
-
-            @Override
-            protected void done() {
-                try {
-                    if (get()) {
-                        loadSpaces();
-                    } else {
-                        adminView.setLoading(false);
-                        adminView.showError(errorMessage);
-                    }
-                } catch (Exception e) {
-                    adminView.setLoading(false);
-                    adminView.showError("Failed to edit space: " + e.getMessage());
-                }
-            }
-        }.execute();
+            space.setFloor(floor);
+            space.setVehicleType(type);
+            parkingService.updateParkingSpaceDetails(space);
+            loadSpaces();
+        } catch (Exception e) {
+            adminView.showError("Failed to edit space: " + e.getMessage());
+        }
     }
 
     public void deleteSpace(String code) {
-        adminView.setLoading(true);
-        new SwingWorker<Boolean, Void>() {
-            private String errorMessage;
-
-            @Override
-            protected Boolean doInBackground() {
-                try {
-                    simulateDatabaseDelay();
-                    boolean success = parkingService.deleteParkingSpace(code);
-                    if (!success) {
-                        errorMessage = "Cannot delete space \"" + code + "\": it is currently occupied.";
-                    }
-                    return success;
-                } catch (Exception e) {
-                    errorMessage = "Failed to delete space: " + e.getMessage();
-                    return false;
-                }
+        try {
+            boolean success = parkingService.deleteParkingSpace(code);
+            if (!success) {
+                adminView.showError("Cannot delete space \"" + code + "\": it is currently occupied.");
             }
-
-            @Override
-            protected void done() {
-                try {
-                    if (get()) {
-                        loadSpaces();
-                    } else {
-                        adminView.setLoading(false);
-                        adminView.showError(errorMessage);
-                    }
-                } catch (Exception e) {
-                    adminView.setLoading(false);
-                    adminView.showError("Failed to delete space: " + e.getMessage());
-                }
-            }
-        }.execute();
+            loadSpaces();
+        } catch (Exception e) {
+            adminView.showError("Failed to delete space: " + e.getMessage());
+        }
     }
 
     public void loadSpaces() {
-        adminView.setLoading(true);
-        adminView.clearSpacesTable();
-
-        new SwingWorker<Void, ParkingSpace>() {
+        new SwingWorker<List<ParkingSpace>, Void>() {
             @Override
-            protected Void doInBackground() {
-                List<ParkingSpace> spaces = parkingService.getAllSpaces();
-
-                for (ParkingSpace space : spaces) {
-                    delayRowLoad();
-                    if (Thread.currentThread().isInterrupted()) {
-                        break;
-                    }
-                    publish(space);
-                }
-
-                return null;
-            }
-
-            @Override
-            protected void process(List<ParkingSpace> chunks) {
-                for (ParkingSpace space : chunks) {
-                    adminView.addSpaceToTable(space);
-                }
+            protected List<ParkingSpace> doInBackground() {
+                return parkingService.getAllSpaces();
             }
 
             @Override
             protected void done() {
                 try {
-                    get();
+                    adminView.updateSpaces(get());
                 } catch (Exception e) {
                     adminView.showError("Failed to load spaces: " + e.getMessage());
-                } finally {
-                    adminView.setLoading(false);
                 }
             }
         }.execute();
-    }
-
-    private void delayRowLoad() {
-        try {
-            Thread.sleep(ROW_LOAD_DELAY_MS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-    }
-
-    private void simulateDatabaseDelay() {
-        try {
-            Thread.sleep(BACKGROUND_TEST_DELAY_MS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
     }
 }

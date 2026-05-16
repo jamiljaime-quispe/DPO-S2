@@ -9,18 +9,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Provides access to application configuration values loaded from {@code config.json}.
+ * Loads application configuration from {@code config.json} in the project root.
  * Uses manual JSON parsing to avoid external library dependencies.
  */
 public class ConfigService {
 	private final Config config;
 
 	/**
-	 * Constructs a new ConfigService.
-	 * Reads {@code config.json} from the project root and populates the Config object.
-	 * Falls back to default values if the file is missing or a key is absent.
-	 *
-	 * @param config the Config object to populate
+	 * @param config empty Config object to populate
 	 */
 	public ConfigService(Config config) {
 		this.config = config;
@@ -29,8 +25,10 @@ public class ConfigService {
 
 	/**
 	 * Reads config.json and populates the Config object.
+	 * Falls back to empty/zero values if the file is missing or a key is absent.
+	 * @return populated Config
 	 */
-	private void loadConfig() {
+	public Config loadConfig() {
 		try (BufferedReader reader = new BufferedReader(new FileReader("config.json"))) {
 			StringBuilder sb = new StringBuilder();
 			String line;
@@ -47,15 +45,15 @@ public class ConfigService {
 			config.setAdminPassword(parseStringValue(json, "adminPassword"));
 			config.setSimulatedVehicleDelay(parseIntValue(json, "simulatedVehicleDelay"));
 		} catch (IOException e) {
-			// config.json not found — Config keeps its default values
+			System.err.println("[ConfigService] config.json not found — using defaults: " + e.getMessage());
 		}
+		return config;
 	}
 
 	/**
 	 * Extracts a String value for the given key from a flat JSON string.
-	 *
 	 * @param json raw JSON text
-	 * @param key field name to look up
+	 * @param key  field name to look up
 	 * @return extracted string value, or null if not found
 	 */
 	private String parseStringValue(String json, String key) {
@@ -72,9 +70,8 @@ public class ConfigService {
 
 	/**
 	 * Extracts an int value for the given key from a flat JSON string.
-	 *
 	 * @param json raw JSON text
-	 * @param key field name to look up
+	 * @param key  field name to look up
 	 * @return extracted int value, or 0 if not found
 	 */
 	private int parseIntValue(String json, String key) {
@@ -92,9 +89,7 @@ public class ConfigService {
 	}
 
 	/**
-	 * Gets the database connection parameters.
-	 *
-	 * @return a map with keys: ip, port, name, user, password
+	 * @return map of DB connection parameters
 	 */
 	public Map<String, String> getDatabaseConfig() {
 		Map<String, String> dbConfig = new HashMap<>();
@@ -107,26 +102,20 @@ public class ConfigService {
 	}
 
 	/**
-	 * Gets the admin account password from the configuration.
-	 *
-	 * @return the admin password
+	 * @return admin password from config
 	 */
 	public String getAdminPassword() {
 		return config.getAdminPassword();
 	}
 
 	/**
-	 * Gets the simulation delay in seconds.
-	 *
-	 * @return the maximum delay between simulated vehicle events
+	 * @return simulation delay in seconds
 	 */
 	public int getSimulationDelay() {
 		return config.getSimulatedVehicleDelay();
 	}
 
 	/**
-	 * Gets the full Config object.
-	 *
 	 * @return the loaded Config
 	 */
 	public Config getConfig() {

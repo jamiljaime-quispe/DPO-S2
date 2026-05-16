@@ -8,7 +8,8 @@ import Persistence.IMPL.UserDAOImpl;
 public class UserService {
     private final UserDAOImpl userDAO;
     private String lastLoggedInUsername;
-    private int lastLoggedInUserId = -1;
+    /** Set on successful {@link #authenticate}; used by reservation flow in the presentation layer. */
+    int lastLoggedInUserId;
 
     public UserService(DatabaseManager db) {
         this.userDAO = new UserDAOImpl(db);
@@ -31,7 +32,11 @@ public class UserService {
             return 0;
 
         lastLoggedInUsername = user.getUsername();
-        lastLoggedInUserId = Integer.parseInt(user.getId());
+        try {
+            lastLoggedInUserId = Integer.parseInt(user.getId());
+        } catch (NumberFormatException | NullPointerException e) {
+            lastLoggedInUserId = 0;
+        }
         return "ADMIN".equals(user.getUserType()) ? 1 : 2;
     }
 
@@ -40,9 +45,9 @@ public class UserService {
     }
 
     public void deleteCurrentUser() {
-        if (lastLoggedInUserId != -1) {
+        if (lastLoggedInUserId > 0) {
             userDAO.delete(lastLoggedInUserId);
-            lastLoggedInUserId = -1;
+            lastLoggedInUserId = 0;
             lastLoggedInUsername = null;
         }
     }

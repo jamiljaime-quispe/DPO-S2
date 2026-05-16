@@ -81,7 +81,7 @@ public class SignupView extends JFrame {
         styleField(confirmPasswordField);
 
         signupButton = primaryButton("Create account");
-        backButton = linkButton("← Back to login");
+        backButton = linkButton("<- Back to login");
 
         card.add(heading);
         card.add(Box.createRigidArea(new Dimension(0, 6)));

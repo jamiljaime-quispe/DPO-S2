@@ -5,7 +5,6 @@ import Business.Entities.VehicleType;
 import Presentation.Controllers.AdminController;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.List;
@@ -18,7 +17,6 @@ public class AdminParkingManagementView extends JDialog {
     private JButton deleteButton;
     private JButton refreshButton;
     private AdminController controller;
-    private boolean loading;
 
     public AdminParkingManagementView(Frame parent) {
         super(parent, "Manage Parking Slots", true);
@@ -44,7 +42,6 @@ public class AdminParkingManagementView extends JDialog {
         spacesTable.getTableHeader().setBackground(new Color(60, 60, 60));
         spacesTable.getTableHeader().setForeground(Color.WHITE);
         spacesTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        spacesTable.getColumnModel().getColumn(3).setCellRenderer(new StatusCellRenderer());
 
         JScrollPane scrollPane = new JScrollPane(spacesTable);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
@@ -59,7 +56,9 @@ public class AdminParkingManagementView extends JDialog {
         deleteButton.setEnabled(false);
 
         spacesTable.getSelectionModel().addListSelectionListener(e -> {
-            updateActionButtons();
+            boolean selected = spacesTable.getSelectedRow() >= 0;
+            editButton.setEnabled(selected);
+            deleteButton.setEnabled(selected);
         });
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
@@ -175,25 +174,23 @@ public class AdminParkingManagementView extends JDialog {
     }
 
     public void updateSpaces(List<ParkingSpace> spaces) {
-        clearSpacesTable();
-        for (ParkingSpace space : spaces) {
-            addSpaceToTable(space);
-        }
-    }
-
-    public void clearSpacesTable() {
         tableModel.setRowCount(0);
-    }
-
-    public void addSpaceToTable(ParkingSpace space) {
-        tableModel.addRow(new Object[]{
-            space.getId(),
-            space.getFloor(),
-            space.getVehicleType().name(),
-            space.isOccupied() ? "Occupied" : "Vacant",
-            space.isReserved() ? "Reserved" : "Available",
-            getLicensePlate(space)
-        });
+        for (ParkingSpace space : spaces) {
+            String licensePlate = "";
+            if (space.getParkedVehicle() != null) {
+                licensePlate = space.getParkedVehicle().getLicensePlate();
+            } else if (space.getReservation() != null && space.getReservation().getVehicle() != null) {
+                licensePlate = space.getReservation().getVehicle().getLicensePlate();
+            }
+            tableModel.addRow(new Object[]{
+                space.getId(),
+                space.getFloor(),
+                space.getVehicleType().name(),
+                space.isOccupied() ? "Occupied" : "Vacant",
+                space.isReserved() ? "Reserved" : "Available",
+                licensePlate
+            });
+        }
     }
 
     public void showError(String message) {
@@ -204,55 +201,7 @@ public class AdminParkingManagementView extends JDialog {
         JOptionPane.showMessageDialog(this, message, "Info", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    public void setLoading(boolean loading) {
-        this.loading = loading;
-        setCursor(Cursor.getPredefinedCursor(loading ? Cursor.WAIT_CURSOR : Cursor.DEFAULT_CURSOR));
-        spacesTable.setEnabled(!loading);
-        updateActionButtons();
-    }
-
     public void setController(AdminController controller) {
         this.controller = controller;
-    }
-
-    private void updateActionButtons() {
-        boolean selected = spacesTable.getSelectedRow() >= 0;
-        addButton.setEnabled(!loading);
-        editButton.setEnabled(!loading && selected);
-        deleteButton.setEnabled(!loading && selected);
-        refreshButton.setEnabled(!loading);
-    }
-
-    private String getLicensePlate(ParkingSpace space) {
-        if (space.getParkedVehicle() != null) {
-            return space.getParkedVehicle().getLicensePlate();
-        } else if (space.getReservation() != null && space.getReservation().getVehicle() != null) {
-            return space.getReservation().getVehicle().getLicensePlate();
-        }
-        return "";
-    }
-
-    private static class StatusCellRenderer extends DefaultTableCellRenderer {
-        private static final Color VACANT_COLOR = new Color(232, 248, 238);
-        private static final Color OCCUPIED_COLOR = new Color(253, 235, 235);
-
-        @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
-                                                       boolean hasFocus, int row, int column) {
-            Component cell = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-
-            if (!isSelected) {
-                String status = String.valueOf(value);
-                if ("Vacant".equals(status)) {
-                    cell.setBackground(VACANT_COLOR);
-                } else if ("Occupied".equals(status)) {
-                    cell.setBackground(OCCUPIED_COLOR);
-                } else {
-                    cell.setBackground(Color.WHITE);
-                }
-            }
-
-            return cell;
-        }
     }
 }

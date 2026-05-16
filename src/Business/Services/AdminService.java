@@ -16,10 +16,8 @@ public class AdminService {
 	private ReservationDAO reservationDAO;
 
 	/**
-	 * Constructs a new AdminService.
-	 *
-	 * @param parkingService the parking service for space operations
-	 * @param reservationDAO the DAO for reservation access
+	 * @param parkingService  parking service for space operations
+	 * @param reservationDAO  DAO for reservation access
 	 */
 	public AdminService(ParkingService parkingService, ReservationDAO reservationDAO) {
 		this.parkingService = parkingService;
@@ -91,20 +89,6 @@ public class AdminService {
 			space.cancelReservation();
 			parkingService.updateParkingSpace(space);
 		}
-	}
-
-	/**
-	 * Cancels the active reservation associated with a license plate.
-	 *
-	 * @param plate license plate associated with the booking
-	 * @return true if an active booking was cancelled, false otherwise
-	 */
-	public boolean cancelReservationByPlate(String plate) {
-		Reservation reservation = reservationDAO.findByPlate(plate);
-		if (reservation == null || !reservation.isActive()) return false;
-
-		cancelReservation(reservation.getId());
-		return true;
 	}
 
 	/**

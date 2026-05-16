@@ -17,10 +17,8 @@ public class UserService {
 	private VehicleDAO vehicleDAO;
 
 	/**
-	 * Constructs a new UserService.
-	 *
-	 * @param userDAO    the data access object for users
-	 * @param vehicleDAO the data access object for vehicles
+	 * @param userDAO    data access object for users
+	 * @param vehicleDAO data access object for vehicles
 	 */
 	public UserService(UserDAO userDAO, VehicleDAO vehicleDAO) {
 		this.userDAO = userDAO;
