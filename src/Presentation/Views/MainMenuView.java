@@ -2,21 +2,20 @@ package Presentation.Views;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseListener;
 
 import Business.Entities.ParkingSpace;
 import Presentation.Controllers.MainController;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import Presentation.Views.OccupancyChartView;
 
 public class MainMenuView extends JFrame {
     private MainController controller;
 
-    // Title label
     private JLabel titleLabel;
+    private JLabel brandSubtitleLabel;
 
-    // Buttons are now internal members
     private JButton statusButton;
     private JButton reservationButton;
     private JButton entryExitButton;
@@ -26,22 +25,22 @@ public class MainMenuView extends JFrame {
     private JButton logoutButton;
     private JButton deleteAccountButton;
 
-    // Panels kept as members so showAdmin/UserOptions can toggle them
+    private JPanel mainPanel;
+    private JPanel navPanel;
     private JPanel mgmtGroup;
     private JPanel visGroup;
     private JPanel accountGroup;
     private JPanel parkingEntryExitButtonRow;
 
-    // BUTTON 1: Parking slots panel and table
     private JPanel parkingSlotsPanel;
     private JTable parkingSlotsTable;
     private java.util.List<MouseListener> parkingSlotsTableMouseListeners = new java.util.ArrayList<>();
 
-    // Occupancy chart panel
     private OccupancyChartView occupancyChartPanel;
+    private JButton parkingSlotsBackButton;
+    private java.util.List<ActionListener> parkingSlotsBackListeners = new java.util.ArrayList<>();
 
     public MainMenuView() {
-        // Sets the title of the window directly
         setTitle("Main screen");
     }
 
@@ -50,12 +49,48 @@ public class MainMenuView extends JFrame {
     }
 
     public void initComponents() {
-        // Custom panel to draw the background image
-        // Replace with your actual image path
-        BackgroundPanel mainPanel = new BackgroundPanel("src/resources/parking_bg.jpg");
+        mainPanel = new JPanel();
         mainPanel.setLayout(null);
+        mainPanel.setBackground(new Color(245, 247, 250));
 
-        // 1. MUST INITIALIZE BUTTONS FIRST
+        JPanel brand = new JPanel();
+        brand.setLayout(null);
+        brand.setBackground(new Color(33, 99, 168));
+        brand.setBounds(0, 0, 360, 620);
+
+        JLabel logo = new JLabel("P", SwingConstants.CENTER);
+        logo.setFont(new Font("SansSerif", Font.BOLD, 64));
+        logo.setForeground(Color.WHITE);
+        logo.setBorder(BorderFactory.createLineBorder(new Color(255, 255, 255, 90), 3, true));
+        logo.setBounds(120, 120, 120, 110);
+        brand.add(logo);
+
+        JLabel brandTitle = new JLabel("Parking System", SwingConstants.CENTER);
+        brandTitle.setFont(new Font("SansSerif", Font.BOLD, 28));
+        brandTitle.setForeground(Color.WHITE);
+        brandTitle.setBounds(20, 255, 320, 40);
+        brand.add(brandTitle);
+
+        brandSubtitleLabel = new JLabel("Your dashboard", SwingConstants.CENTER);
+        brandSubtitleLabel.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        brandSubtitleLabel.setForeground(new Color(220, 230, 245));
+        brandSubtitleLabel.setBounds(20, 300, 320, 30);
+        brand.add(brandSubtitleLabel);
+
+        mainPanel.add(brand);
+
+        titleLabel = new JLabel("Welcome");
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 26));
+        titleLabel.setForeground(new Color(40, 40, 50));
+        titleLabel.setBounds(390, 35, 500, 40);
+        mainPanel.add(titleLabel);
+
+        navPanel = new JPanel();
+        navPanel.setLayout(null);
+        navPanel.setOpaque(false);
+        navPanel.setBounds(390, 90, 510, 540);
+        mainPanel.add(navPanel);
+
         statusButton = new JButton();
         reservationButton = new JButton();
         entryExitButton = new JButton();
@@ -65,69 +100,51 @@ public class MainMenuView extends JFrame {
         logoutButton = new JButton();
         deleteAccountButton = new JButton();
 
-        // Title
-        titleLabel = new JLabel("Welcome - admin");
-        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 32));
-        titleLabel.setBounds(40, 30, 500, 50);
-        mainPanel.add(titleLabel);
-
-        // Parking Management Card
-        mgmtGroup = createGroupPanel("Parking management", 40, 100);
+        mgmtGroup = createGroupPanel("Parking management", 0, 0);
         mgmtGroup.add(styleButton(entryExitButton, "Manage parking slots"));
         mgmtGroup.add(Box.createRigidArea(new Dimension(0, 10)));
         mgmtGroup.add(styleButton(reservationButton, "Manage slot booking"));
         mgmtGroup.add(Box.createRigidArea(new Dimension(0, 10)));
         parkingEntryExitButtonRow = createEntryExitButtonRow();
         mgmtGroup.add(parkingEntryExitButtonRow);
-        mainPanel.add(mgmtGroup);
+        navPanel.add(mgmtGroup);
 
-        // Parking Visualization Card
-        visGroup = createGroupPanel("Parking visualization", 40, 300);
+        visGroup = createGroupPanel("Parking visualization", 0, 200);
         visGroup.add(styleButton(occupancyChartButton, "Display last hour occupancy"));
         visGroup.add(Box.createRigidArea(new Dimension(0, 10)));
         visGroup.add(styleButton(statusButton, "Display current parking status"));
-        mainPanel.add(visGroup);
+        navPanel.add(visGroup);
 
-        // Account Card (logout + delete account)
-        accountGroup = createGroupPanel("Account", 40, 480);
+        accountGroup = createGroupPanel("Account", 270, 0);
         accountGroup.add(styleButton(logoutButton, "Log out"));
         accountGroup.add(Box.createRigidArea(new Dimension(0, 10)));
         styleButton(deleteAccountButton, "Delete Account");
         deleteAccountButton.setForeground(new Color(180, 30, 30));
         accountGroup.add(deleteAccountButton);
-        mainPanel.add(accountGroup);
+        navPanel.add(accountGroup);
 
-        // Apply settings directly to THIS class instead of a separate frame variable
         setContentPane(mainPanel);
         setSize(930, 650);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // Tables:
-
-        // Table 1: Manage parking slots
         parkingSlotsPanel = createParkingSlotsPanel();
         parkingSlotsPanel.setVisible(false);
         mainPanel.add(parkingSlotsPanel);
 
-        // Occupancy chart
         occupancyChartPanel = new OccupancyChartView();
         occupancyChartPanel.initComponents();
-        occupancyChartPanel.setBounds(360, 90, 540, 440);
+        occupancyChartPanel.setBounds(390, 90, 510, 540);
         occupancyChartPanel.setVisible(false);
         mainPanel.add(occupancyChartPanel);
-
     }
 
-    /**
-     * Called by AuthController to configure the UI before displaying it.
-     * Mode 1 = Admin, Mode 2 = Regular User.
-     */
     public void setMode(int mode, String username) {
         resetDisplayedContent();
 
-        if (mode == 1) { // ADMIN
+        if (mode == 1) {
             titleLabel.setText("Welcome - " + username);
+            brandSubtitleLabel.setText("Admin dashboard");
             mgmtGroup.setVisible(true);
             entryExitButton.setVisible(true);
             reservationButton.setVisible(true);
@@ -135,11 +152,10 @@ public class MainMenuView extends JFrame {
             parkingExitButton.setVisible(false);
             parkingEntryExitButtonRow.setVisible(false);
             reservationButton.setText("Manage slot booking");
-            visGroup.setBounds(40, 300, 300, 160);
-            accountGroup.setBounds(40, 480, 300, 160);
             deleteAccountButton.setVisible(false);
-        } else if (mode == 2) { // REGULAR USER
+        } else if (mode == 2) {
             titleLabel.setText("Welcome - " + username);
+            brandSubtitleLabel.setText("User dashboard");
             mgmtGroup.setVisible(true);
             entryExitButton.setVisible(false);
             reservationButton.setVisible(true);
@@ -148,28 +164,31 @@ public class MainMenuView extends JFrame {
             parkingExitButton.setEnabled(false);
             parkingEntryExitButtonRow.setVisible(true);
             reservationButton.setText("Manage my bookings");
-            visGroup.setBounds(40, 300, 300, 160);
-            accountGroup.setBounds(40, 480, 300, 160);
             deleteAccountButton.setVisible(true);
         }
+
+        showNavigation();
 
         if (controller != null)
             controller.setMode(mode);
 
-        this.revalidate();
-        this.repaint();
+        revalidate();
+        repaint();
     }
 
     private JPanel createGroupPanel(String title, int x, int y) {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(new Color(255, 255, 255, 180)); // Transparency
-        panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-        panel.setBounds(x, y, 300, 160);
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(230, 234, 240), 1, true),
+                BorderFactory.createEmptyBorder(15, 15, 15, 15)));
+        panel.setBounds(x, y, 250, 175);
 
         JLabel label = new JLabel(title);
         label.setFont(new Font("SansSerif", Font.BOLD, 14));
-        label.setAlignmentX(Component.CENTER_ALIGNMENT);
+        label.setForeground(new Color(40, 40, 50));
+        label.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(label);
         panel.add(Box.createRigidArea(new Dimension(0, 15)));
         return panel;
@@ -177,10 +196,16 @@ public class MainMenuView extends JFrame {
 
     private JButton styleButton(JButton btn, String text) {
         btn.setText(text);
-        btn.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btn.setMaximumSize(new Dimension(260, 40));
+        btn.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btn.setMaximumSize(new Dimension(220, 40));
         btn.setBackground(Color.WHITE);
+        btn.setForeground(new Color(33, 99, 168));
+        btn.setFont(new Font("SansSerif", Font.PLAIN, 13));
         btn.setFocusPainted(false);
+        btn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(33, 99, 168), 1, true),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return btn;
     }
 
@@ -188,8 +213,8 @@ public class MainMenuView extends JFrame {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
         panel.setOpaque(false);
-        panel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.setMaximumSize(new Dimension(260, 40));
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.setMaximumSize(new Dimension(220, 40));
 
         styleSmallButton(parkingEntryButton, "Entry");
         styleSmallButton(parkingExitButton, "Exit");
@@ -200,41 +225,62 @@ public class MainMenuView extends JFrame {
         return panel;
     }
 
-    private JButton styleSmallButton(JButton btn, String text) {
-        btn.setText(text);
-        btn.setMaximumSize(new Dimension(125, 40));
-        btn.setPreferredSize(new Dimension(125, 40));
-        btn.setBackground(Color.WHITE);
-        btn.setFocusPainted(false);
-        return btn;
+    private JButton createBackBoxButton() {
+        JButton b = new JButton("<-");
+        b.setPreferredSize(new Dimension(42, 34));
+        b.setMinimumSize(new Dimension(42, 34));
+        b.setMaximumSize(new Dimension(42, 34));
+        b.setForeground(new Color(33, 99, 168));
+        b.setBackground(Color.WHITE);
+        b.setFont(new Font("SansSerif", Font.BOLD, 14));
+        b.setFocusPainted(false);
+        b.setBorder(BorderFactory.createLineBorder(new Color(33, 99, 168), 1, true));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setToolTipText("Back to main menu");
+        return b;
     }
 
-    // Inner class for background
-    class BackgroundPanel extends JPanel {
-        private Image img;
-
-        public BackgroundPanel(String path) {
-            this.img = new ImageIcon(path).getImage();
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            g.drawImage(img, 0, 0, getWidth(), getHeight(), this);
-        }
+    private JButton styleSmallButton(JButton btn, String text) {
+        btn.setText(text);
+        btn.setMaximumSize(new Dimension(105, 40));
+        btn.setPreferredSize(new Dimension(105, 40));
+        btn.setBackground(Color.WHITE);
+        btn.setForeground(new Color(33, 99, 168));
+        btn.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        btn.setFocusPainted(false);
+        btn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(33, 99, 168), 1, true),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
     }
 
     private JPanel createParkingSlotsPanel() {
         JPanel panel = new JPanel(new BorderLayout(0, 10));
-        panel.setBackground(new Color(255, 255, 255, 190));
-        panel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(230, 234, 240), 1, true),
+                BorderFactory.createEmptyBorder(15, 20, 15, 20)));
+        panel.setBounds(390, 90, 510, 540);
 
-        // Adjust these numbers depending on where you want the box
-        panel.setBounds(370, 150, 520, 300);
+        JPanel header = new JPanel(new BorderLayout(10, 0));
+        header.setOpaque(false);
 
-        JLabel title = new JLabel("Manage parking slots");
+        parkingSlotsBackButton = createBackBoxButton();
+        JPanel backCorner = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        backCorner.setOpaque(false);
+        backCorner.add(parkingSlotsBackButton);
+        header.add(backCorner, BorderLayout.WEST);
+
+        JLabel title = new JLabel("Current parking status");
         title.setFont(new Font("SansSerif", Font.BOLD, 16));
-        panel.add(title, BorderLayout.NORTH);
+        title.setForeground(new Color(40, 40, 50));
+        header.add(title, BorderLayout.CENTER);
+        panel.add(header, BorderLayout.NORTH);
+
+        for (ActionListener listener : parkingSlotsBackListeners) {
+            parkingSlotsBackButton.addActionListener(listener);
+        }
 
         String[] columns = {
                 "Code",
@@ -244,17 +290,6 @@ public class MainMenuView extends JFrame {
                 "License plate",
                 "My Parked Vehicle"
         };
-
-        /*
-         * Object[][] rows = {
-         * {"A01", 0, "Vacant", "Available", ""},
-         * {"A02", 0, "Occupied", "Available", "1234-ABC"},
-         * {"A03", 0, "Vacant", "Reserved", "5678-DEF"},
-         * {"B01", 1, "Vacant", "Available", ""},
-         * {"B02", 1, "Occupied", "Available", "9012-GHI"},
-         * {"C01", 2, "Vacant", "Reserved", "3456-JKL"}
-         * };
-         */
 
         Object[][] rows = {};
 
@@ -269,7 +304,7 @@ public class MainMenuView extends JFrame {
         parkingSlotsTable.setRowHeight(23);
         parkingSlotsTable.setFont(new Font("SansSerif", Font.PLAIN, 12));
         parkingSlotsTable.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 12));
-        parkingSlotsTable.getTableHeader().setBackground(new Color(60, 60, 60));
+        parkingSlotsTable.getTableHeader().setBackground(new Color(33, 99, 168));
         parkingSlotsTable.getTableHeader().setForeground(Color.WHITE);
         parkingSlotsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         parkingSlotsTable.removeColumn(parkingSlotsTable.getColumnModel().getColumn(5));
@@ -284,18 +319,35 @@ public class MainMenuView extends JFrame {
         }
 
         JScrollPane scrollPane = new JScrollPane(parkingSlotsTable);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(210, 215, 225), 1, true));
 
         panel.add(scrollPane, BorderLayout.CENTER);
 
         return panel;
     }
 
+    private void showNavigation() {
+        navPanel.setVisible(true);
+        titleLabel.setVisible(true);
+    }
+
+    private void hideNavigation() {
+        navPanel.setVisible(false);
+    }
+
     public void showParkingSlotsTable() {
+        hideNavigation();
         occupancyChartPanel.setVisible(false);
         parkingSlotsPanel.setVisible(true);
         parkingSlotsPanel.revalidate();
         parkingSlotsPanel.repaint();
+    }
+
+    public void addParkingSlotsBackListener(ActionListener listener) {
+        parkingSlotsBackListeners.add(listener);
+        if (parkingSlotsBackButton != null) {
+            parkingSlotsBackButton.addActionListener(listener);
+        }
     }
 
     public void addParkingSpaceToTable(ParkingSpace space) {
@@ -354,10 +406,6 @@ public class MainMenuView extends JFrame {
         }
     }
 
-    // ==========================================
-    // GETTERS FOR THE CONTROLLER
-    // ==========================================
-
     public JButton getStatusButton() {
         return statusButton;
     }
@@ -404,7 +452,6 @@ public class MainMenuView extends JFrame {
         parkingSlotsPanel = createParkingSlotsPanel();
         parkingSlotsPanel.setVisible(false);
         contentPane.add(parkingSlotsPanel);
-        contentPane.setComponentZOrder(parkingSlotsPanel, 0);
         revalidate();
         repaint();
     }
@@ -429,15 +476,21 @@ public class MainMenuView extends JFrame {
         clearParkingSlotsTable();
         parkingSlotsPanel.setVisible(false);
         occupancyChartPanel.setVisible(false);
+        showNavigation();
         revalidate();
         repaint();
     }
 
     public void showOccupancyChart() {
+        hideNavigation();
         parkingSlotsPanel.setVisible(false);
         occupancyChartPanel.setVisible(true);
         occupancyChartPanel.revalidate();
         occupancyChartPanel.repaint();
+    }
+
+    public JButton getBackToMenuButton() {
+        return occupancyChartPanel.getBackButton();
     }
 
     public OccupancyChartView getOccupancyChartView() {
