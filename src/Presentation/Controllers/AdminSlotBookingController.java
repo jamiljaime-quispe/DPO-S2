@@ -1,31 +1,55 @@
 package Presentation.Controllers;
 
 import Business.Entities.ParkingSpace;
+import Business.Entities.Reservation;
 import Business.Entities.VehicleType;
 import Business.Services.AdminService;
 import Business.Services.ParkingService;
+import Business.Services.ReservationService;
 import Presentation.Views.AdminSlotBookingManagementView;
 
 import javax.swing.SwingWorker;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class AdminSlotBookingController {
+    private static final int ADMIN_MODE = 1;
+    private static final int USER_MODE = 2;
     private static final int BACKGROUND_TEST_DELAY_MS = 300;
     private static final int ROW_LOAD_DELAY_MS = 100;
 
     private AdminSlotBookingManagementView bookingView;
     private ParkingService parkingService;
     private AdminService adminService;
+    private ReservationService reservationService;
+    private UserService userService;
+    private int currentMode = ADMIN_MODE;
+
+    private static class BookingRow {
+        private ParkingSpace space;
+        private boolean userBooking;
+
+        private BookingRow(ParkingSpace space, boolean userBooking) {
+            this.space = space;
+            this.userBooking = userBooking;
+        }
+    }
 
     public AdminSlotBookingController(AdminSlotBookingManagementView bookingView, ParkingService parkingService,
-                                      AdminService adminService) {
+                                      AdminService adminService, ReservationService reservationService,
+                                      UserService userService) {
         this.bookingView = bookingView;
         this.parkingService = parkingService;
         this.adminService = adminService;
+        this.reservationService = reservationService;
+        this.userService = userService;
         bookingView.setController(this);
     }
 
     public void showView(int mode) {
+        currentMode = mode;
         bookingView.setMode(mode);
         loadBookings();
         bookingView.setVisible(true);
@@ -35,26 +59,54 @@ public class AdminSlotBookingController {
         bookingView.setLoading(true);
         bookingView.clearBookingsTable();
 
-        new SwingWorker<Void, ParkingSpace>() {
+        int modeForLoad = currentMode;
+        int userId = userService.getLastLoggedInUserId();
+
+        new SwingWorker<Void, BookingRow>() {
             @Override
             protected Void doInBackground() {
                 List<ParkingSpace> spaces = parkingService.getAllSpaces();
+                Set<String> userBookingCodes = new HashSet<>();
+                List<ParkingSpace> orderedSpaces = new ArrayList<>();
+
+                if (modeForLoad == USER_MODE && userId > 0) {
+                    List<Reservation> userReservations = reservationService.getReservationsByUser(userId);
+                    for (Reservation reservation : userReservations) {
+                        if (reservation.getParkingSpace() != null) {
+                            String code = reservation.getParkingSpace().getId();
+                            userBookingCodes.add(code);
+
+                            ParkingSpace matchingSpace = findSpaceByCode(spaces, code);
+                            if (matchingSpace != null) {
+                                orderedSpaces.add(matchingSpace);
+                            } else {
+                                orderedSpaces.add(reservation.getParkingSpace());
+                            }
+                        }
+                    }
+                }
 
                 for (ParkingSpace space : spaces) {
+                    if (!userBookingCodes.contains(space.getId())) {
+                        orderedSpaces.add(space);
+                    }
+                }
+
+                for (ParkingSpace space : orderedSpaces) {
                     delayRowLoad();
                     if (Thread.currentThread().isInterrupted()) {
                         break;
                     }
-                    publish(space);
+                    publish(new BookingRow(space, userBookingCodes.contains(space.getId())));
                 }
 
                 return null;
             }
 
             @Override
-            protected void process(List<ParkingSpace> chunks) {
-                for (ParkingSpace space : chunks) {
-                    bookingView.addBookingToTable(space);
+            protected void process(List<BookingRow> chunks) {
+                for (BookingRow row : chunks) {
+                    bookingView.addBookingToTable(row.space, row.userBooking);
                 }
             }
 
@@ -72,11 +124,102 @@ public class AdminSlotBookingController {
     }
 
     public void createBooking(String plate, VehicleType type, String spaceCode) {
-        runBookingOperation("Booking creation UI is ready. Reservation persistence wiring is the next step.");
+        if (plate == null || plate.isBlank() || spaceCode == null || spaceCode.isBlank()) {
+            bookingView.showError("License plate and space code cannot be empty.");
+            return;
+        }
+
+        bookingView.setLoading(true);
+        new SwingWorker<Reservation, Void>() {
+            private String errorMessage;
+
+            @Override
+            protected Reservation doInBackground() {
+                try {
+                    simulateDatabaseDelay();
+                    return reservationService.createReservation(
+                            userService.getLastLoggedInUserId(),
+                            normalizePlate(plate),
+                            type,
+                            spaceCode);
+                } catch (Exception e) {
+                    errorMessage = e.getMessage();
+                    return null;
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    Reservation reservation = get();
+                    if (reservation != null) {
+                        bookingView.showInfo("Booking created for space \"" + spaceCode
+                                + "\" and plate \"" + normalizePlate(plate) + "\".");
+                        loadBookings();
+                    } else {
+                        bookingView.setLoading(false);
+                        bookingView.showError(errorMessage != null
+                                ? errorMessage
+                                : "Booking could not be created.");
+                    }
+                } catch (Exception e) {
+                    bookingView.setLoading(false);
+                    bookingView.showError("Failed to create booking: " + e.getMessage());
+                }
+            }
+        }.execute();
+    }
+
+    private ParkingSpace findSpaceByCode(List<ParkingSpace> spaces, String code) {
+        for (ParkingSpace space : spaces) {
+            if (space.getId().equals(code)) {
+                return space;
+            }
+        }
+        return null;
     }
 
     public void editBooking(String originalSpaceCode, String plate, VehicleType type, String spaceCode) {
-        runBookingOperation("Booking reassignment UI is ready. Reservation persistence wiring is the next step.");
+        if (plate == null || plate.isBlank() || spaceCode == null || spaceCode.isBlank()) {
+            bookingView.showError("License plate and space code cannot be empty.");
+            return;
+        }
+
+        bookingView.setLoading(true);
+        new SwingWorker<Reservation, Void>() {
+            private String errorMessage;
+
+            @Override
+            protected Reservation doInBackground() {
+                try {
+                    simulateDatabaseDelay();
+                    return reservationService.reassignReservation(normalizePlate(plate), spaceCode);
+                } catch (Exception e) {
+                    errorMessage = e.getMessage();
+                    return null;
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    Reservation reservation = get();
+                    if (reservation != null) {
+                        bookingView.showInfo("Booking reassigned from space \"" + originalSpaceCode
+                                + "\" to space \"" + spaceCode + "\".");
+                        loadBookings();
+                    } else {
+                        bookingView.setLoading(false);
+                        bookingView.showError(errorMessage != null
+                                ? errorMessage
+                                : "Booking could not be reassigned.");
+                    }
+                } catch (Exception e) {
+                    bookingView.setLoading(false);
+                    bookingView.showError("Failed to reassign booking: " + e.getMessage());
+                }
+            }
+        }.execute();
     }
 
     public void deleteBooking(String spaceCode, String plate) {
@@ -93,7 +236,12 @@ public class AdminSlotBookingController {
             protected Boolean doInBackground() {
                 try {
                     simulateDatabaseDelay();
-                    return adminService.cancelReservationByPlate(plate);
+                    if (currentMode == USER_MODE) {
+                        return reservationService.cancelReservationByPlateForUser(
+                                userService.getLastLoggedInUserId(),
+                                normalizePlate(plate));
+                    }
+                    return adminService.cancelReservationByPlate(normalizePlate(plate));
                 } catch (Exception e) {
                     errorMessage = "Failed to cancel booking: " + e.getMessage();
                     return false;
@@ -105,8 +253,12 @@ public class AdminSlotBookingController {
                 try {
                     boolean cancelled = get();
                     if (cancelled) {
-                        bookingView.showInfo("Booking for space \"" + spaceCode
-                                + "\" has been cancelled. The space may still show occupied if a vehicle is parked there.");
+                        if (currentMode == USER_MODE) {
+                            bookingView.showInfo("Your booking for space \"" + spaceCode + "\" has been cancelled.");
+                        } else {
+                            bookingView.showInfo("Booking for space \"" + spaceCode
+                                    + "\" has been cancelled. The space may still show occupied if a vehicle is parked there.");
+                        }
                         loadBookings();
                     } else {
                         bookingView.setLoading(false);
@@ -117,28 +269,6 @@ public class AdminSlotBookingController {
                 } catch (Exception e) {
                     bookingView.setLoading(false);
                     bookingView.showError("Failed to cancel booking: " + e.getMessage());
-                }
-            }
-        }.execute();
-    }
-
-    private void runBookingOperation(String successMessage) {
-        bookingView.setLoading(true);
-        new SwingWorker<String, Void>() {
-            @Override
-            protected String doInBackground() {
-                simulateDatabaseDelay();
-                return successMessage;
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    bookingView.showInfo(get());
-                } catch (Exception e) {
-                    bookingView.showError("Failed to update slot bookings: " + e.getMessage());
-                } finally {
-                    bookingView.setLoading(false);
                 }
             }
         }.execute();
@@ -158,5 +288,9 @@ public class AdminSlotBookingController {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    private String normalizePlate(String plate) {
+        return plate.trim().toUpperCase();
     }
 }

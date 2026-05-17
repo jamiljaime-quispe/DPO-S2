@@ -77,7 +77,12 @@ public class OccupancyChartView extends JPanel {
             }
 
             // Y scale: round up to nearest 5
-            int maxVal = data.stream().mapToInt(Integer::intValue).max().orElse(1);
+            int maxVal = 1;
+            for (Integer value : data) {
+                if (value > maxVal) {
+                    maxVal = value;
+                }
+            }
             int yScale = Math.max(((maxVal / 5) + 1) * 5, 5);
 
             // Grid lines + Y-axis labels

@@ -6,6 +6,7 @@ import Persistence.IMPL.VehicleDAOImpl;
 import Business.Entities.OccupancyTracker;
 import Business.Services.AdminService;
 import Business.Services.ParkingService;
+import Business.Services.ReservationService;
 import Business.Services.StatisticsService;
 import Presentation.Controllers.AdminController;
 import Presentation.Controllers.AuthController;
@@ -73,6 +74,7 @@ public class Main {
             ParkingService parkingService       = new ParkingService(parkingSpaceDAO, vehicleDAO, reservationDAO);
             ParkingController parkingController = new ParkingController(null, null, parkingService);
             parkingController.setMainMenuView(mainMenuView);
+            parkingController.setUserService(userService);
             mainController.setParkingController(parkingController);
 
             AdminParkingManagementView adminView = new AdminParkingManagementView(mainMenuView);
@@ -81,11 +83,15 @@ public class Main {
 
             // 11. Wire up the admin slot booking management
             AdminService adminService = new AdminService(parkingService, reservationDAO);
+            parkingController.setAdminService(adminService);
+            ReservationService reservationService = new ReservationService(reservationDAO, parkingSpaceDAO, vehicleDAO);
             AdminSlotBookingManagementView bookingView = new AdminSlotBookingManagementView(mainMenuView);
             AdminSlotBookingController bookingController = new AdminSlotBookingController(
                     bookingView,
                     parkingService,
-                    adminService);
+                    adminService,
+                    reservationService,
+                    userService);
             mainController.setSlotBookingController(bookingController);
         });
     }

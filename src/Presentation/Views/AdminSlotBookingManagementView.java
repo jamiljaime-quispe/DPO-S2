@@ -35,7 +35,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         setLocationRelativeTo(getParent());
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        String[] columns = {"Code", "Floor", "Type", "Parking Status", "Booking", "Booked Plate"};
+        String[] columns = {"Code", "Floor", "Type", "Parking Status", "Booking", "Booked Plate", "My Booking"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -50,7 +50,12 @@ public class AdminSlotBookingManagementView extends JDialog {
         bookingsTable.getTableHeader().setBackground(new Color(60, 60, 60));
         bookingsTable.getTableHeader().setForeground(Color.WHITE);
         bookingsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        bookingsTable.getColumnModel().getColumn(3).setCellRenderer(new StatusCellRenderer());
+
+        bookingsTable.removeColumn(bookingsTable.getColumnModel().getColumn(6));
+        BookingCellRenderer bookingCellRenderer = new BookingCellRenderer();
+        for (int i = 0; i < bookingsTable.getColumnModel().getColumnCount(); i++) {
+            bookingsTable.getColumnModel().getColumn(i).setCellRenderer(bookingCellRenderer);
+        }
 
         JScrollPane scrollPane = new JScrollPane(bookingsTable);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
@@ -174,7 +179,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         String spaceCode = String.valueOf(tableModel.getValueAt(modelRow, 0));
         String plate = String.valueOf(tableModel.getValueAt(modelRow, 5));
 
-        String action = currentMode == USER_MODE ? "Cancel" : "Delete";
+        String action = "Cancel";
         int confirm = JOptionPane.showConfirmDialog(this,
                 action + " the booking for space \"" + spaceCode + "\"?",
                 "Confirm " + action,
@@ -205,7 +210,7 @@ public class AdminSlotBookingManagementView extends JDialog {
     public void updateBookings(List<ParkingSpace> spaces) {
         clearBookingsTable();
         for (ParkingSpace space : spaces) {
-            addBookingToTable(space);
+            addBookingToTable(space, false);
         }
     }
 
@@ -214,13 +219,18 @@ public class AdminSlotBookingManagementView extends JDialog {
     }
 
     public void addBookingToTable(ParkingSpace space) {
+        addBookingToTable(space, false);
+    }
+
+    public void addBookingToTable(ParkingSpace space, boolean myBooking) {
         tableModel.addRow(new Object[]{
                 space.getId(),
                 space.getFloor(),
                 space.getVehicleType().name(),
                 space.isOccupied() ? "Occupied" : "Vacant",
                 space.isReserved() ? "Reserved" : "Available",
-                getLicensePlate(space)
+                getLicensePlate(space),
+                myBooking
         });
     }
 
@@ -240,7 +250,8 @@ public class AdminSlotBookingManagementView extends JDialog {
             addButton.setText("Book Slot");
             addButton.setVisible(true);
             editButton.setVisible(false);
-            deleteButton.setVisible(false);
+            deleteButton.setVisible(true);
+            deleteButton.setText("Cancel Booking");
         } else {
             setTitle("Manage Slot Bookings");
             addButton.setVisible(false);
@@ -269,12 +280,13 @@ public class AdminSlotBookingManagementView extends JDialog {
         boolean selected = row >= 0;
         boolean availableSlot = selected && isSelectedSlotAvailableForBooking(row);
         boolean reservedSlot = selected && isSelectedSlotReserved(row);
+        boolean userBooking = selected && isSelectedUserBooking(row);
         boolean admin = currentMode == ADMIN_MODE;
         boolean user = currentMode == USER_MODE;
 
         addButton.setEnabled(!loading && user && availableSlot);
         editButton.setEnabled(!loading && admin && reservedSlot);
-        deleteButton.setEnabled(!loading && admin && reservedSlot);
+        deleteButton.setEnabled(!loading && ((admin && reservedSlot) || (user && userBooking)));
         refreshButton.setEnabled(!loading);
     }
 
@@ -291,16 +303,24 @@ public class AdminSlotBookingManagementView extends JDialog {
         return "Reserved".equals(reservation);
     }
 
+    private boolean isSelectedUserBooking(int selectedRow) {
+        int modelRow = bookingsTable.convertRowIndexToModel(selectedRow);
+        return Boolean.TRUE.equals(tableModel.getValueAt(modelRow, 6));
+    }
+
     private String getLicensePlate(ParkingSpace space) {
-        if (space.getReservation() != null && space.getReservation().getVehicle() != null) {
+        if (space.getParkedVehicle() != null) {
+            return space.getParkedVehicle().getLicensePlate();
+        } else if (space.getReservation() != null && space.getReservation().getVehicle() != null) {
             return space.getReservation().getVehicle().getLicensePlate();
         }
         return "";
     }
 
-    private static class StatusCellRenderer extends DefaultTableCellRenderer {
+    private class BookingCellRenderer extends DefaultTableCellRenderer {
         private static final Color VACANT_COLOR = new Color(232, 248, 238);
         private static final Color OCCUPIED_COLOR = new Color(253, 235, 235);
+        private static final Color MY_BOOKING_COLOR = new Color(225, 240, 255);
 
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
@@ -308,13 +328,21 @@ public class AdminSlotBookingManagementView extends JDialog {
             Component cell = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
             if (!isSelected) {
-                String status = String.valueOf(value);
-                if ("Vacant".equals(status)) {
-                    cell.setBackground(VACANT_COLOR);
-                } else if ("Occupied".equals(status)) {
-                    cell.setBackground(OCCUPIED_COLOR);
+                int modelRow = table.convertRowIndexToModel(row);
+                int modelColumn = table.convertColumnIndexToModel(column);
+                boolean myBooking = Boolean.TRUE.equals(tableModel.getValueAt(modelRow, 6));
+                String status = String.valueOf(tableModel.getValueAt(modelRow, 3));
+
+                if (myBooking) {
+                    cell.setBackground(MY_BOOKING_COLOR);
                 } else {
                     cell.setBackground(Color.WHITE);
+                }
+
+                if (modelColumn == 3 && "Vacant".equals(status)) {
+                    cell.setBackground(VACANT_COLOR);
+                } else if (modelColumn == 3 && "Occupied".equals(status)) {
+                    cell.setBackground(OCCUPIED_COLOR);
                 }
             }
 

@@ -8,7 +8,10 @@ import Business.Entities.Reservation;
 import Business.Entities.Vehicle;
 import Business.Entities.VehicleType;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Manages parking space lifecycle and vehicle entry/exit logic.
@@ -49,21 +52,42 @@ public class ParkingService {
 	}
 
 	/**
-	 * Persists floor and vehicleType changes for an existing space.
-	 * @param space space with updated floor/vehicleType
+	 * Persists editable details for an existing space.
+	 * The vehicle type is not editable after creation because it can conflict
+	 * with parked vehicles and active reservations.
+	 * @param space space with updated details
 	 */
 	public void updateParkingSpaceDetails(ParkingSpace space) {
+		ParkingSpace existing = parkingSpaceDAO.findByCode(space.getId());
+		if (existing == null) {
+			throw new IllegalArgumentException("Space not found: " + space.getId());
+		}
+		if (existing.getVehicleType() != space.getVehicleType()) {
+			throw new IllegalArgumentException("Vehicle type cannot be edited after the space is created.");
+		}
 		parkingSpaceDAO.updateDetails(space);
 	}
 
 	/**
-	 * Creates a new parking space if its code is not already taken.
+	 * Creates a new empty parking space if its code is not already taken.
 	 * @param space space to create
 	 */
 	public void createParkingSpace(ParkingSpace space) {
-		if (parkingSpaceDAO.findByCode(space.getId()) == null) {
-			parkingSpaceDAO.save(space);
+		if (space == null || space.getId() == null || space.getId().isBlank()) {
+			throw new IllegalArgumentException("Space code is required.");
 		}
+		if (space.getVehicleType() == null) {
+			throw new IllegalArgumentException("Vehicle type is required.");
+		}
+		if (parkingSpaceDAO.findByCode(space.getId()) != null) {
+			throw new IllegalArgumentException("Space code already exists: " + space.getId());
+		}
+
+		space.setOccupied(false);
+		space.setReserved(false);
+		space.setParkedVehicle(null);
+		space.cancelReservation();
+		parkingSpaceDAO.save(space);
 	}
 
 	/**
@@ -75,9 +99,11 @@ public class ParkingService {
 	}
 
 	/**
-	 * Deletes a parking space.
+	 * Deletes a vacant parking space.
 	 * Fails if the space is currently occupied.
-	 * If the space has an active reservation, it is cancelled before deletion.
+	 * If the space has an active reservation, the reservation is moved to a
+	 * vacant space with the same vehicle type. If no alternative exists, the
+	 * reservation is deleted.
 	 * @param code space code to delete
 	 * @return true if successfully deleted, false if occupied or not found
 	 */
@@ -90,17 +116,13 @@ public class ParkingService {
 			for (Reservation r : all) {
 				if (r.isActive() && r.getParkingSpace() != null
 						&& code.equals(r.getParkingSpace().getId())) {
-					// Try to reassign to another available space of the same type
 					List<ParkingSpace> alternatives = parkingSpaceDAO.findAvailableByType(space.getVehicleType());
-					alternatives.removeIf(s -> s.getId().equals(code));
-					if (!alternatives.isEmpty()) {
-						ParkingSpace newSpace = alternatives.get(0);
-						newSpace.setReserved(true);
+					ParkingSpace newSpace = findBestAlternativeSpace(alternatives, code, space.getFloor());
+					if (newSpace != null) {
 						r.setParkingSpace(newSpace);
 						reservationDAO.update(r);
 					} else {
-						r.cancel();
-						reservationDAO.update(r);
+						reservationDAO.delete(r.getId());
 					}
 					break;
 				}
@@ -108,6 +130,24 @@ public class ParkingService {
 		}
 		parkingSpaceDAO.delete(code);
 		return true;
+	}
+
+	private ParkingSpace findBestAlternativeSpace(List<ParkingSpace> alternatives, String deletedCode, int preferredFloor) {
+		ParkingSpace fallback = null;
+
+		for (ParkingSpace alternative : alternatives) {
+			if (alternative.getId().equals(deletedCode)) {
+				continue;
+			}
+			if (alternative.getFloor() == preferredFloor) {
+				return alternative;
+			}
+			if (fallback == null) {
+				fallback = alternative;
+			}
+		}
+
+		return fallback;
 	}
 
 	/**
@@ -120,12 +160,107 @@ public class ParkingService {
 	}
 
 	/**
+	 * Finds the active reservation for a license plate, if one exists.
+	 * @param plate license plate to check
+	 * @return active reservation, or null if none exists
+	 */
+	public Reservation findActiveReservationByPlate(String plate) {
+		if (plate == null || plate.isBlank()) return null;
+
+		Reservation reservation = reservationDAO.findByPlate(plate);
+		if (reservation != null && reservation.isActive()) {
+			return reservation;
+		}
+		return null;
+	}
+
+	/**
+	 * Finds the occupied parking space for a license plate.
+	 * @param plate license plate to check
+	 * @return occupied space, or null if the vehicle is not currently parked
+	 */
+	public ParkingSpace findOccupiedSpaceByPlate(String plate) {
+		if (plate == null || plate.isBlank()) return null;
+
+		List<ParkingSpace> allSpaces = parkingSpaceDAO.findAll();
+		for (ParkingSpace space : allSpaces) {
+			if (space.isOccupied()
+					&& space.getParkedVehicle() != null
+					&& plate.equalsIgnoreCase(space.getParkedVehicle().getLicensePlate())) {
+				return space;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Returns the spaces currently occupied by vehicles registered to a user.
+	 * @param userId owner user ID
+	 * @return occupied spaces for the user's registered vehicles
+	 */
+	public List<ParkingSpace> getParkedSpacesByUser(int userId) {
+		List<ParkingSpace> parkedSpaces = new ArrayList<>();
+		if (userId <= 0) return parkedSpaces;
+
+		List<Vehicle> vehicles = vehicleDAO.findByUser(userId);
+		Set<String> userPlates = new HashSet<>();
+		for (Vehicle vehicle : vehicles) {
+			userPlates.add(vehicle.getLicensePlate());
+		}
+
+		List<ParkingSpace> spaces = parkingSpaceDAO.findAll();
+		for (ParkingSpace space : spaces) {
+			if (space.isOccupied()
+					&& space.getParkedVehicle() != null
+					&& userPlates.contains(space.getParkedVehicle().getLicensePlate())) {
+				parkedSpaces.add(space);
+			}
+		}
+
+		return parkedSpaces;
+	}
+
+	/**
 	 * Assigns a vehicle to the best available space based on its type.
 	 * @param vehicle vehicle to park
 	 * @return assigned ParkingSpace, or null if no space is available
 	 */
 	public ParkingSpace assignVehicleToSpace(Vehicle vehicle) {
 		return handleVehicleEntry(vehicle.getLicensePlate(), vehicle.getType());
+	}
+
+	/**
+	 * Handles entry for a logged-in user and registers new vehicles to that user.
+	 * @param userId owner user ID
+	 * @param plate license plate
+	 * @param type vehicle type
+	 * @return assigned ParkingSpace, or null if no space is available
+	 */
+	public synchronized ParkingSpace handleUserVehicleEntry(int userId, String plate, VehicleType type) {
+		if (userId <= 0) {
+			throw new IllegalArgumentException("No logged-in user was found.");
+		}
+
+		Vehicle vehicle = vehicleDAO.findByPlate(plate);
+		if (vehicle == null) {
+			vehicle = new Vehicle(plate, type, String.valueOf(userId), false);
+			vehicleDAO.save(vehicle);
+		} else if (!userOwnsVehicle(userId, plate)) {
+			throw new IllegalArgumentException("License plate " + plate
+					+ " is registered to another user.");
+		}
+
+		return handleVehicleEntry(plate, type);
+	}
+
+	private boolean userOwnsVehicle(int userId, String plate) {
+		List<Vehicle> vehicles = vehicleDAO.findByUser(userId);
+		for (Vehicle vehicle : vehicles) {
+			if (plate.equals(vehicle.getLicensePlate())) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -186,6 +321,25 @@ public class ParkingService {
 				return;
 			}
 		}
+	}
+
+	/**
+	 * Handles exit for a logged-in user, only for vehicles registered to that user.
+	 * @param userId owner user ID
+	 * @param plate license plate to exit with
+	 * @return freed parking space, or null if the vehicle is not parked for that user
+	 */
+	public synchronized ParkingSpace handleUserVehicleExit(int userId, String plate) {
+		List<ParkingSpace> parkedSpaces = getParkedSpacesByUser(userId);
+		for (ParkingSpace space : parkedSpaces) {
+			if (space.getParkedVehicle() != null
+					&& plate.equals(space.getParkedVehicle().getLicensePlate())) {
+				space.freeSpace();
+				parkingSpaceDAO.update(space);
+				return space;
+			}
+		}
+		return null;
 	}
 
 	/**

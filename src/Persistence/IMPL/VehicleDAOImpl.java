@@ -1,10 +1,11 @@
 package Persistence.IMPL;
 
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-import Business.Entities.Reservation;
-import Business.Entities.Vehicle;
 import Business.Entities.*;
 import Persistence.DatabaseManager;
 import Persistence.VehicleDAO;
@@ -18,30 +19,109 @@ public class VehicleDAOImpl implements VehicleDAO {
 
     @Override
     public void save(Vehicle vehicle) {
-        System.out.println("Saving Vehicle: " + vehicle);
+        String sql = """
+                INSERT INTO vehicle (licensePlate, userId, vehicleType)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE vehicleType = VALUES(vehicleType)
+                """;
+
+        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+            ps.setString(1, vehicle.getLicensePlate());
+            ps.setInt(2, resolveOwnerUserId(vehicle.getOwner()));
+            ps.setString(3, vehicle.getType().name());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to save vehicle: " + e.getMessage(), e);
+        }
     }
 
     @Override
     public Vehicle findByPlate(String plate) {
-        return new Vehicle(
-                plate,
-                VehicleType.CAR,
-                "user1",
-                false);
-                //new Reservation[0]);
+        String sql = """
+                SELECT v.licensePlate, v.vehicleType, u.username
+                FROM vehicle v
+                JOIN user u ON u.userId = v.userId
+                WHERE v.licensePlate = ?
+                """;
+
+        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+            ps.setString(1, plate);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapRow(rs);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find vehicle by plate: " + e.getMessage(), e);
+        }
+
+        return null;
     }
 
     @Override
     public List<Vehicle> findByUser(int userId) {
+        String sql = """
+                SELECT v.licensePlate, v.vehicleType, u.username
+                FROM vehicle v
+                JOIN user u ON u.userId = v.userId
+                WHERE v.userId = ?
+                ORDER BY v.licensePlate
+                """;
         List<Vehicle> list = new ArrayList<>();
 
-        list.add(new Vehicle("ABC123", VehicleType.CAR, "user" + userId, false));//, new Reservation[0]));
+        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapRow(rs));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find vehicles by user: " + e.getMessage(), e);
+        }
 
         return list;
     }
 
     @Override
     public void delete(String plate) {
-        System.out.println("Deleting Vehicle with plate: " + plate);
+        String sql = "DELETE FROM vehicle WHERE licensePlate = ?";
+
+        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+            ps.setString(1, plate);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to delete vehicle: " + e.getMessage(), e);
+        }
+    }
+
+    private Vehicle mapRow(ResultSet rs) throws SQLException {
+        return new Vehicle(
+                rs.getString("licensePlate"),
+                VehicleType.valueOf(rs.getString("vehicleType")),
+                rs.getString("username"),
+                false);
+    }
+
+    private int resolveOwnerUserId(String owner) throws SQLException {
+        if (owner == null || owner.isBlank()) {
+            throw new SQLException("Vehicle owner is required.");
+        }
+
+        try {
+            return Integer.parseInt(owner);
+        } catch (NumberFormatException ignored) {
+            String sql = "SELECT userId FROM user WHERE username = ?";
+            try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+                ps.setString(1, owner);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getInt("userId");
+                    }
+                }
+            }
+        }
+
+        throw new SQLException("Vehicle owner was not found.");
     }
 }

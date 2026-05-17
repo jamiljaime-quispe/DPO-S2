@@ -39,6 +39,10 @@ public class UserService {
         return lastLoggedInUsername;
     }
 
+    public int getLastLoggedInUserId() {
+        return lastLoggedInUserId;
+    }
+
     public void deleteCurrentUser() {
         if (lastLoggedInUserId != -1) {
             userDAO.delete(lastLoggedInUserId);

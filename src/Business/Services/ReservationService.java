@@ -44,16 +44,73 @@ public class ReservationService {
 	 * @return created Reservation, or null if the space is unavailable or vehicle not found
 	 */
 	public Reservation createReservation(int userId, String plate, VehicleType type, String spaceCode) {
+		if (userId <= 0) {
+			throw new IllegalArgumentException("No logged-in user was found.");
+		}
+
 		ParkingSpace space = parkingSpaceDAO.findByCode(spaceCode);
-		if (space == null || !space.isAvailable()) return null;
+		if (space == null) {
+			throw new IllegalArgumentException("Parking space not found: " + spaceCode);
+		}
+		if (!space.isAvailable()) {
+			throw new IllegalArgumentException("Parking space " + spaceCode + " is not available.");
+		}
+		if (space.getVehicleType() != type) {
+			throw new IllegalArgumentException("Parking space " + spaceCode
+					+ " only accepts " + space.getVehicleType().name() + " vehicles.");
+		}
+
+		Reservation activeReservation = reservationDAO.findByPlate(plate);
+		if (activeReservation != null && activeReservation.isActive()) {
+			throw new IllegalArgumentException("License plate " + plate + " already has an active reservation.");
+		}
 
 		Vehicle vehicle = vehicleDAO.findByPlate(plate);
-		if (vehicle == null) return null;
+		if (vehicle == null) {
+			vehicle = new Vehicle(plate, type, String.valueOf(userId), false);
+			vehicleDAO.save(vehicle);
+		} else if (vehicle.getType() != type) {
+			throw new IllegalArgumentException("License plate " + plate
+					+ " is registered as " + vehicle.getType().name() + ".");
+		}
 
 		Reservation reservation = new Reservation(0, null, vehicle, space, LocalDateTime.now());
 		space.reserve(reservation);
-		parkingSpaceDAO.update(space);
 		reservationDAO.save(reservation);
+		return reservation;
+	}
+
+	/**
+	 * Reassigns an active reservation to a different available space.
+	 * @param plate license plate whose active reservation should be moved
+	 * @param newSpaceCode target parking space code
+	 * @return updated reservation
+	 */
+	public Reservation reassignReservation(String plate, String newSpaceCode) {
+		Reservation reservation = reservationDAO.findByPlate(plate);
+		if (reservation == null || !reservation.isActive()) {
+			throw new IllegalArgumentException("No active reservation found for license plate " + plate + ".");
+		}
+
+		ParkingSpace newSpace = parkingSpaceDAO.findByCode(newSpaceCode);
+		if (newSpace == null) {
+			throw new IllegalArgumentException("Parking space not found: " + newSpaceCode);
+		}
+		if (newSpace.isOccupied()) {
+			throw new IllegalArgumentException("Parking space " + newSpaceCode + " is currently occupied.");
+		}
+
+		String currentSpaceCode = reservation.getParkingSpace().getId();
+		if (newSpace.isReserved() && !currentSpaceCode.equals(newSpaceCode)) {
+			throw new IllegalArgumentException("Parking space " + newSpaceCode + " is already reserved.");
+		}
+		if (reservation.getVehicle() != null && reservation.getVehicle().getType() != newSpace.getVehicleType()) {
+			throw new IllegalArgumentException("Parking space " + newSpaceCode
+					+ " only accepts " + newSpace.getVehicleType().name() + " vehicles.");
+		}
+
+		reservation.setParkingSpace(newSpace);
+		reservationDAO.update(reservation);
 		return reservation;
 	}
 
@@ -84,6 +141,27 @@ public class ReservationService {
 		if (reservation != null && reservation.isActive()) {
 			cancelReservation(reservation.getId());
 		}
+	}
+
+	/**
+	 * Cancels the active reservation for a license plate only if it belongs to the user.
+	 * @param userId user requesting the cancellation
+	 * @param plate license plate whose reservation should be cancelled
+	 * @return true if a matching active reservation was cancelled
+	 */
+	public boolean cancelReservationByPlateForUser(int userId, String plate) {
+		Reservation reservation = reservationDAO.findByPlate(plate);
+		if (reservation == null || !reservation.isActive() || reservation.getUser() == null) {
+			return false;
+		}
+
+		int reservationUserId = Integer.parseInt(reservation.getUser().getId());
+		if (reservationUserId != userId) {
+			return false;
+		}
+
+		cancelReservation(reservation.getId());
+		return true;
 	}
 
 	/**

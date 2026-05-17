@@ -116,7 +116,7 @@ public class AdminParkingManagementView extends JDialog {
     }
 
     private void showEditDialog() {
-        int row = spacesTable.getSelectedRow();
+        int row = getSelectedModelRow();
         if (row < 0) return;
 
         String code = (String) tableModel.getValueAt(row, 0);
@@ -141,6 +141,7 @@ public class AdminParkingManagementView extends JDialog {
         dialog.add(new JLabel("Vehicle Type:"));
         JComboBox<VehicleType> typeCombo = new JComboBox<>(VehicleType.values());
         typeCombo.setSelectedItem(currentType);
+        typeCombo.setEnabled(false);
         dialog.add(typeCombo);
 
         JButton confirmBtn = new JButton("Save");
@@ -150,8 +151,7 @@ public class AdminParkingManagementView extends JDialog {
 
         confirmBtn.addActionListener(e -> {
             int floor = (int) floorSpinner.getValue();
-            VehicleType type = (VehicleType) typeCombo.getSelectedItem();
-            if (controller != null) controller.editSpace(code, floor, type);
+            if (controller != null) controller.editSpace(code, floor, currentType);
             dialog.dispose();
         });
         cancelBtn.addActionListener(e -> dialog.dispose());
@@ -160,12 +160,27 @@ public class AdminParkingManagementView extends JDialog {
     }
 
     private void handleDelete() {
-        int row = spacesTable.getSelectedRow();
+        int row = getSelectedModelRow();
         if (row < 0) return;
 
         String code = (String) tableModel.getValueAt(row, 0);
+        String status = (String) tableModel.getValueAt(row, 3);
+        String reservation = (String) tableModel.getValueAt(row, 4);
+
+        if ("Occupied".equals(status)) {
+            showError("Cannot delete parking space \"" + code + "\" because a vehicle is currently parked there.");
+            return;
+        }
+
+        String message = "Delete parking space \"" + code + "\"? This cannot be undone.";
+        if ("Reserved".equals(reservation)) {
+            message = message
+                    + "\n\nThis space has an active reservation. The system will try to move it to a similar vacant space."
+                    + "\nIf no similar vacant space exists, the reservation will be deleted.";
+        }
+
         int confirm = JOptionPane.showConfirmDialog(this,
-                "Delete parking space \"" + code + "\"? This cannot be undone.",
+                message,
                 "Confirm Delete",
                 JOptionPane.YES_NO_OPTION);
 
@@ -217,10 +232,25 @@ public class AdminParkingManagementView extends JDialog {
 
     private void updateActionButtons() {
         boolean selected = spacesTable.getSelectedRow() >= 0;
+        boolean occupied = isSelectedSpaceOccupied();
         addButton.setEnabled(!loading);
         editButton.setEnabled(!loading && selected);
-        deleteButton.setEnabled(!loading && selected);
+        deleteButton.setEnabled(!loading && selected && !occupied);
         refreshButton.setEnabled(!loading);
+    }
+
+    private boolean isSelectedSpaceOccupied() {
+        int row = getSelectedModelRow();
+        if (row < 0) return false;
+
+        String status = String.valueOf(tableModel.getValueAt(row, 3));
+        return "Occupied".equals(status);
+    }
+
+    private int getSelectedModelRow() {
+        int row = spacesTable.getSelectedRow();
+        if (row < 0) return -1;
+        return spacesTable.convertRowIndexToModel(row);
     }
 
     private String getLicensePlate(ParkingSpace space) {

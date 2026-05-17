@@ -6,6 +6,7 @@ import Business.Entities.User;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionListener;
 import java.time.format.DateTimeFormatter;
 
 public class ParkingSpaceDetailsView extends JDialog {
@@ -20,6 +21,9 @@ public class ParkingSpaceDetailsView extends JDialog {
     private JLabel reservedUserValue;
     private JLabel reservedEmailValue;
     private JLabel reservationDateValue;
+    private JButton cancelReservationButton;
+    private JButton closeButton;
+    private ParkingSpace displayedSpace;
 
     public ParkingSpaceDetailsView(Frame parent) {
         super(parent, "Parking Space Details", true);
@@ -28,7 +32,7 @@ public class ParkingSpaceDetailsView extends JDialog {
 
     private void initComponents() {
         setLayout(new BorderLayout(10, 10));
-        setSize(420, 330);
+        setSize(440, 350);
         setLocationRelativeTo(getParent());
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
@@ -55,10 +59,15 @@ public class ParkingSpaceDetailsView extends JDialog {
         addRow(content, "User Email:", reservedEmailValue);
         addRow(content, "Booked At:", reservationDateValue);
 
-        JButton closeButton = new JButton("Close");
+        cancelReservationButton = new JButton("Cancel Reservation");
+        cancelReservationButton.setForeground(new Color(180, 30, 30));
+        cancelReservationButton.setVisible(false);
+
+        closeButton = new JButton("Close");
         closeButton.addActionListener(e -> dispose());
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.add(cancelReservationButton);
         buttonPanel.add(closeButton);
 
         add(content, BorderLayout.CENTER);
@@ -74,6 +83,7 @@ public class ParkingSpaceDetailsView extends JDialog {
     }
 
     public void displaySpaceDetails(ParkingSpace space) {
+        displayedSpace = space;
         Reservation reservation = space.getReservation();
 
         codeValue.setText(space.getId());
@@ -90,14 +100,50 @@ public class ParkingSpaceDetailsView extends JDialog {
             reservationDateValue.setText(reservation.getReservationDate() != null
                     ? reservation.getReservationDate().format(DATE_FORMAT)
                     : "Unknown");
+            cancelReservationButton.setVisible(true);
+            cancelReservationButton.setEnabled(true);
         } else {
             reservedUserValue.setText("No active reservation");
             reservedEmailValue.setText("-");
             reservationDateValue.setText("-");
+            cancelReservationButton.setVisible(false);
+            cancelReservationButton.setEnabled(false);
         }
 
         setLocationRelativeTo(getParent());
         setVisible(true);
+    }
+
+    public String getDisplayedSpaceCode() {
+        if (displayedSpace == null) return "";
+        return displayedSpace.getId();
+    }
+
+    public String getDisplayedReservationPlate() {
+        if (displayedSpace == null
+                || displayedSpace.getReservation() == null
+                || displayedSpace.getReservation().getVehicle() == null) {
+            return "";
+        }
+        return displayedSpace.getReservation().getVehicle().getLicensePlate();
+    }
+
+    public void setCancelReservationListener(ActionListener listener) {
+        cancelReservationButton.addActionListener(listener);
+    }
+
+    public void setLoading(boolean loading) {
+        setCursor(Cursor.getPredefinedCursor(loading ? Cursor.WAIT_CURSOR : Cursor.DEFAULT_CURSOR));
+        cancelReservationButton.setEnabled(!loading);
+        closeButton.setEnabled(!loading);
+    }
+
+    public void showError(String message) {
+        JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    public void showInfo(String message) {
+        JOptionPane.showMessageDialog(this, message, "Info", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private String resolveLicensePlate(ParkingSpace space) {

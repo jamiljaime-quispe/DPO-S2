@@ -75,8 +75,11 @@ public class AdminController {
                         errorMessage = "Space not found: " + code;
                         return false;
                     }
+                    if (type != space.getVehicleType()) {
+                        errorMessage = "Vehicle type cannot be edited after the space is created.";
+                        return false;
+                    }
                     space.setFloor(floor);
-                    space.setVehicleType(type);
                     parkingService.updateParkingSpaceDetails(space);
                     return true;
                 } catch (Exception e) {
@@ -111,9 +114,18 @@ public class AdminController {
             protected Boolean doInBackground() {
                 try {
                     simulateDatabaseDelay();
+                    ParkingSpace space = parkingService.findByCode(code);
+                    if (space == null) {
+                        errorMessage = "Space not found: " + code;
+                        return false;
+                    }
+                    if (space.isOccupied()) {
+                        errorMessage = "Cannot delete space \"" + code + "\": it is currently occupied.";
+                        return false;
+                    }
                     boolean success = parkingService.deleteParkingSpace(code);
                     if (!success) {
-                        errorMessage = "Cannot delete space \"" + code + "\": it is currently occupied.";
+                        errorMessage = "Could not delete space \"" + code + "\".";
                     }
                     return success;
                 } catch (Exception e) {

@@ -35,6 +35,18 @@ public class MainController {
             }
         });
 
+        view.getParkingEntryButton().addActionListener(e -> {
+            if (currentMode == 2) {
+                handleParkingEntry();
+            }
+        });
+
+        view.getParkingExitButton().addActionListener(e -> {
+            if (currentMode == 2) {
+                handleParkingExit();
+            }
+        });
+
         // 3. Occupancy Chart
         view.getOccupancyChartButton().addActionListener(e -> {
             view.showOccupancyChart();
@@ -45,6 +57,7 @@ public class MainController {
         // 4. Current Status
         view.getStatusButton().addActionListener(e -> {
             if (parkingController != null) {
+                view.rebuildParkingSlotsPanel();
                 parkingController.loadParkingStatus();
             }
         });
@@ -83,8 +96,23 @@ public class MainController {
         });
     }
 
+    private void handleParkingEntry() {
+        if (parkingController != null) {
+            parkingController.showVehicleEntryDialog();
+        }
+    }
+
+    private void handleParkingExit() {
+        if (parkingController != null) {
+            parkingController.showVehicleExitDialog();
+        }
+    }
+
     public void setMode(int mode) {
         this.currentMode = mode;
+        if (currentMode == 2 && parkingController != null) {
+            parkingController.refreshExitButtonState();
+        }
     }
 
     public void setAuthController(AuthController authController) {
@@ -93,6 +121,9 @@ public class MainController {
 
     public void setParkingController(ParkingController parkingController) {
         this.parkingController = parkingController;
+        if (currentMode == 2 && parkingController != null) {
+            parkingController.refreshExitButtonState();
+        }
     }
 
     public void setStatisticsController(StatisticsController statisticsController) {

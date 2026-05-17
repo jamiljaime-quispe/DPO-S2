@@ -28,11 +28,10 @@ public class AdminService {
 
 	/**
 	 * Called before deleting a space. Finds the active reservation for that space
-	 * and either reassigns it to a compatible free space, or cancels it if none exists.
+	 * and either reassigns it to a compatible free space, or deletes it if none exists.
 	 * @param spaceCode code of the space being removed
 	 */
 	public void reassignOrDeleteReservation(String spaceCode) {
-		// Find the active reservation for this space
 		Reservation target = null;
 		for (Reservation r : reservationDAO.findAll()) {
 			if (r.isActive()
@@ -49,25 +48,37 @@ public class AdminService {
 				? parkingService.findAvailableSpaces(type)
 				: null;
 
-		if (alternatives != null && !alternatives.isEmpty()) {
-			// Reassign to the first available compatible space
-			ParkingSpace oldSpace = target.getParkingSpace();
-			ParkingSpace newSpace = alternatives.get(0);
-			if (oldSpace != null) {
-				oldSpace.cancelReservation();
-				parkingService.updateParkingSpace(oldSpace);
-			}
+		ParkingSpace oldSpace = target.getParkingSpace();
+		ParkingSpace newSpace = findBestAlternativeSpace(alternatives, spaceCode, oldSpace);
+
+		if (newSpace != null) {
 			target.setParkingSpace(newSpace);
-			newSpace.reserve(target);
-			parkingService.updateParkingSpace(newSpace);
 			reservationDAO.update(target);
 		} else {
-			// No alternative — cancel and flag for user notification
-			target.cancel();
-			target.setCancelledByAdmin(true);
-			target.setNotified(false);
-			reservationDAO.update(target);
+			reservationDAO.delete(target.getId());
 		}
+	}
+
+	private ParkingSpace findBestAlternativeSpace(List<ParkingSpace> alternatives, String deletedCode,
+			ParkingSpace oldSpace) {
+		if (alternatives == null) return null;
+
+		ParkingSpace fallback = null;
+		int preferredFloor = oldSpace != null ? oldSpace.getFloor() : -1;
+
+		for (ParkingSpace alternative : alternatives) {
+			if (alternative.getId().equals(deletedCode)) {
+				continue;
+			}
+			if (alternative.getFloor() == preferredFloor) {
+				return alternative;
+			}
+			if (fallback == null) {
+				fallback = alternative;
+			}
+		}
+
+		return fallback;
 	}
 
 	/**
@@ -85,7 +96,6 @@ public class AdminService {
 		reservation.setNotified(false);
 		reservationDAO.update(reservation);
 
-		// Free the parking space
 		ParkingSpace space = reservation.getParkingSpace();
 		if (space != null) {
 			space.cancelReservation();
