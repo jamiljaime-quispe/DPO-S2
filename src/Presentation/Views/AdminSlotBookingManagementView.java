@@ -31,6 +31,7 @@ public class AdminSlotBookingManagementView extends JDialog {
 
     private void initComponents() {
         setLayout(new BorderLayout(10, 10));
+        getContentPane().setBackground(new Color(245, 247, 250));
         setSize(760, 480);
         setLocationRelativeTo(getParent());
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -47,7 +48,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         bookingsTable.setRowHeight(24);
         bookingsTable.setFont(new Font("SansSerif", Font.PLAIN, 13));
         bookingsTable.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
-        bookingsTable.getTableHeader().setBackground(new Color(60, 60, 60));
+        bookingsTable.getTableHeader().setBackground(new Color(33, 99, 168));
         bookingsTable.getTableHeader().setForeground(Color.WHITE);
         bookingsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
@@ -65,6 +66,10 @@ public class AdminSlotBookingManagementView extends JDialog {
         editButton = new JButton("Edit Booking");
         deleteButton = new JButton("Delete Booking");
         refreshButton = new JButton("Refresh");
+        stylePrimaryButton(addButton);
+        stylePrimaryButton(editButton);
+        stylePrimaryButton(refreshButton);
+        deleteButton.setForeground(new Color(180, 30, 30));
 
         addButton.setEnabled(false);
         editButton.setEnabled(false);
@@ -75,6 +80,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         });
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        buttonPanel.setOpaque(false);
         buttonPanel.add(addButton);
         buttonPanel.add(editButton);
         buttonPanel.add(deleteButton);
@@ -109,6 +115,7 @@ public class AdminSlotBookingManagementView extends JDialog {
 
         JButton confirmBtn = new JButton("Create");
         JButton cancelBtn = new JButton("Cancel");
+        stylePrimaryButton(confirmBtn);
         dialog.add(confirmBtn);
         dialog.add(cancelBtn);
 
@@ -150,6 +157,7 @@ public class AdminSlotBookingManagementView extends JDialog {
 
         JButton confirmBtn = new JButton("Save");
         JButton cancelBtn = new JButton("Cancel");
+        stylePrimaryButton(confirmBtn);
         dialog.add(confirmBtn);
         dialog.add(cancelBtn);
 
@@ -169,6 +177,16 @@ public class AdminSlotBookingManagementView extends JDialog {
         cancelBtn.addActionListener(e -> dialog.dispose());
 
         dialog.setVisible(true);
+    }
+
+    private void stylePrimaryButton(JButton b) {
+        b.setForeground(Color.WHITE);
+        b.setBackground(new Color(33, 99, 168));
+        b.setFont(new Font("SansSerif", Font.BOLD, 13));
+        b.setFocusPainted(false);
+        b.setBorderPainted(false);
+        b.setOpaque(true);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
     private void showDeleteConfirmation() {

@@ -27,6 +27,7 @@ public class AdminParkingManagementView extends JDialog {
 
     private void initComponents() {
         setLayout(new BorderLayout(10, 10));
+        getContentPane().setBackground(new Color(245, 247, 250));
         setSize(750, 480);
         setLocationRelativeTo(getParent());
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -41,7 +42,7 @@ public class AdminParkingManagementView extends JDialog {
         spacesTable.setRowHeight(24);
         spacesTable.setFont(new Font("SansSerif", Font.PLAIN, 13));
         spacesTable.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
-        spacesTable.getTableHeader().setBackground(new Color(60, 60, 60));
+        spacesTable.getTableHeader().setBackground(new Color(33, 99, 168));
         spacesTable.getTableHeader().setForeground(Color.WHITE);
         spacesTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         spacesTable.getColumnModel().getColumn(3).setCellRenderer(new StatusCellRenderer());
@@ -54,6 +55,10 @@ public class AdminParkingManagementView extends JDialog {
         editButton = new JButton("Edit Space");
         deleteButton = new JButton("Delete Space");
         refreshButton = new JButton("Refresh");
+        stylePrimaryButton(addButton);
+        stylePrimaryButton(editButton);
+        stylePrimaryButton(refreshButton);
+        deleteButton.setForeground(new Color(180, 30, 30));
 
         editButton.setEnabled(false);
         deleteButton.setEnabled(false);
@@ -63,6 +68,7 @@ public class AdminParkingManagementView extends JDialog {
         });
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        buttonPanel.setOpaque(false);
         buttonPanel.add(addButton);
         buttonPanel.add(editButton);
         buttonPanel.add(deleteButton);
@@ -73,6 +79,16 @@ public class AdminParkingManagementView extends JDialog {
         editButton.addActionListener(e -> showEditDialog());
         deleteButton.addActionListener(e -> handleDelete());
         refreshButton.addActionListener(e -> { if (controller != null) controller.loadSpaces(); });
+    }
+
+    private void stylePrimaryButton(JButton b) {
+        b.setForeground(Color.WHITE);
+        b.setBackground(new Color(33, 99, 168));
+        b.setFont(new Font("SansSerif", Font.BOLD, 13));
+        b.setFocusPainted(false);
+        b.setBorderPainted(false);
+        b.setOpaque(true);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
     private void showAddDialog() {
@@ -96,6 +112,7 @@ public class AdminParkingManagementView extends JDialog {
 
         JButton confirmBtn = new JButton("Create");
         JButton cancelBtn = new JButton("Cancel");
+        stylePrimaryButton(confirmBtn);
         dialog.add(confirmBtn);
         dialog.add(cancelBtn);
 
@@ -146,6 +163,7 @@ public class AdminParkingManagementView extends JDialog {
 
         JButton confirmBtn = new JButton("Save");
         JButton cancelBtn = new JButton("Cancel");
+        stylePrimaryButton(confirmBtn);
         dialog.add(confirmBtn);
         dialog.add(cancelBtn);
 

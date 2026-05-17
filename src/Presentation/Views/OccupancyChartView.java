@@ -8,20 +8,55 @@ import java.util.List;
 public class OccupancyChartView extends JPanel {
     private List<Integer> data = new ArrayList<>();
     private ChartPanel chartPanel;
+    private JButton backButton;
 
     public OccupancyChartView() {
     }
 
     public void initComponents() {
         setLayout(new BorderLayout(0, 8));
-        setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        setBackground(Color.WHITE);
+        setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(230, 234, 240), 1, true),
+                BorderFactory.createEmptyBorder(12, 12, 12, 12)));
+
+        JPanel header = new JPanel(new BorderLayout(10, 0));
+        header.setOpaque(false);
+
+        backButton = createBackBoxButton();
+        JPanel backCorner = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        backCorner.setOpaque(false);
+        backCorner.add(backButton);
+        header.add(backCorner, BorderLayout.WEST);
 
         JLabel title = new JLabel("Parking Occupancy — Last Hour", SwingConstants.CENTER);
         title.setFont(new Font("SansSerif", Font.BOLD, 16));
-        add(title, BorderLayout.NORTH);
+        title.setForeground(new Color(40, 40, 50));
+        header.add(title, BorderLayout.CENTER);
+
+        add(header, BorderLayout.NORTH);
 
         chartPanel = new ChartPanel();
         add(chartPanel, BorderLayout.CENTER);
+    }
+
+    public JButton getBackButton() {
+        return backButton;
+    }
+
+    private JButton createBackBoxButton() {
+        JButton b = new JButton("<-");
+        b.setPreferredSize(new Dimension(42, 34));
+        b.setMinimumSize(new Dimension(42, 34));
+        b.setMaximumSize(new Dimension(42, 34));
+        b.setForeground(new Color(33, 99, 168));
+        b.setBackground(Color.WHITE);
+        b.setFont(new Font("SansSerif", Font.BOLD, 14));
+        b.setFocusPainted(false);
+        b.setBorder(BorderFactory.createLineBorder(new Color(33, 99, 168), 1, true));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setToolTipText("Back to main menu");
+        return b;
     }
 
     public void updateChart(List<Integer> data) {
@@ -137,18 +172,18 @@ public class OccupancyChartView extends JPanel {
             for (int i = 0; i < n; i++)
                 area.addPoint(xs[i], ys[i]);
             area.addPoint(xs[n - 1], PAD_TOP + chartH);
-            g2.setColor(new Color(70, 130, 180, 55));
+            g2.setColor(new Color(33, 99, 168, 55));
             g2.fillPolygon(area);
 
             // Line
-            g2.setColor(new Color(70, 130, 180));
+            g2.setColor(new Color(33, 99, 168));
             g2.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             for (int i = 0; i < n - 1; i++) {
                 g2.drawLine(xs[i], ys[i], xs[i + 1], ys[i + 1]);
             }
 
             // Data point dots
-            g2.setColor(new Color(30, 90, 150));
+            g2.setColor(new Color(33, 99, 168));
             for (int i = 0; i < n; i++) {
                 g2.fillOval(xs[i] - 4, ys[i] - 4, 8, 8);
             }
@@ -156,7 +191,7 @@ public class OccupancyChartView extends JPanel {
             // Current value label on last point
             if (n > 0) {
                 g2.setFont(new Font("SansSerif", Font.BOLD, 12));
-                g2.setColor(new Color(30, 90, 150));
+                g2.setColor(new Color(33, 99, 168));
                 String val = String.valueOf(data.get(n - 1));
                 g2.drawString(val, xs[n - 1] + 6, ys[n - 1] - 6);
             }

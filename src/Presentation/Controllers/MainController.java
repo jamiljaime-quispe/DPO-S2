@@ -74,6 +74,15 @@ public class MainController {
             }
         });
 
+        java.awt.event.ActionListener backToMain = e -> {
+            view.resetDisplayedContent();
+            if (statisticsController != null) {
+                statisticsController.stopTracking();
+            }
+        };
+        view.getBackToMenuButton().addActionListener(backToMain);
+        view.addParkingSlotsBackListener(backToMain);
+
         // 5. Logout
         view.getLogoutButton().addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(view,

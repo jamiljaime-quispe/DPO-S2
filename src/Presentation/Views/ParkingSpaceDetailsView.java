@@ -32,12 +32,16 @@ public class ParkingSpaceDetailsView extends JDialog {
 
     private void initComponents() {
         setLayout(new BorderLayout(10, 10));
+        getContentPane().setBackground(new Color(245, 247, 250));
         setSize(440, 350);
         setLocationRelativeTo(getParent());
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         JPanel content = new JPanel(new GridLayout(9, 2, 10, 8));
-        content.setBorder(BorderFactory.createEmptyBorder(18, 20, 10, 20));
+        content.setBackground(Color.WHITE);
+        content.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(230, 234, 240), 1, true),
+                BorderFactory.createEmptyBorder(18, 20, 10, 20)));
 
         codeValue = new JLabel();
         floorValue = new JLabel();
@@ -64,9 +68,11 @@ public class ParkingSpaceDetailsView extends JDialog {
         cancelReservationButton.setVisible(false);
 
         closeButton = new JButton("Close");
+        stylePrimaryButton(closeButton);
         closeButton.addActionListener(e -> dispose());
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.setOpaque(false);
         buttonPanel.add(cancelReservationButton);
         buttonPanel.add(closeButton);
 
@@ -77,9 +83,21 @@ public class ParkingSpaceDetailsView extends JDialog {
     private void addRow(JPanel panel, String label, JLabel value) {
         JLabel name = new JLabel(label);
         name.setFont(new Font("SansSerif", Font.BOLD, 13));
+        name.setForeground(new Color(40, 40, 50));
         value.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        value.setForeground(new Color(40, 40, 50));
         panel.add(name);
         panel.add(value);
+    }
+
+    private void stylePrimaryButton(JButton b) {
+        b.setForeground(Color.WHITE);
+        b.setBackground(new Color(33, 99, 168));
+        b.setFont(new Font("SansSerif", Font.BOLD, 13));
+        b.setFocusPainted(false);
+        b.setBorderPainted(false);
+        b.setOpaque(true);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
     public void displaySpaceDetails(ParkingSpace space) {
