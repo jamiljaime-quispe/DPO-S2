@@ -203,6 +203,15 @@ public class ReservationService {
 	}
 
 	/**
+	 * Marks a reservation as notified so the alert is not shown again at login.
+	 * @param reservation the reservation to mark
+	 */
+	public void markNotified(Reservation reservation) {
+		reservation.setNotified(true);
+		reservationDAO.update(reservation);
+	}
+
+	/**
 	 * Checks whether a specific space is available for reservation.
 	 * @param spaceCode space code
 	 * @return true if the space exists and is available

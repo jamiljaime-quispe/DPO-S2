@@ -6,6 +6,7 @@ import Business.Entities.VehicleType;
 import Business.Services.AdminService;
 import Business.Services.ParkingService;
 import Business.Services.ReservationService;
+import Business.Services.UserService;
 import Presentation.Views.AdminSlotBookingManagementView;
 
 import javax.swing.SwingWorker;

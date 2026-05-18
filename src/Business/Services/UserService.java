@@ -16,6 +16,9 @@ public class UserService {
 	private UserDAO userDAO;
 	private VehicleDAO vehicleDAO;
 
+	private String lastLoggedInUsername;
+	private int lastLoggedInUserId = -1;
+
 	/**
 	 * Constructs a new UserService.
 	 *
@@ -160,7 +163,7 @@ public class UserService {
 
 	/**
 	 * Removes a vehicle from the system and from the user's vehicle list.
-	 * 
+	 *
 	 * @param userId owner's user ID
 	 * @param plate  license plate of the vehicle to remove
 	 */
@@ -171,5 +174,48 @@ public class UserService {
 			user.removeVehicle(plate);
 			userDAO.update(user);
 		}
+	}
+
+	/**
+	 * Authenticates a user and returns their role code.
+	 * Admin password is intentionally NOT checked here — AuthController verifies it against config.json.
+	 *
+	 * @param id       username or email
+	 * @param password plain-text password
+	 * @return 1 for admin, 2 for regular user, 0 for invalid credentials
+	 */
+	public int authenticate(String id, String password) {
+		User user = login(id, password);
+		if (user == null) return 0;
+		lastLoggedInUsername = user.getUsername();
+		lastLoggedInUserId = Integer.parseInt(user.getId());
+		return "ADMIN".equals(user.getUserType()) ? 1 : 2;
+	}
+
+	/** Gets the username of the currently logged-in user. */
+	public String getLastLoggedInUsername() { return lastLoggedInUsername; }
+
+	/** Gets the ID of the currently logged-in user, or -1 if none. */
+	public int getLastLoggedInUserId() { return lastLoggedInUserId; }
+
+	/** Deletes the currently logged-in user's account and clears session state. */
+	public void deleteCurrentUser() {
+		if (lastLoggedInUserId != -1) {
+			deleteUser(lastLoggedInUserId);
+			lastLoggedInUserId = -1;
+			lastLoggedInUsername = null;
+		}
+	}
+
+	/**
+	 * Registers a new client account. Convenience wrapper over signup().
+	 *
+	 * @param username desired username
+	 * @param email    email address
+	 * @param password plain-text password
+	 * @return true if registration succeeded
+	 */
+	public boolean register(String username, String email, String password) {
+		return signup(username, email, password) != null;
 	}
 }

@@ -197,13 +197,27 @@ public class AdminSlotBookingManagementView extends JDialog {
         String spaceCode = String.valueOf(tableModel.getValueAt(modelRow, 0));
         String plate = String.valueOf(tableModel.getValueAt(modelRow, 5));
 
-        String action = "Cancel";
-        int confirm = JOptionPane.showConfirmDialog(this,
-                action + " the booking for space \"" + spaceCode + "\"?",
-                "Confirm " + action,
-                JOptionPane.YES_NO_OPTION);
+        if (currentMode == USER_MODE) {
+            // Rule 11: user must type license plate to confirm cancellation
+            String input = JOptionPane.showInputDialog(this,
+                    "Enter your license plate to confirm cancellation of the booking for space \""
+                            + spaceCode + "\":",
+                    "Confirm Cancellation",
+                    JOptionPane.PLAIN_MESSAGE);
+            if (input == null) return;
+            if (!input.trim().toUpperCase().equals(plate.toUpperCase())) {
+                showError("License plate does not match. Cancellation aborted.");
+                return;
+            }
+        } else {
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Cancel the booking for space \"" + spaceCode + "\"?",
+                    "Confirm Cancel",
+                    JOptionPane.YES_NO_OPTION);
+            if (confirm != JOptionPane.YES_OPTION) return;
+        }
 
-        if (confirm == JOptionPane.YES_OPTION && controller != null) {
+        if (controller != null) {
             controller.deleteBooking(spaceCode, plate);
         }
     }

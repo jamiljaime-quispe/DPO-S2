@@ -1,98 +1,120 @@
+import Business.Entities.Config;
+import Business.Entities.OccupancyTracker;
+import Business.Services.AdminService;
+import Business.Services.ConfigService;
+import Business.Services.ParkingService;
+import Business.Services.ReservationService;
+import Business.Services.SimulationService;
+import Business.Services.StatisticsService;
+import Business.Services.UserService;
 import Persistence.DatabaseManager;
 import Persistence.IMPL.OccupancyDAOImpl;
 import Persistence.IMPL.ParkingSpaceDAOImpl;
 import Persistence.IMPL.ReservationDAOImpl;
+import Persistence.IMPL.UserDAOImpl;
 import Persistence.IMPL.VehicleDAOImpl;
-import Business.Entities.OccupancyTracker;
-import Business.Services.AdminService;
-import Business.Services.ParkingService;
-import Business.Services.ReservationService;
-import Business.Services.StatisticsService;
 import Presentation.Controllers.AdminController;
+import Presentation.Controllers.AdminSlotBookingController;
 import Presentation.Controllers.AuthController;
 import Presentation.Controllers.MainController;
 import Presentation.Controllers.ParkingController;
 import Presentation.Controllers.StatisticsController;
-import Presentation.Controllers.UserService;
-import Presentation.Controllers.AdminSlotBookingController;
 import Presentation.Views.AdminParkingManagementView;
+import Presentation.Views.AdminSlotBookingManagementView;
 import Presentation.Views.LoginView;
 import Presentation.Views.MainMenuView;
-import Presentation.Views.AdminSlotBookingManagementView;
 import Presentation.Views.SignupView;
-import java.util.LinkedList;
 
-public class Main {
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.Random;
+
+public class    Main {
     public static void main(String[] args) {
+        // Load config before entering the EDT (reads config.json from project root)
+        ConfigService configService = new ConfigService(new Config());
+
         javax.swing.SwingUtilities.invokeLater(() -> {
 
-            // 1. Initialize core services
-            DatabaseManager db = new DatabaseManager("localhost", 3306, "parking_db", "root", "");
-            UserService userService = new UserService(db);
+            // 1. Database
+            DatabaseManager db = new DatabaseManager(
+                    configService.getConfig().getDbIP(),
+                    configService.getConfig().getDbPort(),
+                    configService.getConfig().getDbName(),
+                    configService.getConfig().getDbUser(),
+                    configService.getConfig().getDbPassword());
 
-            // 2. Initialize Views
-            LoginView loginView = new LoginView();
-            SignupView signupView = new SignupView();
+            // 2. DAOs
+            UserDAOImpl userDAO                     = new UserDAOImpl(db);
+            VehicleDAOImpl vehicleDAO               = new VehicleDAOImpl(db);
+            ParkingSpaceDAOImpl parkingSpaceDAO      = new ParkingSpaceDAOImpl(db);
+            ReservationDAOImpl reservationDAO        = new ReservationDAOImpl(db);
+            OccupancyDAOImpl occupancyDAO            = new OccupancyDAOImpl(db);
 
-            // 3. Initialize Auth Controller
-            AuthController controller = new AuthController(loginView, userService);
+            // 3. Services
+            UserService userService                  = new UserService(userDAO, vehicleDAO);
+            ParkingService parkingService            = new ParkingService(parkingSpaceDAO, vehicleDAO, reservationDAO);
+            ReservationService reservationService    = new ReservationService(reservationDAO, parkingSpaceDAO, vehicleDAO);
+            AdminService adminService                = new AdminService(parkingService, reservationDAO);
+            OccupancyTracker tracker                 = new OccupancyTracker(new LinkedList<>(), 60);
+            StatisticsService statsService           = new StatisticsService(tracker, parkingSpaceDAO, occupancyDAO);
+            SimulationService simService             = new SimulationService(parkingService, configService.getConfig(), new Random(), new ArrayList<>());
 
-            // 4. Wire the Auth Controller to both the Login and Signup Views
-            loginView.authenControllerSetter(controller);
-            signupView.setController(controller);
+            // 4. Views
+            LoginView loginView         = new LoginView();
+            SignupView signupView       = new SignupView();
+            MainMenuView mainMenuView   = new MainMenuView();
 
-            controller.setSignupView(signupView);
+            // 5. Auth Controller
+            AuthController authController = new AuthController(loginView, userService);
+            loginView.authenControllerSetter(authController);
+            signupView.setController(authController);
+            authController.setSignupView(signupView);
+            authController.setConfigService(configService);
+            authController.setReservationService(reservationService);
 
-            // 5. Initialize View Layouts
+            // 6. Init view layouts (LoginView.initComponents calls setVisible(true))
             loginView.initComponents();
             signupView.initComponents();
-
-            // 6. Main Menu Logic
-            MainMenuView mainMenuView = new MainMenuView();
             mainMenuView.initComponents();
 
+            // 7. Main Menu
             MainController mainController = new MainController(mainMenuView);
             mainMenuView.setController(mainController);
+            authController.setMainMenuController(mainController, mainMenuView);
+            mainController.setAuthController(authController);
 
-            // 7. Link Auth Controller to Main Menu
-            controller.setMainMenuController(mainController, mainMenuView);
-
-            // 8. Give the MainController access to the AuthController
-            mainController.setAuthController(controller);
-
-            // 9. Wire up the occupancy chart
-            OccupancyDAOImpl occupancyDAO       = new OccupancyDAOImpl(db);
-            ParkingSpaceDAOImpl parkingSpaceDAO = new ParkingSpaceDAOImpl(db);
-            OccupancyTracker tracker            = new OccupancyTracker(new LinkedList<>(), 60);
-            StatisticsService statsService      = new StatisticsService(tracker, parkingSpaceDAO, occupancyDAO);
-            StatisticsController statsCtrl      = new StatisticsController(mainMenuView.getOccupancyChartView(), statsService);
+            // 8. Statistics
+            StatisticsController statsCtrl = new StatisticsController(mainMenuView.getOccupancyChartView(), statsService);
             mainController.setStatisticsController(statsCtrl);
 
-            // 10. Wire up the admin parking management
-            VehicleDAOImpl vehicleDAO           = new VehicleDAOImpl(db);
-            ReservationDAOImpl reservationDAO   = new ReservationDAOImpl(db);
-            ParkingService parkingService       = new ParkingService(parkingSpaceDAO, vehicleDAO, reservationDAO);
+            // 9. Parking
             ParkingController parkingController = new ParkingController(null, null, parkingService);
             parkingController.setMainMenuView(mainMenuView);
             parkingController.setUserService(userService);
+            parkingController.setAdminService(adminService);
             mainController.setParkingController(parkingController);
 
-            AdminParkingManagementView adminView = new AdminParkingManagementView(mainMenuView);
-            AdminController adminController     = new AdminController(adminView, parkingService);
+            // 10. Admin parking management
+            AdminParkingManagementView adminView    = new AdminParkingManagementView(mainMenuView);
+            AdminController adminController         = new AdminController(adminView, parkingService);
+            adminController.setAdminService(adminService);
             mainController.setAdminController(adminController);
 
-            // 11. Wire up the admin slot booking management
-            AdminService adminService = new AdminService(parkingService, reservationDAO);
-            parkingController.setAdminService(adminService);
-            ReservationService reservationService = new ReservationService(reservationDAO, parkingSpaceDAO, vehicleDAO);
+            // 11. Slot booking management
             AdminSlotBookingManagementView bookingView = new AdminSlotBookingManagementView(mainMenuView);
             AdminSlotBookingController bookingController = new AdminSlotBookingController(
-                    bookingView,
-                    parkingService,
-                    adminService,
-                    reservationService,
-                    userService);
+                    bookingView, parkingService, adminService, reservationService, userService);
             mainController.setSlotBookingController(bookingController);
+
+            // 12. Simulation — startSimulation() sets running=true and stores thread ref for clean interrupt
+            simService.startSimulation();
+            mainMenuView.addWindowListener(new java.awt.event.WindowAdapter() {
+                @Override
+                public void windowClosing(java.awt.event.WindowEvent e) {
+                    simService.stopSimulation();
+                }
+            });
         });
     }
 }

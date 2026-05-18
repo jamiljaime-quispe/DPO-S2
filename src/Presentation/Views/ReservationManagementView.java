@@ -7,6 +7,7 @@ import javax.swing.JFrame;
 import javax.swing.JTable;
 
 import Business.Entities.Reservation;
+import Presentation.Controllers.ReservationController;
 
 public class ReservationManagementView {
 	private JFrame frame;

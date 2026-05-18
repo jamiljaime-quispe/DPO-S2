@@ -55,7 +55,7 @@ public class AdminService {
 			target.setParkingSpace(newSpace);
 			reservationDAO.update(target);
 		} else {
-			reservationDAO.delete(target.getId());
+			cancelReservation(target.getId());
 		}
 	}
 

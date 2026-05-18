@@ -2,6 +2,7 @@ package Presentation.Controllers;
 
 import Business.Entities.ParkingSpace;
 import Business.Entities.VehicleType;
+import Business.Services.AdminService;
 import Business.Services.ParkingService;
 import Presentation.Views.AdminParkingManagementView;
 
@@ -14,11 +15,16 @@ public class AdminController {
 
     private AdminParkingManagementView adminView;
     private ParkingService parkingService;
+    private AdminService adminService;
 
     public AdminController(AdminParkingManagementView adminView, ParkingService parkingService) {
         this.adminView = adminView;
         this.parkingService = parkingService;
         adminView.setController(this);
+    }
+
+    public void setAdminService(AdminService adminService) {
+        this.adminService = adminService;
     }
 
     public void showView() {
@@ -122,6 +128,9 @@ public class AdminController {
                     if (space.isOccupied()) {
                         errorMessage = "Cannot delete space \"" + code + "\": it is currently occupied.";
                         return false;
+                    }
+                    if (adminService != null) {
+                        adminService.reassignOrDeleteReservation(code);
                     }
                     boolean success = parkingService.deleteParkingSpace(code);
                     if (!success) {

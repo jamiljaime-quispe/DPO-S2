@@ -100,6 +100,7 @@ public class SimulationService implements Runnable {
 		ParkingSpace assigned = parkingService.handleVehicleEntry(plate, type);
 		if (assigned != null) {
 			simulatedVehicles.add(new Vehicle(plate, type, "SIMULATED", true));
+			System.out.println("[SIM] Entry: " + plate + " → " + assigned.getId());
 		}
 	}
 
@@ -112,6 +113,7 @@ public class SimulationService implements Runnable {
 		int idx = random.nextInt(simulatedVehicles.size());
 		Vehicle vehicle = simulatedVehicles.get(idx);
 		parkingService.handleVehicleExit(vehicle.getLicensePlate());
+		System.out.println("[SIM] Exit:  " + vehicle.getLicensePlate());
 		simulatedVehicles.remove(idx);
 	}
 
