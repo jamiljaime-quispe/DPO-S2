@@ -38,7 +38,8 @@ public class AdminController {
     }
 
     public void refreshIfVisible() {
-        if (adminView == null || !adminView.isVisible()) return;
+        if (adminView == null || !adminView.isVisible())
+            return;
 
         if (SwingUtilities.isEventDispatchThread()) {
             loadSpaces();
@@ -205,7 +206,8 @@ public class AdminController {
 
             @Override
             protected void process(List<ParkingSpace> chunks) {
-                if (loadId != spacesLoadId) return;
+                if (loadId != spacesLoadId)
+                    return;
 
                 for (ParkingSpace space : chunks) {
                     adminView.addSpaceToTable(space);
@@ -214,7 +216,8 @@ public class AdminController {
 
             @Override
             protected void done() {
-                if (loadId != spacesLoadId) return;
+                if (loadId != spacesLoadId)
+                    return;
 
                 try {
                     Set<String> loadedCodes = get();
@@ -233,9 +236,9 @@ public class AdminController {
     private void delayRowLoad() {
         // Row-by-row display delay disabled because automatic refreshes should be fast.
         // try {
-        //     Thread.sleep(ROW_LOAD_DELAY_MS);
+        // Thread.sleep(ROW_LOAD_DELAY_MS);
         // } catch (InterruptedException e) {
-        //     Thread.currentThread().interrupt();
+        // Thread.currentThread().interrupt();
         // }
     }
 

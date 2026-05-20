@@ -12,7 +12,7 @@ public class StatisticsController {
     private OccupancyChartView chartView;
     private Timer refreshTimer;
 
-    private static final int REFRESH_INTERVAL_MS = 30_000;
+    private static final int REFRESH_INTERVAL_MS = 5_000;
 
     public StatisticsController(OccupancyChartView chartView, StatisticsService statisticsService) {
         this.chartView = chartView;
@@ -24,13 +24,13 @@ public class StatisticsController {
         new SwingWorker<List<Integer>, Void>() {
             @Override
             protected List<Integer> doInBackground() {
-                return statisticsService.getLastHourData(); // Here I have the background thread.
+                return statisticsService.getLastHourData();
             }
 
             @Override
             protected void done() {
                 try {
-                    chartView.updateChart(get()); // This is the EDT.
+                    chartView.updateChart(get());
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -42,7 +42,6 @@ public class StatisticsController {
         loadChartData();
     }
 
-    // Starts an EDT timer that runs every 30s, each tick offloads DB.
     public void startTracking() {
         if (refreshTimer != null && refreshTimer.isRunning())
             return;
