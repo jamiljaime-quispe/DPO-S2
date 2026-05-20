@@ -1,0 +1,9 @@
+{
+  "dbIP": "localhost",
+  "dbPort": 3306,
+  "dbName": "parking_db",
+  "dbUser": "root",
+  "dbPassword": "",
+  "adminPassword": "admin",
+  "simulatedVehicleDelay": 5
+}

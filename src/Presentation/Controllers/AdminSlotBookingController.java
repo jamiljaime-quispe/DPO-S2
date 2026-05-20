@@ -10,6 +10,7 @@ import Business.Services.UserService;
 import Presentation.Views.AdminSlotBookingManagementView;
 
 import javax.swing.SwingWorker;
+import javax.swing.SwingUtilities;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -27,6 +28,7 @@ public class AdminSlotBookingController {
     private ReservationService reservationService;
     private UserService userService;
     private int currentMode = ADMIN_MODE;
+    private volatile int bookingsLoadId;
 
     private static class BookingRow {
         private ParkingSpace space;
@@ -52,23 +54,42 @@ public class AdminSlotBookingController {
     public void showView(int mode) {
         currentMode = mode;
         bookingView.setMode(mode);
+        bookingView.clearBookingsTable();
         loadBookings();
         bookingView.setVisible(true);
     }
 
+    public void refreshIfVisible() {
+        if (bookingView == null || !bookingView.isVisible()) return;
+
+        if (SwingUtilities.isEventDispatchThread()) {
+            loadBookings();
+        } else {
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    loadBookings();
+                }
+            });
+        }
+    }
+
     public void loadBookings() {
+        bookingsLoadId++;
+        int loadId = bookingsLoadId;
+
         bookingView.setLoading(true);
-        bookingView.clearBookingsTable();
 
         int modeForLoad = currentMode;
         int userId = userService.getLastLoggedInUserId();
 
-        new SwingWorker<Void, BookingRow>() {
+        new SwingWorker<Set<String>, BookingRow>() {
             @Override
-            protected Void doInBackground() {
+            protected Set<String> doInBackground() {
                 List<ParkingSpace> spaces = parkingService.getAllSpaces();
                 Set<String> userBookingCodes = new HashSet<>();
                 List<ParkingSpace> orderedSpaces = new ArrayList<>();
+                Set<String> loadedCodes = new HashSet<>();
 
                 if (modeForLoad == USER_MODE && userId > 0) {
                     List<Reservation> userReservations = reservationService.getReservationsByUser(userId);
@@ -94,18 +115,23 @@ public class AdminSlotBookingController {
                 }
 
                 for (ParkingSpace space : orderedSpaces) {
+                    loadedCodes.add(space.getId());
                     delayRowLoad();
                     if (Thread.currentThread().isInterrupted()) {
                         break;
                     }
-                    publish(new BookingRow(space, userBookingCodes.contains(space.getId())));
+                    if (loadId == bookingsLoadId) {
+                        publish(new BookingRow(space, userBookingCodes.contains(space.getId())));
+                    }
                 }
 
-                return null;
+                return loadedCodes;
             }
 
             @Override
             protected void process(List<BookingRow> chunks) {
+                if (loadId != bookingsLoadId) return;
+
                 for (BookingRow row : chunks) {
                     bookingView.addBookingToTable(row.space, row.userBooking);
                 }
@@ -113,8 +139,13 @@ public class AdminSlotBookingController {
 
             @Override
             protected void done() {
+                if (loadId != bookingsLoadId) return;
+
                 try {
-                    get();
+                    Set<String> loadedCodes = get();
+                    bookingView.removeBookingSpacesNotIn(loadedCodes);
+                    bookingView.closeActiveBookingDialogIfTargetUnavailable();
+                    bookingView.closeActiveCancelDialogIfTargetUnavailable();
                 } catch (Exception e) {
                     bookingView.showError("Failed to load slot bookings: " + e.getMessage());
                 } finally {
@@ -276,11 +307,12 @@ public class AdminSlotBookingController {
     }
 
     private void delayRowLoad() {
-        try {
-            Thread.sleep(ROW_LOAD_DELAY_MS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // Row-by-row display delay disabled because automatic refreshes should be fast.
+        // try {
+        //     Thread.sleep(ROW_LOAD_DELAY_MS);
+        // } catch (InterruptedException e) {
+        //     Thread.currentThread().interrupt();
+        // }
     }
 
     private void simulateDatabaseDelay() {

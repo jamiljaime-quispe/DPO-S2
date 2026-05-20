@@ -343,6 +343,10 @@ public class MainMenuView extends JFrame {
         parkingSlotsPanel.repaint();
     }
 
+    public boolean isParkingSlotsTableVisible() {
+        return parkingSlotsPanel != null && parkingSlotsPanel.isVisible();
+    }
+
     public void addParkingSlotsBackListener(ActionListener listener) {
         parkingSlotsBackListeners.add(listener);
         if (parkingSlotsBackButton != null) {
@@ -356,7 +360,26 @@ public class MainMenuView extends JFrame {
 
     public void addParkingSpaceToTable(ParkingSpace space, boolean myParkedVehicle) {
         DefaultTableModel model = (DefaultTableModel) parkingSlotsTable.getModel();
+        Object[] rowData = buildParkingSpaceRow(space, myParkedVehicle);
+        int existingRow = findParkingSpaceRow(space.getId());
 
+        if (existingRow == -1) {
+            model.addRow(rowData);
+            return;
+        }
+
+        for (int column = 0; column < rowData.length; column++) {
+            Object currentValue = model.getValueAt(existingRow, column);
+            Object newValue = rowData[column];
+            if (currentValue == null && newValue != null) {
+                model.setValueAt(newValue, existingRow, column);
+            } else if (currentValue != null && !currentValue.equals(newValue)) {
+                model.setValueAt(newValue, existingRow, column);
+            }
+        }
+    }
+
+    private Object[] buildParkingSpaceRow(ParkingSpace space, boolean myParkedVehicle) {
         String licensePlate = "";
 
         if (space.getParkedVehicle() != null) {
@@ -365,14 +388,36 @@ public class MainMenuView extends JFrame {
             licensePlate = space.getReservation().getVehicle().getLicensePlate();
         }
 
-        model.addRow(new Object[] {
+        return new Object[] {
                 space.getId(),
                 space.getFloor(),
                 space.isOccupied() ? "Occupied" : "Vacant",
                 space.isReserved() ? "Reserved" : "Available",
                 licensePlate,
                 myParkedVehicle
-        });
+        };
+    }
+
+    private int findParkingSpaceRow(String code) {
+        DefaultTableModel model = (DefaultTableModel) parkingSlotsTable.getModel();
+        for (int row = 0; row < model.getRowCount(); row++) {
+            String currentCode = String.valueOf(model.getValueAt(row, 0));
+            if (currentCode.equals(code)) {
+                return row;
+            }
+        }
+
+        return -1;
+    }
+
+    public void removeParkingSpacesNotIn(java.util.Set<String> visibleCodes) {
+        DefaultTableModel model = (DefaultTableModel) parkingSlotsTable.getModel();
+        for (int row = model.getRowCount() - 1; row >= 0; row--) {
+            String currentCode = String.valueOf(model.getValueAt(row, 0));
+            if (!visibleCodes.contains(currentCode)) {
+                model.removeRow(row);
+            }
+        }
     }
 
     private class ParkingStatusCellRenderer extends DefaultTableCellRenderer {

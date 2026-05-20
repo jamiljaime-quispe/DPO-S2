@@ -3,22 +3,21 @@ package Business.Services;
 import Business.Entities.Config;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Provides access to application configuration values loaded from {@code config.json}.
- * Uses manual JSON parsing to avoid external library dependencies.
+ * Provides access to application configuration values loaded from config.json.
  */
 public class ConfigService {
 	private final Config config;
 
 	/**
 	 * Constructs a new ConfigService.
-	 * Reads {@code config.json} from the project root and populates the Config object.
-	 * Falls back to default values if the file is missing or a key is absent.
+	 * Reads config.json from the project root and populates the Config object.
 	 *
 	 * @param config the Config object to populate
 	 */
@@ -31,7 +30,12 @@ public class ConfigService {
 	 * Reads config.json and populates the Config object.
 	 */
 	private void loadConfig() {
-		try (BufferedReader reader = new BufferedReader(new FileReader("config.json"))) {
+		File configFile = new File("config.json");
+		if (!configFile.exists()) {
+			throw new IllegalStateException("Missing config.json in the project root.");
+		}
+
+		try (BufferedReader reader = new BufferedReader(new FileReader(configFile))) {
 			StringBuilder sb = new StringBuilder();
 			String line;
 			while ((line = reader.readLine()) != null) {
@@ -46,9 +50,39 @@ public class ConfigService {
 			config.setDbPassword(parseStringValue(json, "dbPassword"));
 			config.setAdminPassword(parseStringValue(json, "adminPassword"));
 			config.setSimulatedVehicleDelay(parseIntValue(json, "simulatedVehicleDelay"));
+
+			validateConfig();
 		} catch (IOException e) {
-			// config.json not found — Config keeps its default values
+			throw new IllegalStateException("Could not read config.json: " + e.getMessage(), e);
 		}
+	}
+
+	private void validateConfig() {
+		if (isBlank(config.getDbIP())) {
+			throw new IllegalStateException("config.json is missing dbIP.");
+		}
+		if (config.getDbPort() <= 0) {
+			throw new IllegalStateException("config.json is missing dbPort.");
+		}
+		if (isBlank(config.getDbName())) {
+			throw new IllegalStateException("config.json is missing dbName.");
+		}
+		if (isBlank(config.getDbUser())) {
+			throw new IllegalStateException("config.json is missing dbUser.");
+		}
+		if (config.getDbPassword() == null) {
+			config.setDbPassword("");
+		}
+		if (isBlank(config.getAdminPassword())) {
+			throw new IllegalStateException("config.json is missing adminPassword.");
+		}
+		if (config.getSimulatedVehicleDelay() <= 0) {
+			config.setSimulatedVehicleDelay(5);
+		}
+	}
+
+	private boolean isBlank(String value) {
+		return value == null || value.trim().isEmpty();
 	}
 
 	/**

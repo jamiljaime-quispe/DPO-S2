@@ -101,6 +101,12 @@ public class ParkingSpaceDetailsView extends JDialog {
     }
 
     public void displaySpaceDetails(ParkingSpace space) {
+        updateSpaceDetails(space);
+        setLocationRelativeTo(getParent());
+        setVisible(true);
+    }
+
+    public void updateSpaceDetails(ParkingSpace space) {
         displayedSpace = space;
         Reservation reservation = space.getReservation();
 
@@ -127,9 +133,6 @@ public class ParkingSpaceDetailsView extends JDialog {
             cancelReservationButton.setVisible(false);
             cancelReservationButton.setEnabled(false);
         }
-
-        setLocationRelativeTo(getParent());
-        setVisible(true);
     }
 
     public String getDisplayedSpaceCode() {

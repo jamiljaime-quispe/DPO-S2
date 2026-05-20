@@ -58,6 +58,8 @@ public class    Main {
             AdminService adminService                = new AdminService(parkingService, reservationDAO);
             OccupancyTracker tracker                 = new OccupancyTracker(new LinkedList<>(), 60);
             StatisticsService statsService           = new StatisticsService(tracker, parkingSpaceDAO, occupancyDAO);
+            // The bot needs ParkingService to change parking status, Config to know the delay,
+            // Random to make decisions, and a list to remember simulated parked vehicles.
             SimulationService simService             = new SimulationService(parkingService, configService.getConfig(), new Random(), new ArrayList<>());
 
             // 4. Views
@@ -94,24 +96,29 @@ public class    Main {
             parkingController.setUserService(userService);
             parkingController.setAdminService(adminService);
             mainController.setParkingController(parkingController);
+            simService.setParkingStatusChangeListener(parkingController);
 
             // 10. Admin parking management
             AdminParkingManagementView adminView    = new AdminParkingManagementView(mainMenuView);
             AdminController adminController         = new AdminController(adminView, parkingService);
             adminController.setAdminService(adminService);
+            parkingController.setAdminController(adminController);
             mainController.setAdminController(adminController);
 
             // 11. Slot booking management
             AdminSlotBookingManagementView bookingView = new AdminSlotBookingManagementView(mainMenuView);
             AdminSlotBookingController bookingController = new AdminSlotBookingController(
                     bookingView, parkingService, adminService, reservationService, userService);
+            parkingController.setSlotBookingController(bookingController);
             mainController.setSlotBookingController(bookingController);
 
             // 12. Simulation — startSimulation() sets running=true and stores thread ref for clean interrupt
+            // This starts the independent background thread that repeatedly runs SimulationService.run().
             simService.startSimulation();
             mainMenuView.addWindowListener(new java.awt.event.WindowAdapter() {
                 @Override
                 public void windowClosing(java.awt.event.WindowEvent e) {
+                    // This asks the background simulation thread to stop when the main window closes.
                     simService.stopSimulation();
                 }
             });

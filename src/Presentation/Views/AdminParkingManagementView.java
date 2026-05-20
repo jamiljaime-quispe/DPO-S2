@@ -19,6 +19,11 @@ public class AdminParkingManagementView extends JDialog {
     private JButton refreshButton;
     private AdminController controller;
     private boolean loading;
+    private JDialog activeDeleteDialog;
+    private String activeDeleteSpaceCode;
+    private JDialog activeEditDialog;
+    private String activeEditSpaceCode;
+    private boolean activeEditAllowsTypeChange;
 
     public AdminParkingManagementView(Frame parent) {
         super(parent, "Manage Parking Slots", true);
@@ -139,11 +144,19 @@ public class AdminParkingManagementView extends JDialog {
         String code = (String) tableModel.getValueAt(row, 0);
         int currentFloor = (int) tableModel.getValueAt(row, 1);
         VehicleType currentType = VehicleType.valueOf((String) tableModel.getValueAt(row, 2));
+        String currentStatus = String.valueOf(tableModel.getValueAt(row, 3));
+        String currentReservation = String.valueOf(tableModel.getValueAt(row, 4));
+        boolean typeEditable = "Vacant".equals(currentStatus) && "Available".equals(currentReservation);
 
         JDialog dialog = new JDialog(this, "Edit Parking Space", true);
+        activeEditDialog = dialog;
+        activeEditSpaceCode = code;
+        activeEditAllowsTypeChange = typeEditable;
+
         dialog.setLayout(new GridLayout(4, 2, 10, 10));
         dialog.setSize(320, 180);
         dialog.setLocationRelativeTo(this);
+        dialog.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         ((JComponent) dialog.getContentPane()).setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
         dialog.add(new JLabel("Code:"));
@@ -158,7 +171,7 @@ public class AdminParkingManagementView extends JDialog {
         dialog.add(new JLabel("Vehicle Type:"));
         JComboBox<VehicleType> typeCombo = new JComboBox<>(VehicleType.values());
         typeCombo.setSelectedItem(currentType);
-        typeCombo.setEnabled(false);
+        typeCombo.setEnabled(typeEditable);
         dialog.add(typeCombo);
 
         JButton confirmBtn = new JButton("Save");
@@ -169,12 +182,32 @@ public class AdminParkingManagementView extends JDialog {
 
         confirmBtn.addActionListener(e -> {
             int floor = (int) floorSpinner.getValue();
-            if (controller != null) controller.editSpace(code, floor, currentType);
+            VehicleType selectedType = (VehicleType) typeCombo.getSelectedItem();
+            clearActiveEditDialog();
+            if (controller != null) controller.editSpace(code, floor, selectedType);
             dialog.dispose();
         });
-        cancelBtn.addActionListener(e -> dialog.dispose());
+        cancelBtn.addActionListener(e -> {
+            clearActiveEditDialog();
+            dialog.dispose();
+        });
+
+        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                if (activeEditDialog == dialog) {
+                    clearActiveEditDialog();
+                }
+            }
+        });
 
         dialog.setVisible(true);
+    }
+
+    private void clearActiveEditDialog() {
+        activeEditDialog = null;
+        activeEditSpaceCode = null;
+        activeEditAllowsTypeChange = false;
     }
 
     private void handleDelete() {
@@ -197,14 +230,59 @@ public class AdminParkingManagementView extends JDialog {
                     + "\nIf no similar vacant space exists, the reservation will be deleted.";
         }
 
-        int confirm = JOptionPane.showConfirmDialog(this,
-                message,
-                "Confirm Delete",
-                JOptionPane.YES_NO_OPTION);
+        showDeleteConfirmationDialog(code, message);
+    }
 
-        if (confirm == JOptionPane.YES_OPTION && controller != null) {
-            controller.deleteSpace(code);
-        }
+    private void showDeleteConfirmationDialog(String code, String message) {
+        JDialog dialog = new JDialog(this, "Confirm Delete", true);
+        activeDeleteDialog = dialog;
+        activeDeleteSpaceCode = code;
+
+        dialog.setLayout(new BorderLayout(10, 10));
+        dialog.setSize(460, 180);
+        dialog.setLocationRelativeTo(this);
+        dialog.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        ((JComponent) dialog.getContentPane()).setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
+
+        JLabel messageLabel = new JLabel("<html>" + message.replace("\n", "<br>") + "</html>");
+        messageLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
+        dialog.add(messageLabel, BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
+        JButton yesButton = new JButton("Yes");
+        JButton noButton = new JButton("No");
+        stylePrimaryButton(yesButton);
+        buttonPanel.add(yesButton);
+        buttonPanel.add(noButton);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        yesButton.addActionListener(e -> {
+            clearActiveDeleteDialog();
+            dialog.dispose();
+            if (controller != null) {
+                controller.deleteSpace(code);
+            }
+        });
+        noButton.addActionListener(e -> {
+            clearActiveDeleteDialog();
+            dialog.dispose();
+        });
+
+        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                if (activeDeleteDialog == dialog) {
+                    clearActiveDeleteDialog();
+                }
+            }
+        });
+
+        dialog.setVisible(true);
+    }
+
+    private void clearActiveDeleteDialog() {
+        activeDeleteDialog = null;
+        activeDeleteSpaceCode = null;
     }
 
     public void updateSpaces(List<ParkingSpace> spaces) {
@@ -219,14 +297,122 @@ public class AdminParkingManagementView extends JDialog {
     }
 
     public void addSpaceToTable(ParkingSpace space) {
-        tableModel.addRow(new Object[]{
+        Object[] rowData = buildSpaceRow(space);
+        int existingRow = findSpaceRow(space.getId());
+
+        if (existingRow == -1) {
+            tableModel.addRow(rowData);
+            updateActionButtons();
+            return;
+        }
+
+        for (int column = 0; column < rowData.length; column++) {
+            Object currentValue = tableModel.getValueAt(existingRow, column);
+            Object newValue = rowData[column];
+            if (currentValue == null && newValue != null) {
+                tableModel.setValueAt(newValue, existingRow, column);
+            } else if (currentValue != null && !currentValue.equals(newValue)) {
+                tableModel.setValueAt(newValue, existingRow, column);
+            }
+        }
+
+        updateActionButtons();
+    }
+
+    private Object[] buildSpaceRow(ParkingSpace space) {
+        return new Object[]{
             space.getId(),
             space.getFloor(),
             space.getVehicleType().name(),
             space.isOccupied() ? "Occupied" : "Vacant",
             space.isReserved() ? "Reserved" : "Available",
             getLicensePlate(space)
-        });
+        };
+    }
+
+    private int findSpaceRow(String code) {
+        for (int row = 0; row < tableModel.getRowCount(); row++) {
+            String currentCode = String.valueOf(tableModel.getValueAt(row, 0));
+            if (currentCode.equals(code)) {
+                return row;
+            }
+        }
+
+        return -1;
+    }
+
+    public void removeSpacesNotIn(java.util.Set<String> visibleCodes) {
+        for (int row = tableModel.getRowCount() - 1; row >= 0; row--) {
+            String currentCode = String.valueOf(tableModel.getValueAt(row, 0));
+            if (!visibleCodes.contains(currentCode)) {
+                tableModel.removeRow(row);
+            }
+        }
+
+        updateActionButtons();
+    }
+
+    public void closeActiveDeleteDialogIfTargetUnavailable() {
+        if (activeDeleteDialog == null
+                || !activeDeleteDialog.isVisible()
+                || activeDeleteSpaceCode == null) {
+            return;
+        }
+
+        int row = findSpaceRow(activeDeleteSpaceCode);
+        String message = null;
+
+        if (row == -1) {
+            message = "Parking space \"" + activeDeleteSpaceCode
+                    + "\" no longer exists. The delete confirmation was closed.";
+        } else {
+            String status = String.valueOf(tableModel.getValueAt(row, 3));
+            if ("Occupied".equals(status)) {
+                message = "Parking space \"" + activeDeleteSpaceCode
+                        + "\" is now occupied, so it cannot be deleted.";
+            }
+        }
+
+        if (message != null) {
+            JDialog dialog = activeDeleteDialog;
+            clearActiveDeleteDialog();
+            dialog.dispose();
+            showError(message);
+        }
+    }
+
+    public void closeActiveEditDialogIfTargetUnavailable() {
+        if (activeEditDialog == null
+                || !activeEditDialog.isVisible()
+                || activeEditSpaceCode == null) {
+            return;
+        }
+
+        int row = findSpaceRow(activeEditSpaceCode);
+        String message = null;
+
+        if (row == -1) {
+            message = "Parking space \"" + activeEditSpaceCode
+                    + "\" no longer exists. The edit dialog was closed.";
+        } else if (activeEditAllowsTypeChange) {
+            String status = String.valueOf(tableModel.getValueAt(row, 3));
+            String reservation = String.valueOf(tableModel.getValueAt(row, 4));
+
+            if ("Occupied".equals(status)) {
+                message = "Parking space \"" + activeEditSpaceCode
+                        + "\" is now occupied, so its vehicle type cannot be edited.";
+            } else if ("Reserved".equals(reservation)) {
+                message = "Parking space \"" + activeEditSpaceCode
+                        + "\" is now reserved, so its vehicle type cannot be edited.";
+            }
+        }
+
+        if (message != null) {
+            JDialog dialog = activeEditDialog;
+            clearActiveEditDialog();
+            dialog.dispose();
+            showError(message);
+        }
     }
 
     public void showError(String message) {

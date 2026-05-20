@@ -2,6 +2,7 @@ package Presentation.Controllers;
 
 import Business.Entities.ParkingSpace;
 import Business.Entities.Reservation;
+import Business.Listeners.ParkingStatusChangeListener;
 import Business.Services.AdminService;
 import Business.Services.ParkingService;
 import Business.Services.UserService;
@@ -11,19 +12,14 @@ import Presentation.Views.EntryExitView;
 import Presentation.Views.ParkingSpaceDetailsView;
 import Business.Entities.VehicleType;
 
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.SwingWorker;
-import javax.swing.JTextField;
+import javax.swing.*;
 import java.awt.Cursor;
 import java.awt.GridLayout;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class ParkingController {
+public class ParkingController implements ParkingStatusChangeListener {
 	private static final int BACKGROUND_TEST_DELAY_MS = 300;
 
 	private ParkingStatusView parkingStatusView;
@@ -33,8 +29,29 @@ public class ParkingController {
 	private MainMenuView mainMenuView;
 	private UserService userService;
 	private AdminService adminService;
+	private AdminController adminController;
+	private AdminSlotBookingController slotBookingController;
 	private boolean exitAllowed;
 	private volatile int parkingStatusLoadId;
+
+    @Override
+    public void parkingStatusChanged() {
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                if (mainMenuView != null && mainMenuView.isParkingSlotsTableVisible()) {
+                    loadParkingStatus();
+                }
+				refreshSpaceDetailsIfVisible();
+				if (adminController != null) {
+					adminController.refreshIfVisible();
+				}
+				if (slotBookingController != null) {
+					slotBookingController.refreshIfVisible();
+				}
+            }
+        });
+    }
 
 	private static class ExitOption {
 		private ParkingSpace space;
@@ -125,14 +142,14 @@ public class ParkingController {
 		parkingStatusLoadId++;
 		int loadId = parkingStatusLoadId;
 
-		mainMenuView.clearParkingSlotsTable();
 		mainMenuView.showParkingSlotsTable();
 
-		SwingWorker<Void, StatusRow> worker = new SwingWorker<Void, StatusRow>() {
+		SwingWorker<Set<String>, StatusRow> worker = new SwingWorker<Set<String>, StatusRow>() {
 			@Override
-			protected Void doInBackground() {
+			protected Set<String> doInBackground() {
 				List<ParkingSpace> spaces = parkingService.getParkingStatus();
 				Set<String> userParkedCodes = new HashSet<>();
+				Set<String> loadedCodes = new HashSet<>();
 
 				if (userService != null && userService.getLastLoggedInUserId() > 0) {
 					List<ParkingSpace> userParkedSpaces = parkingService.getParkedSpacesByUser(
@@ -143,19 +160,21 @@ public class ParkingController {
 				}
 
 				for (ParkingSpace space : spaces) {
-					try {
-						Thread.sleep(100);
-					} catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
-						break;
-					}
+					loadedCodes.add(space.getId());
+					// Row-by-row display delay disabled because automatic refreshes should be fast.
+					// try {
+					// 	Thread.sleep(100);
+					// } catch (InterruptedException e) {
+					// 	Thread.currentThread().interrupt();
+					// 	break;
+					// }
 
 					if (loadId == parkingStatusLoadId) {
 						publish(new StatusRow(space, userParkedCodes.contains(space.getId())));
 					}
 				}
 
-				return null;
+				return loadedCodes;
 			}
 
 			@Override
@@ -171,7 +190,16 @@ public class ParkingController {
 			protected void done() {
 				if (loadId != parkingStatusLoadId) return;
 
-				System.out.println("Parking spaces loaded successfully.");
+				try {
+					Set<String> loadedCodes = get();
+					mainMenuView.removeParkingSpacesNotIn(loadedCodes);
+					System.out.println("Parking spaces loaded successfully.");
+				} catch (Exception e) {
+					JOptionPane.showMessageDialog(mainMenuView,
+							"Failed to load parking spaces: " + e.getMessage(),
+							"Parking status",
+							JOptionPane.ERROR_MESSAGE);
+				}
 			}
 		};
 
@@ -222,6 +250,44 @@ public class ParkingController {
 			}
 		}.execute();
 
+	}
+
+	private void refreshSpaceDetailsIfVisible() {
+		if (parkingSpaceDetailsView == null || !parkingSpaceDetailsView.isVisible()) return;
+
+		String code = parkingSpaceDetailsView.getDisplayedSpaceCode();
+		if (code == null || code.isBlank()) return;
+
+		new SwingWorker<ParkingSpace, Void>() {
+			@Override
+			protected ParkingSpace doInBackground() {
+				return parkingService.findByCode(code);
+			}
+
+			@Override
+			protected void done() {
+				if (parkingSpaceDetailsView == null || !parkingSpaceDetailsView.isVisible()) return;
+
+				try {
+					ParkingSpace space = get();
+					if (space == null) {
+						parkingSpaceDetailsView.dispose();
+						JOptionPane.showMessageDialog(mainMenuView,
+								"Parking space \"" + code + "\" is no longer available.",
+								"Parking space updated",
+								JOptionPane.INFORMATION_MESSAGE);
+						return;
+					}
+
+					parkingSpaceDetailsView.updateSpaceDetails(space);
+				} catch (Exception e) {
+					JOptionPane.showMessageDialog(mainMenuView,
+							"Failed to refresh parking space details: " + e.getMessage(),
+							"Parking space updated",
+							JOptionPane.ERROR_MESSAGE);
+				}
+			}
+		}.execute();
 	}
 
 	public void showVehicleEntryDialog() {
@@ -697,5 +763,13 @@ public class ParkingController {
 
 	public void setAdminService(AdminService adminService) {
 		this.adminService = adminService;
+	}
+
+	public void setAdminController(AdminController adminController) {
+		this.adminController = adminController;
+	}
+
+	public void setSlotBookingController(AdminSlotBookingController slotBookingController) {
+		this.slotBookingController = slotBookingController;
 	}
 }

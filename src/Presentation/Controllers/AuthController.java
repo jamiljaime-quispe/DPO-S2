@@ -258,24 +258,28 @@ public class AuthController {
         createRegistrationWorker(username, email, password).execute();
     }
 
-    SwingWorker<Boolean, Void> createRegistrationWorker(String username, String email, String password) {
+    SwingWorker<Integer, Void> createRegistrationWorker(String username, String email, String password) {
         return new SwingWorker<>() {
             @Override
-            protected Boolean doInBackground() throws Exception {
-                return userService.register(username, email, password);
+            protected Integer doInBackground() throws Exception {
+                boolean registered = userService.register(username, email, password);
+                if (!registered) {
+                    return 0;
+                }
+
+                return userService.authenticate(username, password);
             }
 
             @Override
             protected void done() {
                 signupView.setLoadingState(false);
                 try {
-                    boolean success = get();
-                    if (success) {
-                        JOptionPane.showMessageDialog(signupView,
-                                "Account created successfully! You can now log in.",
-                                "Registration Complete",
-                                JOptionPane.INFORMATION_MESSAGE);
-                        handleBackToLogin();
+                    int mode = get();
+                    if (mode == 2) {
+                        signupView.clearForm();
+                        signupView.setVisible(false);
+                        loginView.setLoadingState(false);
+                        loginProcedure(mode);
                     } else {
                         JOptionPane.showMessageDialog(signupView,
                                 "Username or email already in use.",
