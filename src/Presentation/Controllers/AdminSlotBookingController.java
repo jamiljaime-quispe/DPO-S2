@@ -11,6 +11,7 @@ import Presentation.Views.AdminSlotBookingManagementView;
 
 import javax.swing.SwingWorker;
 import javax.swing.SwingUtilities;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -21,6 +22,7 @@ public class AdminSlotBookingController {
     private static final int USER_MODE = 2;
     private static final int BACKGROUND_TEST_DELAY_MS = 300;
     private static final int ROW_LOAD_DELAY_MS = 100;
+    private static final DateTimeFormatter RESERVATION_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private AdminSlotBookingManagementView bookingView;
     private ParkingService parkingService;
@@ -94,6 +96,9 @@ public class AdminSlotBookingController {
                 if (modeForLoad == USER_MODE && userId > 0) {
                     List<Reservation> userReservations = reservationService.getReservationsByUser(userId);
                     for (Reservation reservation : userReservations) {
+                        if (!reservation.isActive()) {
+                            continue;
+                        }
                         if (reservation.getParkingSpace() != null) {
                             String code = reservation.getParkingSpace().getId();
                             userBookingCodes.add(code);
@@ -146,6 +151,32 @@ public class AdminSlotBookingController {
                     bookingView.removeBookingSpacesNotIn(loadedCodes);
                     bookingView.closeActiveBookingDialogIfTargetUnavailable();
                     bookingView.closeActiveCancelDialogIfTargetUnavailable();
+                    if (modeForLoad == USER_MODE && userId > 0 && bookingView.reservationsTableModel != null) {
+                        bookingView.reservationsTableModel.setRowCount(0);
+                        for (Reservation reservation : reservationService.getReservationsByUser(userId)) {
+                            ParkingSpace space = reservation.getParkingSpace();
+                            String code = space != null ? space.getId() : "";
+                            Object floor = space != null ? space.getFloor() : "";
+                            String type = space != null ? space.getVehicleType().name() : "";
+                            String plate = reservation.getVehicle() != null
+                                    ? reservation.getVehicle().getLicensePlate()
+                                    : "";
+                            String date = reservation.getReservationDate() != null
+                                    ? reservation.getReservationDate().format(RESERVATION_DATE_FORMAT)
+                                    : "";
+                            String status;
+                            if (reservation.isActive()) {
+                                status = "Active";
+                            } else if (reservation.isCancelledByAdmin()) {
+                                status = "Cancelled by admin";
+                            } else {
+                                status = "Cancelled";
+                            }
+                            bookingView.reservationsTableModel.addRow(new Object[]{
+                                    code, floor, type, plate, date, status
+                            });
+                        }
+                    }
                 } catch (Exception e) {
                     bookingView.showError("Failed to load slot bookings: " + e.getMessage());
                 } finally {

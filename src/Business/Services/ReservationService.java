@@ -184,17 +184,12 @@ public class ReservationService {
 	}
 
 	/**
-	 * Returns all active reservations belonging to a user.
+	 * Returns all reservations belonging to a user.
 	 * @param userId user ID
-	 * @return list of active reservations
+	 * @return list of reservations
 	 */
 	public List<Reservation> getReservationsByUser(int userId) {
-		List<Reservation> all = reservationDAO.findByUser(userId);
-		List<Reservation> active = new ArrayList<>();
-		for (Reservation r : all) {
-			if (r.isActive()) active.add(r);
-		}
-		return active;
+		return reservationDAO.findByUser(userId);
 	}
 
 	/**
