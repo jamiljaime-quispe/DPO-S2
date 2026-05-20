@@ -19,6 +19,10 @@ public class AdminSlotBookingManagementView extends JDialog {
 
     private JTable bookingsTable;
     private DefaultTableModel tableModel;
+    private JTabbedPane tabbedPane;
+    private JTable reservationsTable;
+    public DefaultTableModel reservationsTableModel;
+    private JPanel reservationsPanel;
     private JButton addButton;
     private JButton editButton;
     private JButton deleteButton;
@@ -70,7 +74,32 @@ public class AdminSlotBookingManagementView extends JDialog {
 
         JScrollPane scrollPane = new JScrollPane(bookingsTable);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
-        add(scrollPane, BorderLayout.CENTER);
+
+        String[] reservationColumns = {"Space Code", "Floor", "Type", "License Plate", "Booked At", "Status"};
+        reservationsTableModel = new DefaultTableModel(reservationColumns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        reservationsTable = new JTable(reservationsTableModel);
+        reservationsTable.setRowHeight(24);
+        reservationsTable.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        reservationsTable.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
+        reservationsTable.getTableHeader().setBackground(new Color(33, 99, 168));
+        reservationsTable.getTableHeader().setForeground(Color.WHITE);
+        reservationsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        JScrollPane reservationsScrollPane = new JScrollPane(reservationsTable);
+        reservationsScrollPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
+        reservationsPanel = new JPanel(new BorderLayout());
+        reservationsPanel.setOpaque(false);
+        reservationsPanel.add(reservationsScrollPane, BorderLayout.CENTER);
+
+        tabbedPane = new JTabbedPane();
+        tabbedPane.addTab("Slot bookings", scrollPane);
+        tabbedPane.addChangeListener(e -> updateActionButtons());
+        add(tabbedPane, BorderLayout.CENTER);
 
         addButton = new JButton("Add Booking");
         editButton = new JButton("Edit Booking");
@@ -86,6 +115,9 @@ public class AdminSlotBookingManagementView extends JDialog {
         deleteButton.setEnabled(false);
 
         bookingsTable.getSelectionModel().addListSelectionListener(e -> {
+            updateActionButtons();
+        });
+        reservationsTable.getSelectionModel().addListSelectionListener(e -> {
             updateActionButtons();
         });
 
@@ -213,12 +245,25 @@ public class AdminSlotBookingManagementView extends JDialog {
     }
 
     private void showDeleteConfirmation() {
-        int row = bookingsTable.getSelectedRow();
-        if (row < 0) return;
+        String spaceCode;
+        String plate;
+        boolean reservationsTab = currentMode == USER_MODE && tabbedPane != null && tabbedPane.getSelectedIndex() == 1;
 
-        int modelRow = bookingsTable.convertRowIndexToModel(row);
-        String spaceCode = String.valueOf(tableModel.getValueAt(modelRow, 0));
-        String plate = String.valueOf(tableModel.getValueAt(modelRow, 5));
+        if (reservationsTab) {
+            int row = reservationsTable.getSelectedRow();
+            if (row < 0) return;
+
+            int modelRow = reservationsTable.convertRowIndexToModel(row);
+            spaceCode = String.valueOf(reservationsTableModel.getValueAt(modelRow, 0));
+            plate = String.valueOf(reservationsTableModel.getValueAt(modelRow, 3));
+        } else {
+            int row = bookingsTable.getSelectedRow();
+            if (row < 0) return;
+
+            int modelRow = bookingsTable.convertRowIndexToModel(row);
+            spaceCode = String.valueOf(tableModel.getValueAt(modelRow, 0));
+            plate = String.valueOf(tableModel.getValueAt(modelRow, 5));
+        }
 
         if (currentMode == USER_MODE) {
             showUserCancelBookingDialog(spaceCode, plate);
@@ -370,6 +415,9 @@ public class AdminSlotBookingManagementView extends JDialog {
 
     public void clearBookingsTable() {
         tableModel.setRowCount(0);
+        if (reservationsTableModel != null) {
+            reservationsTableModel.setRowCount(0);
+        }
     }
 
     public void addBookingToTable(ParkingSpace space) {
@@ -517,7 +565,10 @@ public class AdminSlotBookingManagementView extends JDialog {
         currentMode = mode;
 
         if (currentMode == USER_MODE) {
-            setTitle("Manage My Slot Bookings");
+            setTitle("Manage My Bookings");
+            if (tabbedPane.indexOfComponent(reservationsPanel) < 0) {
+                tabbedPane.addTab("My reservations", reservationsPanel);
+            }
             addButton.setText("Book Slot");
             addButton.setVisible(true);
             editButton.setVisible(false);
@@ -525,6 +576,9 @@ public class AdminSlotBookingManagementView extends JDialog {
             deleteButton.setText("Cancel Booking");
         } else {
             setTitle("Manage Slot Bookings");
+            if (tabbedPane.indexOfComponent(reservationsPanel) >= 0) {
+                tabbedPane.remove(reservationsPanel);
+            }
             addButton.setVisible(false);
             editButton.setVisible(true);
             editButton.setText("Reassign Booking");
@@ -539,6 +593,9 @@ public class AdminSlotBookingManagementView extends JDialog {
         this.loading = loading;
         setCursor(Cursor.getPredefinedCursor(loading ? Cursor.WAIT_CURSOR : Cursor.DEFAULT_CURSOR));
         bookingsTable.setEnabled(!loading);
+        if (reservationsTable != null) {
+            reservationsTable.setEnabled(!loading);
+        }
         updateActionButtons();
     }
 
@@ -547,13 +604,28 @@ public class AdminSlotBookingManagementView extends JDialog {
     }
 
     private void updateActionButtons() {
+        boolean admin = currentMode == ADMIN_MODE;
+        boolean user = currentMode == USER_MODE;
+        boolean reservationsTab = user && tabbedPane != null && tabbedPane.getSelectedIndex() == 1;
+
+        if (reservationsTab) {
+            int row = reservationsTable.getSelectedRow();
+            boolean activeReservation = row >= 0
+                    && "Active".equals(String.valueOf(reservationsTableModel.getValueAt(
+                    reservationsTable.convertRowIndexToModel(row), 5)));
+
+            addButton.setEnabled(false);
+            editButton.setEnabled(false);
+            deleteButton.setEnabled(!loading && activeReservation);
+            refreshButton.setEnabled(!loading);
+            return;
+        }
+
         int row = bookingsTable.getSelectedRow();
         boolean selected = row >= 0;
         boolean availableSlot = selected && isSelectedSlotAvailableForBooking(row);
         boolean reservedSlot = selected && isSelectedSlotReserved(row);
         boolean userBooking = selected && isSelectedUserBooking(row);
-        boolean admin = currentMode == ADMIN_MODE;
-        boolean user = currentMode == USER_MODE;
 
         addButton.setEnabled(!loading && user && availableSlot);
         editButton.setEnabled(!loading && admin && reservedSlot);
