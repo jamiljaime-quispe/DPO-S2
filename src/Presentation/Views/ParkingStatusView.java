@@ -7,6 +7,7 @@ import javax.swing.JFrame;
 import javax.swing.JTable;
 
 import Business.Entities.ParkingSpace;
+import Presentation.Controllers.ParkingController;
 
 public class ParkingStatusView {
 	private JFrame frame;

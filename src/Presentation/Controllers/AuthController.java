@@ -1,10 +1,16 @@
 package Presentation.Controllers;
 
+import Business.Entities.Reservation;
+import Business.Services.ConfigService;
+import Business.Services.ReservationService;
+import Business.Services.UserService;
 import Presentation.Views.LoginView;
 import Presentation.Views.MainMenuView;
 import Presentation.Views.SignupView;
 
 import javax.swing.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
@@ -14,6 +20,8 @@ public class AuthController {
     private UserService userService;
     private MainController mainController;
     private MainMenuView mainMenuView;
+    private ConfigService configService;
+    private ReservationService reservationService;
 
     // Fixed constructor to use SignupView instead of int
     public AuthController(LoginView loginView, SignupView signupView, UserService userService) {
@@ -41,10 +49,27 @@ public class AuthController {
 
     private SwingWorker<Integer, Void> createLoginWorker(String id, String password) {
         return new SwingWorker<>() {
+            private List<Reservation> pendingNotifications = new ArrayList<>();
+
             @Override
             protected Integer doInBackground() throws Exception {
-                // Background thread: Calls UserService in the same package
-                return userService.authenticate(id, password);
+                int result = userService.authenticate(id, password);
+
+                // Admin: verify password against config.json (UserService skips it by design)
+                if (result == 1 && configService != null) {
+                    String adminPass = configService.getAdminPassword();
+                    if (adminPass != null && !password.equals(adminPass)) {
+                        return 0;
+                    }
+                }
+
+                // Regular user: collect unread cancellation notifications
+                if (result == 2 && reservationService != null) {
+                    pendingNotifications = reservationService.getCancelledByAdminNotNotified(
+                            userService.getLastLoggedInUserId());
+                }
+
+                return result;
             }
 
             @Override
@@ -53,13 +78,18 @@ public class AuthController {
                     int success = get();
                     loginView.setLoadingState(false);
 
-                    // Load admin screen
-                    if (success == 1) {
+                    if (success == 1 || success == 2) {
                         loginProcedure(success);
-                    } else
-                    // Load regular user screen
-                    if (success == 2) {
-                        loginProcedure(success);
+                        for (Reservation r : pendingNotifications) {
+                            String spaceCode = r.getParkingSpace() != null
+                                    ? r.getParkingSpace().getId() : "unknown";
+                            JOptionPane.showMessageDialog(mainMenuView,
+                                    "Your reservation for space \"" + spaceCode
+                                            + "\" was cancelled by an admin.",
+                                    "Reservation Cancelled",
+                                    JOptionPane.WARNING_MESSAGE);
+                            reservationService.markNotified(r);
+                        }
                     } else {
                         JOptionPane.showMessageDialog(loginView, "Invalid credentials", "Error",
                                 JOptionPane.ERROR_MESSAGE);
@@ -156,6 +186,14 @@ public class AuthController {
         this.signupView = signupView;
     }
 
+    public void setConfigService(ConfigService configService) {
+        this.configService = configService;
+    }
+
+    public void setReservationService(ReservationService reservationService) {
+        this.reservationService = reservationService;
+    }
+
     public void handleBackToLogin() {
         // 1. Clear the fields so it's clean if they come back
         signupView.clearForm();
@@ -187,7 +225,7 @@ public class AuthController {
             return;
         }
 
-        // 3. The Password Match Check
+        // 3. Password match check
         if (!Objects.equals(password, confirmPassword)) {
             JOptionPane.showMessageDialog(signupView,
                     "Passwords do not match.",
@@ -196,30 +234,52 @@ public class AuthController {
             return;
         }
 
-        // 4. If the code gets here, we are good to go!
+        // 4. Password policy check
+        if (!userService.validatePassword(password)) {
+            JOptionPane.showMessageDialog(signupView,
+                    "Password must be at least 8 characters and include\nan uppercase letter, a lowercase letter, and a digit.\nExample: Test1234",
+                    "Weak Password",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // 5. Email format check
+        if (!userService.isEmailValid(email)) {
+            JOptionPane.showMessageDialog(signupView,
+                    "Please enter a valid email address.",
+                    "Invalid Email",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // 6. If the code gets here, we are good to go!
         System.out.println("Validation passed. Starting registration...");
         signupView.setLoadingState(true);
         createRegistrationWorker(username, email, password).execute();
     }
 
-    SwingWorker<Boolean, Void> createRegistrationWorker(String username, String email, String password) {
+    SwingWorker<Integer, Void> createRegistrationWorker(String username, String email, String password) {
         return new SwingWorker<>() {
             @Override
-            protected Boolean doInBackground() throws Exception {
-                return userService.register(username, email, password);
+            protected Integer doInBackground() throws Exception {
+                boolean registered = userService.register(username, email, password);
+                if (!registered) {
+                    return 0;
+                }
+
+                return userService.authenticate(username, password);
             }
 
             @Override
             protected void done() {
                 signupView.setLoadingState(false);
                 try {
-                    boolean success = get();
-                    if (success) {
-                        JOptionPane.showMessageDialog(signupView,
-                                "Account created successfully! You can now log in.",
-                                "Registration Complete",
-                                JOptionPane.INFORMATION_MESSAGE);
-                        handleBackToLogin();
+                    int mode = get();
+                    if (mode == 2) {
+                        signupView.clearForm();
+                        signupView.setVisible(false);
+                        loginView.setLoadingState(false);
+                        loginProcedure(mode);
                     } else {
                         JOptionPane.showMessageDialog(signupView,
                                 "Username or email already in use.",

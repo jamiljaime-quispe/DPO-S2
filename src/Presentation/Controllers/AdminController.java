@@ -2,11 +2,15 @@ package Presentation.Controllers;
 
 import Business.Entities.ParkingSpace;
 import Business.Entities.VehicleType;
+import Business.Services.AdminService;
 import Business.Services.ParkingService;
 import Presentation.Views.AdminParkingManagementView;
 
 import javax.swing.SwingWorker;
+import javax.swing.SwingUtilities;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class AdminController {
     private static final int BACKGROUND_TEST_DELAY_MS = 300;
@@ -14,6 +18,8 @@ public class AdminController {
 
     private AdminParkingManagementView adminView;
     private ParkingService parkingService;
+    private AdminService adminService;
+    private volatile int spacesLoadId;
 
     public AdminController(AdminParkingManagementView adminView, ParkingService parkingService) {
         this.adminView = adminView;
@@ -21,9 +27,30 @@ public class AdminController {
         adminView.setController(this);
     }
 
+    public void setAdminService(AdminService adminService) {
+        this.adminService = adminService;
+    }
+
     public void showView() {
+        adminView.clearSpacesTable();
         loadSpaces();
         adminView.setVisible(true);
+    }
+
+    public void refreshIfVisible() {
+        if (adminView == null || !adminView.isVisible())
+            return;
+
+        if (SwingUtilities.isEventDispatchThread()) {
+            loadSpaces();
+        } else {
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    loadSpaces();
+                }
+            });
+        }
     }
 
     public void createSpace(String code, int floor, VehicleType type) {
@@ -75,11 +102,8 @@ public class AdminController {
                         errorMessage = "Space not found: " + code;
                         return false;
                     }
-                    if (type != space.getVehicleType()) {
-                        errorMessage = "Vehicle type cannot be edited after the space is created.";
-                        return false;
-                    }
                     space.setFloor(floor);
+                    space.setVehicleType(type);
                     parkingService.updateParkingSpaceDetails(space);
                     return true;
                 } catch (Exception e) {
@@ -123,6 +147,9 @@ public class AdminController {
                         errorMessage = "Cannot delete space \"" + code + "\": it is currently occupied.";
                         return false;
                     }
+                    if (adminService != null) {
+                        adminService.reassignOrDeleteReservation(code);
+                    }
                     boolean success = parkingService.deleteParkingSpace(code);
                     if (!success) {
                         errorMessage = "Could not delete space \"" + code + "\".";
@@ -152,27 +179,36 @@ public class AdminController {
     }
 
     public void loadSpaces() {
-        adminView.setLoading(true);
-        adminView.clearSpacesTable();
+        spacesLoadId++;
+        int loadId = spacesLoadId;
 
-        new SwingWorker<Void, ParkingSpace>() {
+        adminView.setLoading(true);
+
+        new SwingWorker<Set<String>, ParkingSpace>() {
             @Override
-            protected Void doInBackground() {
+            protected Set<String> doInBackground() {
                 List<ParkingSpace> spaces = parkingService.getAllSpaces();
+                Set<String> loadedCodes = new HashSet<>();
 
                 for (ParkingSpace space : spaces) {
+                    loadedCodes.add(space.getId());
                     delayRowLoad();
                     if (Thread.currentThread().isInterrupted()) {
                         break;
                     }
-                    publish(space);
+                    if (loadId == spacesLoadId) {
+                        publish(space);
+                    }
                 }
 
-                return null;
+                return loadedCodes;
             }
 
             @Override
             protected void process(List<ParkingSpace> chunks) {
+                if (loadId != spacesLoadId)
+                    return;
+
                 for (ParkingSpace space : chunks) {
                     adminView.addSpaceToTable(space);
                 }
@@ -180,8 +216,14 @@ public class AdminController {
 
             @Override
             protected void done() {
+                if (loadId != spacesLoadId)
+                    return;
+
                 try {
-                    get();
+                    Set<String> loadedCodes = get();
+                    adminView.removeSpacesNotIn(loadedCodes);
+                    adminView.closeActiveDeleteDialogIfTargetUnavailable();
+                    adminView.closeActiveEditDialogIfTargetUnavailable();
                 } catch (Exception e) {
                     adminView.showError("Failed to load spaces: " + e.getMessage());
                 } finally {
@@ -192,11 +234,12 @@ public class AdminController {
     }
 
     private void delayRowLoad() {
-        try {
-            Thread.sleep(ROW_LOAD_DELAY_MS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // Row-by-row display delay disabled because automatic refreshes should be fast.
+        // try {
+        // Thread.sleep(ROW_LOAD_DELAY_MS);
+        // } catch (InterruptedException e) {
+        // Thread.currentThread().interrupt();
+        // }
     }
 
     private void simulateDatabaseDelay() {

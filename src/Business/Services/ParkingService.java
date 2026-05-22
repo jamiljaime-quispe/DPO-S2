@@ -53,8 +53,7 @@ public class ParkingService {
 
 	/**
 	 * Persists editable details for an existing space.
-	 * The vehicle type is not editable after creation because it can conflict
-	 * with parked vehicles and active reservations.
+	 * The vehicle type can only change while the space is vacant and unreserved.
 	 * @param space space with updated details
 	 */
 	public void updateParkingSpaceDetails(ParkingSpace space) {
@@ -62,8 +61,12 @@ public class ParkingService {
 		if (existing == null) {
 			throw new IllegalArgumentException("Space not found: " + space.getId());
 		}
-		if (existing.getVehicleType() != space.getVehicleType()) {
-			throw new IllegalArgumentException("Vehicle type cannot be edited after the space is created.");
+		boolean typeChanged = existing.getVehicleType() != space.getVehicleType();
+		if (typeChanged && existing.isOccupied()) {
+			throw new IllegalArgumentException("Vehicle type cannot be edited because the space is occupied.");
+		}
+		if (typeChanged && existing.isReserved()) {
+			throw new IllegalArgumentException("Vehicle type cannot be edited because the space is reserved.");
 		}
 		parkingSpaceDAO.updateDetails(space);
 	}
@@ -274,35 +277,55 @@ public class ParkingService {
 	 * @return assigned ParkingSpace, or null if the lot is full
 	 */
 	public synchronized ParkingSpace handleVehicleEntry(String plate, VehicleType type) {
-		// 1. Check for an active reservation
+		// This method is synchronized because user actions and bot actions can both try to park at the same time.
+		// First, check whether this plate has an active reservation.
 		Reservation reservation = reservationDAO.findByPlate(plate);
+		// Bots normally have generated SIM plates, so they usually skip this reservation branch.
 		if (reservation != null && reservation.isActive()) {
+			// If a real user has a reservation, the reserved space is the target space.
 			ParkingSpace reservedSpace = reservation.getParkingSpace();
+			// A reservation without a space cannot be used for entry.
 			if (reservedSpace != null) {
+				// Load the vehicle from the database if it already exists.
 				Vehicle vehicle = vehicleDAO.findByPlate(plate);
+				// If it does not exist, build a temporary Vehicle object for this entry.
 				if (vehicle == null) {
 					vehicle = new Vehicle(plate, type, null, false);
 				}
+				// Mark the reserved space as occupied by this vehicle in memory.
 				reservedSpace.occupy(vehicle);
+				// Once the vehicle enters, the reservation is no longer considered an active booking.
 				reservedSpace.setReserved(false);
+				// Persist the occupied state and parked plate into parking_space.
 				parkingSpaceDAO.update(reservedSpace);
+				// Mark the reservation object inactive.
 				reservation.cancel();
+				// Persist the reservation cancellation into reservation.
 				reservationDAO.update(reservation);
+				// Return the space so the caller knows where the vehicle was placed.
 				return reservedSpace;
 			}
 		}
 
 		// 2. No reservation — find a free compatible space
+		// No active reservation: this is the normal path for bots and unreserved user entries.
 		List<ParkingSpace> available = parkingSpaceDAO.findAvailableByType(type);
+		// If no vacant, unreserved, compatible space exists, entry fails.
 		if (available == null || available.isEmpty()) return null;
 
+		// Choose the first available compatible space returned by the DAO.
 		ParkingSpace space = available.get(0);
+		// Load the vehicle if it already exists in the database.
 		Vehicle vehicle = vehicleDAO.findByPlate(plate);
+		// Bot vehicles usually do not exist in vehicle, so create a temporary Vehicle object.
 		if (vehicle == null) {
 			vehicle = new Vehicle(plate, type, null, false);
 		}
+		// Mark the chosen space as occupied in memory.
 		space.occupy(vehicle);
+		// Persist the occupied state and parked plate into parking_space.
 		parkingSpaceDAO.update(space);
+		// Return the assigned space to the caller.
 		return space;
 	}
 
@@ -311,13 +334,19 @@ public class ParkingService {
 	 * @param plate license plate of the exiting vehicle
 	 */
 	public synchronized void handleVehicleExit(String plate) {
+		// Load the current parking state from the database.
 		List<ParkingSpace> allSpaces = parkingSpaceDAO.findAll();
+		// Search every space until the parked plate is found.
 		for (ParkingSpace space : allSpaces) {
+			// The vehicle can exit only if the space is occupied and the plate matches.
 			if (space.isOccupied()
 					&& space.getParkedVehicle() != null
 					&& plate.equals(space.getParkedVehicle().getLicensePlate())) {
+				// Free the space in memory.
 				space.freeSpace();
+				// Persist the vacant state by updating parking_space.
 				parkingSpaceDAO.update(space);
+				// Stop after the matching vehicle has been removed.
 				return;
 			}
 		}

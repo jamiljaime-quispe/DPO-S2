@@ -49,12 +49,7 @@ public class ReservationService {
 		}
 
 		ParkingSpace space = parkingSpaceDAO.findByCode(spaceCode);
-		if (space == null) {
-			throw new IllegalArgumentException("Parking space not found: " + spaceCode);
-		}
-		if (!space.isAvailable()) {
-			throw new IllegalArgumentException("Parking space " + spaceCode + " is not available.");
-		}
+		validateSpaceCanBeBooked(space, spaceCode);
 		if (space.getVehicleType() != type) {
 			throw new IllegalArgumentException("Parking space " + spaceCode
 					+ " only accepts " + space.getVehicleType().name() + " vehicles.");
@@ -93,17 +88,8 @@ public class ReservationService {
 		}
 
 		ParkingSpace newSpace = parkingSpaceDAO.findByCode(newSpaceCode);
-		if (newSpace == null) {
-			throw new IllegalArgumentException("Parking space not found: " + newSpaceCode);
-		}
-		if (newSpace.isOccupied()) {
-			throw new IllegalArgumentException("Parking space " + newSpaceCode + " is currently occupied.");
-		}
-
 		String currentSpaceCode = reservation.getParkingSpace().getId();
-		if (newSpace.isReserved() && !currentSpaceCode.equals(newSpaceCode)) {
-			throw new IllegalArgumentException("Parking space " + newSpaceCode + " is already reserved.");
-		}
+		validateSpaceCanReceiveReassignedBooking(newSpace, newSpaceCode, currentSpaceCode);
 		if (reservation.getVehicle() != null && reservation.getVehicle().getType() != newSpace.getVehicleType()) {
 			throw new IllegalArgumentException("Parking space " + newSpaceCode
 					+ " only accepts " + newSpace.getVehicleType().name() + " vehicles.");
@@ -112,6 +98,39 @@ public class ReservationService {
 		reservation.setParkingSpace(newSpace);
 		reservationDAO.update(reservation);
 		return reservation;
+	}
+
+	private void validateSpaceCanBeBooked(ParkingSpace space, String spaceCode) {
+		if (space == null) {
+			throw new IllegalArgumentException("Parking space not found: " + spaceCode);
+		}
+		if (space.isOccupied()) {
+			throw new IllegalArgumentException(buildOccupiedSpaceMessage(space, spaceCode));
+		}
+		if (space.isReserved()) {
+			throw new IllegalArgumentException("Parking space " + spaceCode + " is already booked.");
+		}
+	}
+
+	private void validateSpaceCanReceiveReassignedBooking(ParkingSpace space, String spaceCode,
+			String currentSpaceCode) {
+		if (space == null) {
+			throw new IllegalArgumentException("Parking space not found: " + spaceCode);
+		}
+		if (space.isOccupied()) {
+			throw new IllegalArgumentException(buildOccupiedSpaceMessage(space, spaceCode));
+		}
+		if (space.isReserved() && !currentSpaceCode.equals(spaceCode)) {
+			throw new IllegalArgumentException("Parking space " + spaceCode + " is already booked.");
+		}
+	}
+
+	private String buildOccupiedSpaceMessage(ParkingSpace space, String spaceCode) {
+		if (space.getParkedVehicle() != null) {
+			return "Parking space " + spaceCode + " cannot be booked because vehicle "
+					+ space.getParkedVehicle().getLicensePlate() + " is parked there.";
+		}
+		return "Parking space " + spaceCode + " cannot be booked because a vehicle is parked there.";
 	}
 
 	/**
@@ -165,17 +184,12 @@ public class ReservationService {
 	}
 
 	/**
-	 * Returns all active reservations belonging to a user.
+	 * Returns all reservations belonging to a user.
 	 * @param userId user ID
-	 * @return list of active reservations
+	 * @return list of reservations
 	 */
 	public List<Reservation> getReservationsByUser(int userId) {
-		List<Reservation> all = reservationDAO.findByUser(userId);
-		List<Reservation> active = new ArrayList<>();
-		for (Reservation r : all) {
-			if (r.isActive()) active.add(r);
-		}
-		return active;
+		return reservationDAO.findByUser(userId);
 	}
 
 	/**
@@ -200,6 +214,15 @@ public class ReservationService {
 			if (r.isCancelledByAdmin() && !r.isNotified()) pending.add(r);
 		}
 		return pending;
+	}
+
+	/**
+	 * Marks a reservation as notified so the alert is not shown again at login.
+	 * @param reservation the reservation to mark
+	 */
+	public void markNotified(Reservation reservation) {
+		reservation.setNotified(true);
+		reservationDAO.update(reservation);
 	}
 
 	/**

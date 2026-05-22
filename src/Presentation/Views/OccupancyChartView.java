@@ -9,6 +9,9 @@ public class OccupancyChartView extends JPanel {
     private List<Integer> data = new ArrayList<>();
     private ChartPanel chartPanel;
     private JButton backButton;
+    private JLabel countdownLabel;
+    private Timer countdownTimer;
+    private int secondsLeft = 5;
 
     public OccupancyChartView() {
     }
@@ -34,10 +37,27 @@ public class OccupancyChartView extends JPanel {
         title.setForeground(new Color(40, 40, 50));
         header.add(title, BorderLayout.CENTER);
 
+        countdownLabel = new JLabel("Next update in 5s", SwingConstants.RIGHT);
+        countdownLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        countdownLabel.setForeground(new Color(140, 140, 150));
+        JPanel countdownCorner = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        countdownCorner.setOpaque(false);
+        countdownCorner.add(countdownLabel);
+        header.add(countdownCorner, BorderLayout.EAST);
+
         add(header, BorderLayout.NORTH);
 
         chartPanel = new ChartPanel();
         add(chartPanel, BorderLayout.CENTER);
+
+        countdownTimer = new Timer(1_000, e -> {
+            secondsLeft--;
+
+            if (secondsLeft < 0)
+                secondsLeft = 0;
+            countdownLabel.setText("Next update in " + secondsLeft + "s");
+        });
+        countdownTimer.start();
     }
 
     public JButton getBackButton() {
@@ -63,6 +83,9 @@ public class OccupancyChartView extends JPanel {
         this.data = (data != null) ? data : new ArrayList<>();
         if (chartPanel != null)
             chartPanel.repaint();
+        secondsLeft = 5;
+        if (countdownLabel != null)
+            countdownLabel.setText("Next update in 5s");
     }
 
     public void startAutoRefresh() {
