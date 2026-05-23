@@ -99,6 +99,15 @@ public class ParkingSpace {
 	}
 
 	/**
+	 * Sets the space code.
+	 *
+	 * @param id the new space code
+	 */
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	/**
 	 * Sets the floor number.
 	 *
 	 * @param floor the new floor number

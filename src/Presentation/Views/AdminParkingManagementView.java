@@ -98,17 +98,13 @@ public class AdminParkingManagementView extends JDialog {
 
     private void showAddDialog() {
         JDialog dialog = new JDialog(this, "Add Parking Space", true);
-        dialog.setLayout(new GridLayout(4, 2, 10, 10));
-        dialog.setSize(320, 180);
+        dialog.setLayout(new GridLayout(3, 2, 10, 10));
+        dialog.setSize(320, 160);
         dialog.setLocationRelativeTo(this);
         ((JComponent) dialog.getContentPane()).setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-        dialog.add(new JLabel("Code:"));
-        JTextField codeField = new JTextField();
-        dialog.add(codeField);
-
         dialog.add(new JLabel("Floor:"));
-        JSpinner floorSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 99, 1));
+        JSpinner floorSpinner = new JSpinner(new SpinnerNumberModel(1, 1, 99, 1));
         dialog.add(floorSpinner);
 
         dialog.add(new JLabel("Vehicle Type:"));
@@ -122,14 +118,9 @@ public class AdminParkingManagementView extends JDialog {
         dialog.add(cancelBtn);
 
         confirmBtn.addActionListener(e -> {
-            String code = codeField.getText().trim();
-            if (code.isEmpty()) {
-                JOptionPane.showMessageDialog(dialog, "Code cannot be empty.", "Error", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
             int floor = (int) floorSpinner.getValue();
             VehicleType type = (VehicleType) typeCombo.getSelectedItem();
-            if (controller != null) controller.createSpace(code, floor, type);
+            if (controller != null) controller.createSpace(floor, type);
             dialog.dispose();
         });
         cancelBtn.addActionListener(e -> dialog.dispose());
@@ -165,7 +156,7 @@ public class AdminParkingManagementView extends JDialog {
         dialog.add(codeField);
 
         dialog.add(new JLabel("Floor:"));
-        JSpinner floorSpinner = new JSpinner(new SpinnerNumberModel(currentFloor, 0, 99, 1));
+        JSpinner floorSpinner = new JSpinner(new SpinnerNumberModel(Math.max(1, currentFloor), 1, 99, 1));
         dialog.add(floorSpinner);
 
         dialog.add(new JLabel("Vehicle Type:"));

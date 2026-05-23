@@ -29,11 +29,10 @@ public class OccupancyDAOImpl implements OccupancyDAO {
 
     @Override
     public List<Integer> getLastHourData() {
-        // I get the 25 most recent records ordered oldest to newest for the chart.
-        String sql = "SELECT occupiedCount FROM " +
-                "(SELECT occupiedCount, timestamp FROM occupancy_log " +
-                " ORDER BY timestamp DESC LIMIT 25) recent " +
-                "ORDER BY timestamp ASC";
+        String sql = "SELECT occupiedCount FROM "
+                + "(SELECT occupiedCount, timestamp FROM occupancy_log "
+                + " ORDER BY timestamp DESC LIMIT 20) recent "
+                + "ORDER BY timestamp ASC";
         List<Integer> data = new ArrayList<>();
 
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql);

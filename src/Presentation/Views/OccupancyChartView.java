@@ -94,7 +94,6 @@ public class OccupancyChartView extends JPanel {
     public void stopAutoRefresh() {
     }
 
-    // -------------------------------------------------------------------------
 
     private class ChartPanel extends JPanel {
         private static final int PAD_LEFT = 50;
@@ -119,11 +118,9 @@ public class OccupancyChartView extends JPanel {
             int chartW = w - PAD_LEFT - PAD_RIGHT;
             int chartH = h - PAD_TOP - PAD_BOTTOM;
 
-            // White background
             g2.setColor(Color.WHITE);
             g2.fillRect(0, 0, w, h);
 
-            // No data message
             if (data.isEmpty()) {
                 g2.setColor(Color.GRAY);
                 g2.setFont(new Font("SansSerif", Font.PLAIN, 14));
@@ -134,7 +131,6 @@ public class OccupancyChartView extends JPanel {
                 return;
             }
 
-            // Y scale: round up to nearest 5
             int maxVal = 1;
             for (Integer value : data) {
                 if (value > maxVal) {
@@ -143,7 +139,6 @@ public class OccupancyChartView extends JPanel {
             }
             int yScale = Math.max(((maxVal / 5) + 1) * 5, 5);
 
-            // Grid lines + Y-axis labels
             g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
             int gridLines = 5;
             for (int i = 0; i <= gridLines; i++) {
@@ -160,63 +155,52 @@ public class OccupancyChartView extends JPanel {
                 g2.drawString(label, PAD_LEFT - fm.stringWidth(label) - 5, y + fm.getAscent() / 2);
             }
 
-            // Axes
             g2.setColor(Color.DARK_GRAY);
             g2.setStroke(new BasicStroke(1.5f));
             g2.drawLine(PAD_LEFT, PAD_TOP, PAD_LEFT, PAD_TOP + chartH);
             g2.drawLine(PAD_LEFT, PAD_TOP + chartH, PAD_LEFT + chartW, PAD_TOP + chartH);
 
-            // X-axis direction labels
             g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
             g2.setColor(Color.GRAY);
-            g2.drawString("← older", PAD_LEFT + 4, PAD_TOP + chartH + 28);
-            String newer = "newer →";
+            int n = data.size();
+            String oldestLabel = n > 0 ? ((n - 1) * 5) + " sec ago" : "older";
+            String newest = "now";
             FontMetrics fmX = g2.getFontMetrics();
-            g2.drawString(newer, PAD_LEFT + chartW - fmX.stringWidth(newer), PAD_TOP + chartH + 28);
+            g2.drawString(oldestLabel, PAD_LEFT + 4, PAD_TOP + chartH + 28);
+            g2.drawString(newest, PAD_LEFT + chartW - fmX.stringWidth(newest), PAD_TOP + chartH + 28);
 
-            // Y-axis label
             g2.rotate(-Math.PI / 2);
             g2.setColor(Color.GRAY);
             g2.drawString("Occupied spaces", -(PAD_TOP + chartH / 2 + 40), 12);
             g2.rotate(Math.PI / 2);
 
-            // Compute point coordinates
-            int n = data.size();
-            int[] xs = new int[n];
-            int[] ys = new int[n];
+            int slotW = Math.max(1, chartW / Math.max(n, 1));
+            int gap = Math.max(1, slotW / 6);
+            int barW = Math.max(1, slotW - gap);
+
+            g2.setFont(new Font("SansSerif", Font.PLAIN, 10));
+            FontMetrics fmBar = g2.getFontMetrics();
+
             for (int i = 0; i < n; i++) {
-                xs[i] = PAD_LEFT + (n == 1 ? chartW / 2 : chartW * i / (n - 1));
-                ys[i] = PAD_TOP + chartH - (int) ((double) data.get(i) / yScale * chartH);
-            }
+                int value = data.get(i);
+                int barH = (int) ((double) value / yScale * chartH);
+                int x = PAD_LEFT + i * slotW + gap / 2;
+                int y = PAD_TOP + chartH - barH;
+                boolean isLatest = (i == n - 1);
 
-            // Filled area under line (semi-transparent)
-            Polygon area = new Polygon();
-            area.addPoint(xs[0], PAD_TOP + chartH);
-            for (int i = 0; i < n; i++)
-                area.addPoint(xs[i], ys[i]);
-            area.addPoint(xs[n - 1], PAD_TOP + chartH);
-            g2.setColor(new Color(33, 99, 168, 55));
-            g2.fillPolygon(area);
+                g2.setColor(isLatest ? new Color(33, 99, 168) : new Color(33, 99, 168, 170));
+                g2.fillRect(x, y, barW, barH);
+                g2.setColor(new Color(20, 60, 110));
+                g2.drawRect(x, y, barW, barH);
 
-            // Line
-            g2.setColor(new Color(33, 99, 168));
-            g2.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            for (int i = 0; i < n - 1; i++) {
-                g2.drawLine(xs[i], ys[i], xs[i + 1], ys[i + 1]);
-            }
-
-            // Data point dots
-            g2.setColor(new Color(33, 99, 168));
-            for (int i = 0; i < n; i++) {
-                g2.fillOval(xs[i] - 4, ys[i] - 4, 8, 8);
-            }
-
-            // Current value label on last point
-            if (n > 0) {
-                g2.setFont(new Font("SansSerif", Font.BOLD, 12));
-                g2.setColor(new Color(33, 99, 168));
-                String val = String.valueOf(data.get(n - 1));
-                g2.drawString(val, xs[n - 1] + 6, ys[n - 1] - 6);
+                if (value > 0) {
+                    String label = String.valueOf(value);
+                    int labelX = x + (barW - fmBar.stringWidth(label)) / 2;
+                    int labelY = y - 2;
+                    if (labelY < PAD_TOP + 10) labelY = PAD_TOP + 10;
+                    g2.setColor(new Color(40, 40, 50));
+                    g2.drawString(label, labelX, labelY);
+                }
             }
 
             g2.dispose();

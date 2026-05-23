@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Manages parking space lifecycle and vehicle entry/exit logic.
@@ -76,13 +77,13 @@ public class ParkingService {
 	 * @param space space to create
 	 */
 	public void createParkingSpace(ParkingSpace space) {
-		if (space == null || space.getId() == null || space.getId().isBlank()) {
-			throw new IllegalArgumentException("Space code is required.");
-		}
-		if (space.getVehicleType() == null) {
+		if (space == null || space.getVehicleType() == null) {
 			throw new IllegalArgumentException("Vehicle type is required.");
 		}
-		if (parkingSpaceDAO.findByCode(space.getId()) != null) {
+
+		if (space.getId() == null || space.getId().isBlank()) {
+			space.setId(generateNextCodeForFloor(space.getFloor()));
+		} else if (parkingSpaceDAO.findByCode(space.getId()) != null) {
 			throw new IllegalArgumentException("Space code already exists: " + space.getId());
 		}
 
@@ -91,6 +92,27 @@ public class ParkingService {
 		space.setParkedVehicle(null);
 		space.cancelReservation();
 		parkingSpaceDAO.save(space);
+	}
+
+	private String generateNextCodeForFloor(int floor) {
+		String prefix = floorPrefix(floor) + "-";
+		TreeSet<Integer> used = new TreeSet<>();
+		for (ParkingSpace existing : parkingSpaceDAO.findAll()) {
+			String id = existing.getId();
+			if (id == null || !id.startsWith(prefix)) continue;
+			try {
+				used.add(Integer.parseInt(id.substring(prefix.length())));
+			} catch (NumberFormatException ignored) {
+			}
+		}
+		int next = 1;
+		while (used.contains(next)) next++;
+		return prefix + String.format("%02d", next);
+	}
+
+	private String floorPrefix(int floor) {
+		int normalized = Math.max(0, floor - 1) % 26;
+		return String.valueOf((char) ('A' + normalized));
 	}
 
 	/**
