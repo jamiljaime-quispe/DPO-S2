@@ -1,7 +1,5 @@
 # Parking System — DPO Phase 2
 
-A small Java/Swing parking management application built on top of a MySQL database. It lets administrators manage parking spaces and reservations, lets regular users sign up, book spaces, drive in and out, and lets everyone consult the current parking status and a live occupancy chart for the last hour.
-
 ## Group members
 - William Alberto Avendaño Acevedo
 - Mathias Felipe Jon Anderson
