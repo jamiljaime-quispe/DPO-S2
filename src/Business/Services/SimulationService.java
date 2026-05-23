@@ -50,10 +50,6 @@ public class SimulationService implements Runnable {
 		this.parkingStatusChangeListener = parkingStatusChangeListener;
 	}
 
-	/**
-	 * Runs the simulation loop until it is stopped.
-	 * Errors in one simulation step are reported and the next step can still run.
-	 */
 	/** Runs the background simulation loop. */
 	@Override
 	public void run() {
@@ -66,9 +62,7 @@ public class SimulationService implements Runnable {
 			}
 
 			try {
-				int maxDelay = Math.max(1, config.getSimulatedVehicleDelay());
-				int delay = random.nextInt(maxDelay) + 1;
-				Thread.sleep(delay * 1000L);
+				sleepBeforeNextStep();
 
 				// Chaos mode for UI stress testing.
 				// Thread.sleep(CHAOS_MODE_DELAY_MS);
@@ -84,20 +78,20 @@ public class SimulationService implements Runnable {
 		if (running) return;
 
 		running = true;
-		simulationThread = new Thread(this);
-		simulationThread.start();
+		createSimulationThread();
+		startSimulationThread();
 	}
 
 	/** Stops the simulation and wakes the thread if it is sleeping. */
 	public void stopSimulation() {
 		running = false;
-		if (simulationThread != null) simulationThread.interrupt();
+		interruptSimulationThread();
 	}
 
 	/** Performs one simulated entry or exit decision. */
 	public void simulateStep() {
 		double entryProbability = calculateEntryProbability();
-		if (random.nextDouble() < entryProbability) {
+		if (shouldSimulateEntry(entryProbability)) {
 			simulateEntry();
 		} else {
 			simulateExit();
@@ -114,29 +108,28 @@ public class SimulationService implements Runnable {
 
 	/** Simulates one vehicle entering the parking lot. */
 	public void simulateEntry() {
-		VehicleType[] types = VehicleType.values();
-		VehicleType type = types[random.nextInt(types.length)];
+		VehicleType type = chooseRandomVehicleType();
 
-		List<ParkingSpace> available = parkingService.findAvailableSpaces(type);
+		List<ParkingSpace> available = findAvailableSpaces(type);
 		if (available == null || available.isEmpty()) return;
 
 		String plate = generateRandomPlate();
-		ParkingSpace assigned = parkingService.handleVehicleEntry(plate, type);
+		ParkingSpace assigned = handleVehicleEntry(plate, type);
 		if (assigned != null) {
 			notifyParkingStatusChanged("[SIM] Entry: " + plate + " -> " + assigned.getId());
-			simulatedVehicles.add(new Vehicle(plate, type, "SIMULATED", true));
+			addSimulatedVehicle(new Vehicle(plate, type, "SIMULATED", true));
 		}
 	}
 
 	/** Simulates one vehicle leaving the parking lot. */
 	public void simulateExit() {
-		if (simulatedVehicles.isEmpty()) return;
+		if (hasNoSimulatedVehicles()) return;
 
-		int index = random.nextInt(simulatedVehicles.size());
-		Vehicle vehicle = simulatedVehicles.get(index);
-		parkingService.handleVehicleExit(vehicle.getLicensePlate());
+		int index = chooseRandomSimulatedVehicleIndex();
+		Vehicle vehicle = getSimulatedVehicle(index);
+		handleVehicleExit(vehicle.getLicensePlate());
 		notifyParkingStatusChanged("[SIM] Exit:  " + vehicle.getLicensePlate());
-		simulatedVehicles.remove(index);
+		removeSimulatedVehicle(index);
 	}
 
 	/**
@@ -145,7 +138,7 @@ public class SimulationService implements Runnable {
 	 * @return entry probability between 0 and 1
 	 */
 	public double calculateEntryProbability() {
-		List<ParkingSpace> allSpaces = parkingService.getAllSpaces();
+		List<ParkingSpace> allSpaces = loadAllSpaces();
 		if (allSpaces == null || allSpaces.isEmpty()) return 0;
 
 		int totalUnreserved = 0;
@@ -168,12 +161,12 @@ public class SimulationService implements Runnable {
 	 */
 	public String generateRandomPlate() {
 		for (int attempt = 0; attempt < 1000; attempt++) {
-			String candidate = "SIM-" + String.format("%04d", random.nextInt(10000));
+			String candidate = "SIM-" + String.format("%04d", randomInt(10000));
 			if (isPlateAvailable(candidate)) return candidate;
 		}
 
 		while (true) {
-			String candidate = "SIM-" + System.nanoTime() + "-" + random.nextInt(10000);
+			String candidate = "SIM-" + System.nanoTime() + "-" + randomInt(10000);
 			if (isPlateAvailable(candidate)) return candidate;
 		}
 	}
@@ -181,16 +174,114 @@ public class SimulationService implements Runnable {
 	/** Notifies the parking listener when the simulation changes the lot. */
 	private void notifyParkingStatusChanged(String message) {
 		if (parkingStatusChangeListener != null) {
-			parkingStatusChangeListener.parkingStatusChanged(message);
+			notifyParkingListener(message);
 		}
 	}
 
 	/** Checks that a simulated plate is not already in use. */
 	private boolean isPlateAvailable(String plate) {
-		if (vehicleDAO != null && vehicleDAO.findByPlate(plate) != null) return false;
+		if (plateExistsInDatabase(plate)) return false;
 		for (Vehicle vehicle : simulatedVehicles) {
 			if (plate.equalsIgnoreCase(vehicle.getLicensePlate())) return false;
 		}
 		return true;
+	}
+
+	/** Sleeps until the next simulation step. */
+	private void sleepBeforeNextStep() throws InterruptedException {
+		int maxDelay = Math.max(1, getSimulatedVehicleDelay());
+		int delay = randomInt(maxDelay) + 1;
+		Thread.sleep(delay * 1000L);
+	}
+
+	/** Gets the configured maximum simulated vehicle delay. */
+	private int getSimulatedVehicleDelay() {
+		return config.getSimulatedVehicleDelay();
+	}
+
+	/** Creates the simulation thread. */
+	private void createSimulationThread() {
+		simulationThread = new Thread(this);
+	}
+
+	/** Starts the simulation thread. */
+	private void startSimulationThread() {
+		simulationThread.start();
+	}
+
+	/** Interrupts the simulation thread if it exists. */
+	private void interruptSimulationThread() {
+		if (simulationThread != null) simulationThread.interrupt();
+	}
+
+	/** Decides whether the next simulated action should be an entry. */
+	private boolean shouldSimulateEntry(double entryProbability) {
+		return random.nextDouble() < entryProbability;
+	}
+
+	/** Chooses a random vehicle type for simulated entry. */
+	private VehicleType chooseRandomVehicleType() {
+		VehicleType[] types = VehicleType.values();
+		return types[randomInt(types.length)];
+	}
+
+	/** Finds available spaces through the parking service. */
+	private List<ParkingSpace> findAvailableSpaces(VehicleType type) {
+		return parkingService.findAvailableSpaces(type);
+	}
+
+	/** Handles simulated vehicle entry through the parking service. */
+	private ParkingSpace handleVehicleEntry(String plate, VehicleType type) {
+		return parkingService.handleVehicleEntry(plate, type);
+	}
+
+	/** Handles simulated vehicle exit through the parking service. */
+	private void handleVehicleExit(String plate) {
+		parkingService.handleVehicleExit(plate);
+	}
+
+	/** Adds a vehicle to the simulated vehicle list. */
+	private void addSimulatedVehicle(Vehicle vehicle) {
+		simulatedVehicles.add(vehicle);
+	}
+
+	/** Checks whether there are no simulated vehicles parked. */
+	private boolean hasNoSimulatedVehicles() {
+		return simulatedVehicles.isEmpty();
+	}
+
+	/** Chooses one parked simulated vehicle index. */
+	private int chooseRandomSimulatedVehicleIndex() {
+		return randomInt(simulatedVehicles.size());
+	}
+
+	/** Gets a simulated vehicle by index. */
+	private Vehicle getSimulatedVehicle(int index) {
+		return simulatedVehicles.get(index);
+	}
+
+	/** Removes a simulated vehicle by index. */
+	private void removeSimulatedVehicle(int index) {
+		simulatedVehicles.remove(index);
+	}
+
+	/** Loads every parking space through the parking service. */
+	private List<ParkingSpace> loadAllSpaces() {
+		return parkingService.getAllSpaces();
+	}
+
+	/** Gets a random integer below the given limit. */
+	private int randomInt(int limit) {
+		return random.nextInt(limit);
+	}
+
+	/** Notifies the listener about a parking status change. */
+	private void notifyParkingListener(String message) {
+		parkingStatusChangeListener.parkingStatusChanged(message);
+	}
+
+	/** Checks whether a plate already exists in persistence. */
+	private boolean plateExistsInDatabase(String plate) {
+		return vehicleDAO != null && vehicleDAO.findByPlate(plate) != null;
 	}
 }

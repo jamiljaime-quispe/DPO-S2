@@ -35,7 +35,7 @@ public class StatisticsService {
 	 * @return count of occupied spaces
 	 */
 	public int calculateCurrentOccupancy() {
-		List<ParkingSpace> spaces = parkingSpaceDAO.findAll();
+		List<ParkingSpace> spaces = loadParkingSpaces();
 		int count = 0;
 		for (ParkingSpace space : spaces) {
 			if (space.isOccupied()) count++;
@@ -49,8 +49,8 @@ public class StatisticsService {
 	 */
 	public void recordOccupancy() {
 		int count = calculateCurrentOccupancy();
-		occupancyDAO.saveRecord(LocalDateTime.now(), count);
-		occupancyTracker.recordOccupancy(count);
+		saveOccupancyRecord(count);
+		recordOccupancyInMemory(count);
 	}
 
 	/**
@@ -58,6 +58,26 @@ public class StatisticsService {
 	 * @return ordered list of occupancy counts (oldest first)
 	 */
 	public List<Integer> getLastHourData() {
+		return loadLastHourOccupancyData();
+	}
+
+	/** Loads all parking spaces from persistence. */
+	private List<ParkingSpace> loadParkingSpaces() {
+		return parkingSpaceDAO.findAll();
+	}
+
+	/** Saves one occupancy count in persistence. */
+	private void saveOccupancyRecord(int count) {
+		occupancyDAO.saveRecord(LocalDateTime.now(), count);
+	}
+
+	/** Stores one occupancy count in the in-memory tracker. */
+	private void recordOccupancyInMemory(int count) {
+		occupancyTracker.recordOccupancy(count);
+	}
+
+	/** Loads the occupancy data recorded during the last hour. */
+	private List<Integer> loadLastHourOccupancyData() {
 		return occupancyDAO.getLastHourData();
 	}
 }

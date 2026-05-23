@@ -59,11 +59,11 @@ public class AuthController {
     /** Starts the login process using the data entered in the login view. */
     public void handleLogin() {
         // Grab data from view on EDT
-        String id = loginView.getUsernameOrEmail();
-        String password = loginView.getPassword();
+        String id = getLoginIdentifier();
+        String password = getLoginPassword();
 
         // Provide UI feedback
-        loginView.setLoadingState(true);
+        setLoginLoading(true);
 
         // Execute background task
         createLoginWorker(id, password).execute();
@@ -77,21 +77,20 @@ public class AuthController {
             /** Checks credentials away from the EDT. */
             @Override
             protected Integer doInBackground() throws Exception {
-                int result = userService.authenticate(id, password);
+                int result = authenticateUser(id, password);
 
                 // Admin: verify password against config.json (UserService skips it by design)
-                if (result == 1 && configService != null) {
-                    String adminPass = configService.getAdminPassword();
+                if (result == 1 && hasConfigService()) {
+                    String adminPass = getConfiguredAdminPassword();
                     if (adminPass != null && !password.equals(adminPass)) {
-                        userService.clearSession();
+                        clearUserSession();
                         return 0;
                     }
                 }
 
                 // Regular user: collect unread cancellation notifications
-                if (result == 2 && reservationService != null) {
-                    pendingNotifications = reservationService.getCancelledByAdminNotNotified(
-                            userService.getLastLoggedInUserId());
+                if (result == 2 && hasReservationService()) {
+                    pendingNotifications = loadPendingAdminCancellationNotifications();
                 }
 
                 return result;
@@ -102,21 +101,21 @@ public class AuthController {
             protected void done() {
                 try {
                     int success = get();
-                    loginView.setLoadingState(false);
+                    setLoginLoading(false);
 
                     if (success == 1 || success == 2) {
                         loginProcedure(success);
                         for (Reservation r : pendingNotifications) {
-                            mainMenuView.showWarning("Reservation Cancelled", buildAdminCancellationMessage(r));
-                            reservationService.markNotified(r);
+                            showAdminCancellationWarning(r);
+                            markReservationNotified(r);
                         }
                     } else {
-                        loginView.showError("Error", "Invalid credentials");
+                        showLoginError("Error", "Invalid credentials");
                     }
                 } catch (InterruptedException | ExecutionException e) {
-                    loginView.setLoadingState(false);
-                    LOGGER.log(Level.WARNING, "Login failed unexpectedly.", e);
-                    loginView.showError("Error", "Login failed: " + e.getMessage());
+                    setLoginLoading(false);
+                    logLoginFailure(e);
+                    showLoginError("Error", "Login failed: " + e.getMessage());
                 }
             }
         };
@@ -125,16 +124,14 @@ public class AuthController {
     /** Switches from the login window to the main menu. */
     private void loginProcedure(int mode) {
         // 1. Hide the current window
-        loginView.setVisible(false);
-        loginView.dispose(); // Destroys the login window to free memory
+        hideLoginView();
+        disposeLoginView(); // Destroys the login window to free memory
 
         // 2. Configure the Main Menu BEFORE showing it
-        mainMenuView.setMode(mode, userService.getLastLoggedInUsername());
+        configureMainMenu(mode);
 
         // 3. Open the new window
-        SwingUtilities.invokeLater(() -> {
-            mainMenuView.setVisible(true);
-        });
+        showMainMenuLater();
 
         LOGGER.info("Switching to Main Menu.");
         LOGGER.info("Login success.");
@@ -145,13 +142,13 @@ public class AuthController {
         LOGGER.info("Signup clicked.");
 
         // Disable multiple spamming presses
-        loginView.setLoadingState(true);
+        setLoginLoading(true);
 
         // 1. Hide the login window
-        loginView.setVisible(false);
+        hideLoginView();
 
         // 2. Open the sign up page
-        signupView.setVisible(true);
+        showSignupView();
     }
 
     /** Logs out the current user and returns to the login window. */
@@ -159,31 +156,31 @@ public class AuthController {
         LOGGER.info("Logging out.");
 
         // 1. Clear session state from memory
-        userService.clearSession();
+        clearUserSession();
 
         // 2. Reset and hide the Main Menu
-        mainMenuView.resetDisplayedContent();
-        mainMenuView.setVisible(false);
+        resetMainMenuContent();
+        hideMainMenuView();
 
         // 2. Clear the old login data for security reasons
-        loginView.clearFields();
+        clearLoginFields();
 
         // 3. Reset the Login View (just in case it was left in a "Connecting..." state)
-        loginView.setLoadingState(false);
+        setLoginLoading(false);
 
         // 4. Show the Login View
-        loginView.setVisible(true);
+        showLoginView();
     }
 
     /** Starts account deletion after the user confirms the action. */
     public void handleDeleteAccount() {
-        if (!mainMenuView.confirmDeleteAccount()) return;
+        if (!confirmDeleteAccount()) return;
 
         new SwingWorker<Void, Void>() {
             /** Deletes the current account away from the EDT. */
             @Override
             protected Void doInBackground() {
-                userService.deleteCurrentUser();
+                deleteCurrentUser();
                 return null;
             }
 
@@ -192,11 +189,11 @@ public class AuthController {
             protected void done() {
                 try {
                     get();
-                    mainMenuView.showInfo("Account Deleted", "Your account has been deleted.");
+                    showMainInfo("Account Deleted", "Your account has been deleted.");
                     logout();
                 } catch (InterruptedException | ExecutionException e) {
-                    LOGGER.log(Level.WARNING, "Account deletion failed.", e);
-                    mainMenuView.showError("Account Deletion", "Could not delete account: " + e.getMessage());
+                    logAccountDeletionFailure(e);
+                    showMainError("Account Deletion", "Could not delete account: " + e.getMessage());
                 }
             }
         }.execute();
@@ -251,55 +248,55 @@ public class AuthController {
     /** Returns from the signup window to the login window. */
     public void handleBackToLogin() {
         // 1. Clear the fields so it's clean if they come back
-        signupView.clearForm();
+        clearSignupForm();
 
         // 2. Hide sign up page
-        signupView.setVisible(false);
+        hideSignupView();
 
         // 3. Force the login view to reset its buttons and cursor
-        loginView.setLoadingState(false);
+        setLoginLoading(false);
 
         // 4. Show login window
-        loginView.setVisible(true);
+        showLoginView();
     }
 
     /** Validates the signup form and starts account creation. */
     public void handleRegistrationSubmission() {
         // 1. Grab the data
-        String username = signupView.getUsername();
-        String email = signupView.getEmail();
-        String password = signupView.getPassword();
-        String confirmPassword = signupView.getConfirmPassword();
+        String username = getSignupUsername();
+        String email = getSignupEmail();
+        String password = getSignupPassword();
+        String confirmPassword = getSignupConfirmPassword();
 
         // 2. The "Everything" Check
         // If ANY of these are empty, show one message and stop.
         if (username.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
-            signupView.showError("Input Error", "No fields can be left empty.");
+            showSignupError("Input Error", "No fields can be left empty.");
             return;
         }
 
         // 3. Password match check
-        if (!Objects.equals(password, confirmPassword)) {
-            signupView.showError("Input Error", "Passwords do not match.");
+        if (!passwordsMatch(password, confirmPassword)) {
+            showSignupError("Input Error", "Passwords do not match.");
             return;
         }
 
         // 4. Password policy check
-        if (!userService.validatePassword(password)) {
-            signupView.showError("Weak Password",
+        if (!isPasswordValid(password)) {
+            showSignupError("Weak Password",
                     "Password must be at least 8 characters and include\nan uppercase letter, a lowercase letter, and a digit.\nExample: Test1234");
             return;
         }
 
         // 5. Email format check
-        if (!userService.isEmailValid(email)) {
-            signupView.showError("Invalid Email", "Please enter a valid email address.");
+        if (!isEmailValid(email)) {
+            showSignupError("Invalid Email", "Please enter a valid email address.");
             return;
         }
 
         // 6. If the code gets here, we are good to go!
         LOGGER.info("Validation passed. Starting registration.");
-        signupView.setLoadingState(true);
+        setSignupLoading(true);
         createRegistrationWorker(username, email, password).execute();
     }
 
@@ -309,33 +306,238 @@ public class AuthController {
             /** Creates the account and authenticates it away from the EDT. */
             @Override
             protected Integer doInBackground() throws Exception {
-                boolean registered = userService.register(username, email, password);
+                boolean registered = registerUser(username, email, password);
                 if (!registered) {
                     return 0;
                 }
 
-                return userService.authenticate(username, password);
+                return authenticateUser(username, password);
             }
 
             /** Opens the main menu or reports registration errors. */
             @Override
             protected void done() {
-                signupView.setLoadingState(false);
+                setSignupLoading(false);
                 try {
                     int mode = get();
                     if (mode == 2) {
-                        signupView.clearForm();
-                        signupView.setVisible(false);
-                        loginView.setLoadingState(false);
+                        clearSignupForm();
+                        hideSignupView();
+                        setLoginLoading(false);
                         loginProcedure(mode);
                     } else {
-                        signupView.showError("Registration Failed", "Username or email already in use.");
+                        showSignupError("Registration Failed", "Username or email already in use.");
                     }
                 } catch (Exception e) {
-                    signupView.showError("Error", "Registration failed: " + e.getMessage());
-                    LOGGER.log(Level.WARNING, "Registration failed unexpectedly.", e);
+                    showSignupError("Error", "Registration failed: " + e.getMessage());
+                    logRegistrationFailure(e);
                 }
             }
         };
+    }
+
+    /** Gets the login identifier entered by the user. */
+    private String getLoginIdentifier() {
+        return loginView.getUsernameOrEmail();
+    }
+
+    /** Gets the login password entered by the user. */
+    private String getLoginPassword() {
+        return loginView.getPassword();
+    }
+
+    /** Sets the login view loading state. */
+    private void setLoginLoading(boolean loading) {
+        loginView.setLoadingState(loading);
+    }
+
+    /** Authenticates a user through the user service. */
+    private int authenticateUser(String id, String password) {
+        return userService.authenticate(id, password);
+    }
+
+    /** Checks whether configuration is available. */
+    private boolean hasConfigService() {
+        return configService != null;
+    }
+
+    /** Gets the configured admin password. */
+    private String getConfiguredAdminPassword() {
+        return configService.getAdminPassword();
+    }
+
+    /** Clears the logged-in user session. */
+    private void clearUserSession() {
+        userService.clearSession();
+    }
+
+    /** Checks whether reservation notifications are available. */
+    private boolean hasReservationService() {
+        return reservationService != null;
+    }
+
+    /** Loads pending admin cancellation notifications for the current user. */
+    private List<Reservation> loadPendingAdminCancellationNotifications() {
+        return reservationService.getCancelledByAdminNotNotified(getCurrentUserId());
+    }
+
+    /** Gets the current logged-in user ID. */
+    private int getCurrentUserId() {
+        return userService.getLastLoggedInUserId();
+    }
+
+    /** Shows one admin cancellation warning. */
+    private void showAdminCancellationWarning(Reservation reservation) {
+        mainMenuView.showWarning("Reservation Cancelled", buildAdminCancellationMessage(reservation));
+    }
+
+    /** Marks a reservation notification as shown. */
+    private void markReservationNotified(Reservation reservation) {
+        reservationService.markNotified(reservation);
+    }
+
+    /** Shows an error in the login view. */
+    private void showLoginError(String title, String message) {
+        loginView.showError(title, message);
+    }
+
+    /** Logs a login failure. */
+    private void logLoginFailure(Exception e) {
+        LOGGER.log(Level.WARNING, "Login failed unexpectedly.", e);
+    }
+
+    /** Hides the login view. */
+    private void hideLoginView() {
+        loginView.setVisible(false);
+    }
+
+    /** Disposes the login view. */
+    private void disposeLoginView() {
+        loginView.dispose();
+    }
+
+    /** Configures the main menu for the logged-in user. */
+    private void configureMainMenu(int mode) {
+        mainMenuView.setMode(mode, userService.getLastLoggedInUsername());
+    }
+
+    /** Shows the main menu on the EDT. */
+    private void showMainMenuLater() {
+        SwingUtilities.invokeLater(() -> mainMenuView.setVisible(true));
+    }
+
+    /** Shows the signup view. */
+    private void showSignupView() {
+        signupView.setVisible(true);
+    }
+
+    /** Resets the main menu content. */
+    private void resetMainMenuContent() {
+        mainMenuView.resetDisplayedContent();
+    }
+
+    /** Hides the main menu view. */
+    private void hideMainMenuView() {
+        mainMenuView.setVisible(false);
+    }
+
+    /** Clears fields in the login view. */
+    private void clearLoginFields() {
+        loginView.clearFields();
+    }
+
+    /** Shows the login view. */
+    private void showLoginView() {
+        loginView.setVisible(true);
+    }
+
+    /** Asks the user to confirm account deletion. */
+    private boolean confirmDeleteAccount() {
+        return mainMenuView.confirmDeleteAccount();
+    }
+
+    /** Deletes the current user account through the user service. */
+    private void deleteCurrentUser() {
+        userService.deleteCurrentUser();
+    }
+
+    /** Shows an informational message in the main menu. */
+    private void showMainInfo(String title, String message) {
+        mainMenuView.showInfo(title, message);
+    }
+
+    /** Shows an error in the main menu. */
+    private void showMainError(String title, String message) {
+        mainMenuView.showError(title, message);
+    }
+
+    /** Logs an account deletion failure. */
+    private void logAccountDeletionFailure(Exception e) {
+        LOGGER.log(Level.WARNING, "Account deletion failed.", e);
+    }
+
+    /** Clears the signup form. */
+    private void clearSignupForm() {
+        signupView.clearForm();
+    }
+
+    /** Hides the signup view. */
+    private void hideSignupView() {
+        signupView.setVisible(false);
+    }
+
+    /** Gets the username entered in the signup form. */
+    private String getSignupUsername() {
+        return signupView.getUsername();
+    }
+
+    /** Gets the email entered in the signup form. */
+    private String getSignupEmail() {
+        return signupView.getEmail();
+    }
+
+    /** Gets the password entered in the signup form. */
+    private String getSignupPassword() {
+        return signupView.getPassword();
+    }
+
+    /** Gets the repeated password entered in the signup form. */
+    private String getSignupConfirmPassword() {
+        return signupView.getConfirmPassword();
+    }
+
+    /** Shows an error in the signup view. */
+    private void showSignupError(String title, String message) {
+        signupView.showError(title, message);
+    }
+
+    /** Checks whether both signup passwords match. */
+    private boolean passwordsMatch(String password, String confirmPassword) {
+        return Objects.equals(password, confirmPassword);
+    }
+
+    /** Checks the password policy through the user service. */
+    private boolean isPasswordValid(String password) {
+        return userService.validatePassword(password);
+    }
+
+    /** Checks email format through the user service. */
+    private boolean isEmailValid(String email) {
+        return userService.isEmailValid(email);
+    }
+
+    /** Sets the signup view loading state. */
+    private void setSignupLoading(boolean loading) {
+        signupView.setLoadingState(loading);
+    }
+
+    /** Registers a user through the user service. */
+    private boolean registerUser(String username, String email, String password) {
+        return userService.register(username, email, password);
+    }
+
+    /** Logs a registration failure. */
+    private void logRegistrationFailure(Exception e) {
+        LOGGER.log(Level.WARNING, "Registration failed unexpectedly.", e);
     }
 }

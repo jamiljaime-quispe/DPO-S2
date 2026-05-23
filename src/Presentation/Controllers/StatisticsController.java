@@ -36,16 +36,16 @@ public class StatisticsController {
             /** Loads chart values away from the EDT. */
             @Override
             protected List<Integer> doInBackground() {
-                return statisticsService.getLastHourData();
+                return loadLastHourData();
             }
 
             /** Updates the chart after data has loaded. */
             @Override
             protected void done() {
                 try {
-                    chartView.updateChart(get());
+                    updateChartWith(get());
                 } catch (InterruptedException | ExecutionException e) {
-                    LOGGER.log(Level.WARNING, "Failed to load occupancy chart data.", e);
+                    logChartLoadFailure(e);
                 }
             }
         }.execute();
@@ -58,16 +58,52 @@ public class StatisticsController {
 
     /** Starts automatic chart refresh. */
     public void startTracking() {
-        if (refreshTimer != null && refreshTimer.isRunning())
+        if (isRefreshTimerRunning())
             return;
         loadChartData();
-        refreshTimer = new Timer(REFRESH_INTERVAL_MS, e -> refreshChart());
-        refreshTimer.start();
+        createRefreshTimer();
+        startRefreshTimer();
     }
 
     /** Stops automatic chart refresh. */
     public void stopTracking() {
-        if (refreshTimer != null)
+        stopRefreshTimer();
+    }
+
+    /** Loads occupancy values through the statistics service. */
+    private List<Integer> loadLastHourData() {
+        return statisticsService.getLastHourData();
+    }
+
+    /** Sends loaded chart data to the view. */
+    private void updateChartWith(List<Integer> data) {
+        chartView.updateChart(data);
+    }
+
+    /** Logs a chart loading error. */
+    private void logChartLoadFailure(Exception e) {
+        LOGGER.log(Level.WARNING, "Failed to load occupancy chart data.", e);
+    }
+
+    /** Checks whether the refresh timer is already active. */
+    private boolean isRefreshTimerRunning() {
+        return refreshTimer != null && refreshTimer.isRunning();
+    }
+
+    /** Creates the timer that refreshes the chart. */
+    private void createRefreshTimer() {
+        refreshTimer = new Timer(REFRESH_INTERVAL_MS, e -> refreshChart());
+    }
+
+    /** Starts the refresh timer. */
+    private void startRefreshTimer() {
+        refreshTimer.start();
+    }
+
+    /** Stops the refresh timer if it exists. */
+    private void stopRefreshTimer() {
+        if (refreshTimer != null) {
             refreshTimer.stop();
+        }
     }
 }

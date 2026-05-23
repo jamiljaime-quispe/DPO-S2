@@ -46,7 +46,7 @@ public class AdminService {
 			try {
 				beginTransaction();
 
-				ParkingSpace space = parkingService.findByCode(spaceCode);
+				ParkingSpace space = findParkingSpace(spaceCode);
 				if (space == null) {
 					throw new IllegalArgumentException("Space not found: " + spaceCode);
 				}
@@ -56,7 +56,7 @@ public class AdminService {
 				}
 
 				reassignOrCancelReservationInTransaction(spaceCode);
-				if (!parkingService.deleteParkingSpace(spaceCode)) {
+				if (!deleteParkingSpaceThroughService(spaceCode)) {
 					throw new IllegalStateException("Could not delete space \"" + spaceCode + "\".");
 				}
 
@@ -111,7 +111,7 @@ public class AdminService {
 			try {
 				beginTransaction();
 
-				Reservation reservation = reservationDAO.findById(reservationId);
+				Reservation reservation = findReservationById(reservationId);
 				if (reservation != null && reservation.isActive()) {
 					cancelReservationInTransaction(reservation);
 				}
@@ -137,7 +137,7 @@ public class AdminService {
 			try {
 				beginTransaction();
 
-				Reservation reservation = reservationDAO.findByPlate(plate);
+				Reservation reservation = findReservationByPlate(plate);
 				if (reservation == null || !reservation.isActive()) {
 					commitTransaction();
 					return false;
@@ -155,13 +155,13 @@ public class AdminService {
 
 	/** Gets the current status of every parking space. */
 	public List<ParkingSpace> getFullParkingStatus() {
-		return parkingService.getParkingStatus();
+		return loadParkingStatus();
 	}
 
 	/** Reassigns or cancels a reservation while the caller owns the transaction. */
 	private void reassignOrCancelReservationInTransaction(String spaceCode) {
 		Reservation target = null;
-		for (Reservation reservation : reservationDAO.findAll()) {
+		for (Reservation reservation : findAllReservations()) {
 			if (reservation.isActive()
 					&& reservation.getParkingSpace() != null
 					&& spaceCode.equals(reservation.getParkingSpace().getId())) {
@@ -178,7 +178,7 @@ public class AdminService {
 		}
 
 		List<ParkingSpace> alternatives = type != null
-				? parkingService.findAvailableSpaces(type)
+				? findAvailableSpaces(type)
 				: null;
 		ParkingSpace newSpace = findBestAlternativeSpace(alternatives, spaceCode, oldSpace);
 
@@ -193,7 +193,7 @@ public class AdminService {
 			target.cancel();
 		}
 
-		reservationDAO.update(target);
+		updateReservation(target);
 	}
 
 	/** Cancels a reservation while the caller owns the transaction. */
@@ -201,15 +201,16 @@ public class AdminService {
 		reservation.cancel();
 		reservation.setCancelledByAdmin(true);
 		reservation.setNotified(false);
-		reservationDAO.update(reservation);
+		updateReservation(reservation);
 
 		ParkingSpace space = reservation.getParkingSpace();
 		if (space != null) {
 			space.cancelReservation();
-			parkingService.updateParkingSpace(space);
+			updateParkingSpace(space);
 		}
 	}
 
+	/** Finds the best alternative parking space for a moved reservation. */
 	private ParkingSpace findBestAlternativeSpace(List<ParkingSpace> alternatives, String deletedCode,
 			ParkingSpace oldSpace) {
 		if (alternatives == null) return null;
@@ -230,6 +231,51 @@ public class AdminService {
 		}
 
 		return fallback;
+	}
+
+	/** Finds a parking space through the parking service. */
+	private ParkingSpace findParkingSpace(String spaceCode) {
+		return parkingService.findByCode(spaceCode);
+	}
+
+	/** Deletes a parking space through the parking service. */
+	private boolean deleteParkingSpaceThroughService(String spaceCode) {
+		return parkingService.deleteParkingSpace(spaceCode);
+	}
+
+	/** Finds a reservation by ID through persistence. */
+	private Reservation findReservationById(int reservationId) {
+		return reservationDAO.findById(reservationId);
+	}
+
+	/** Finds a reservation by license plate through persistence. */
+	private Reservation findReservationByPlate(String plate) {
+		return reservationDAO.findByPlate(plate);
+	}
+
+	/** Loads every parking space through the parking service. */
+	private List<ParkingSpace> loadParkingStatus() {
+		return parkingService.getParkingStatus();
+	}
+
+	/** Loads every reservation through persistence. */
+	private List<Reservation> findAllReservations() {
+		return reservationDAO.findAll();
+	}
+
+	/** Finds available spaces through the parking service. */
+	private List<ParkingSpace> findAvailableSpaces(VehicleType type) {
+		return parkingService.findAvailableSpaces(type);
+	}
+
+	/** Updates a reservation through persistence. */
+	private void updateReservation(Reservation reservation) {
+		reservationDAO.update(reservation);
+	}
+
+	/** Updates a parking space through the parking service. */
+	private void updateParkingSpace(ParkingSpace space) {
+		parkingService.updateParkingSpace(space);
 	}
 
 	/**

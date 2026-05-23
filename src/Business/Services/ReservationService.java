@@ -81,12 +81,12 @@ public class ReservationService {
 			try {
 				beginTransaction();
 
-				Reservation reservation = reservationDAO.findByPlate(plate);
+				Reservation reservation = findReservationByPlate(plate);
 				if (reservation == null || !reservation.isActive()) {
 					throw new IllegalArgumentException("No active reservation found for license plate " + plate + ".");
 				}
 
-				ParkingSpace newSpace = parkingSpaceDAO.findByCode(newSpaceCode);
+				ParkingSpace newSpace = findSpaceByCode(newSpaceCode);
 				String currentSpaceCode = reservation.getParkingSpace().getId();
 				validateSpaceCanReceiveReassignedBooking(newSpace, newSpaceCode, currentSpaceCode);
 				if (reservation.getVehicle() != null && reservation.getVehicle().getType() != newSpace.getVehicleType()) {
@@ -95,7 +95,7 @@ public class ReservationService {
 				}
 
 				reservation.setParkingSpace(newSpace);
-				reservationDAO.update(reservation);
+				updateReservationRecord(reservation);
 
 				commitTransaction();
 				return reservation;
@@ -118,7 +118,7 @@ public class ReservationService {
 			try {
 				beginTransaction();
 
-				Reservation reservation = reservationDAO.findById(reservationId);
+				Reservation reservation = findReservationById(reservationId);
 				if (reservation != null && reservation.isActive()) {
 					cancelReservationInTransaction(reservation);
 				}
@@ -143,7 +143,7 @@ public class ReservationService {
 			try {
 				beginTransaction();
 
-				Reservation reservation = reservationDAO.findByPlate(plate);
+				Reservation reservation = findReservationByPlate(plate);
 				if (reservation != null && reservation.isActive()) {
 					cancelReservationInTransaction(reservation);
 				}
@@ -170,7 +170,7 @@ public class ReservationService {
 			try {
 				beginTransaction();
 
-				Reservation reservation = reservationDAO.findByPlate(plate);
+				Reservation reservation = findReservationByPlate(plate);
 				if (reservation == null || !reservation.isActive() || reservation.getUser() == null) {
 					commitTransaction();
 					return false;
@@ -199,7 +199,7 @@ public class ReservationService {
 	 * @return list of reservations
 	 */
 	public List<Reservation> getReservationsByUser(int userId) {
-		return reservationDAO.findByUser(userId);
+		return findReservationsByUser(userId);
 	}
 
 	/**
@@ -209,7 +209,7 @@ public class ReservationService {
 	 * @return list of available spaces
 	 */
 	public List<ParkingSpace> getAvailableSpaces(VehicleType type) {
-		return parkingSpaceDAO.findAvailableByType(type);
+		return findAvailableSpacesByType(type);
 	}
 
 	/**
@@ -219,7 +219,7 @@ public class ReservationService {
 	 * @return list of pending notifications
 	 */
 	public List<Reservation> getCancelledByAdminNotNotified(int userId) {
-		List<Reservation> all = reservationDAO.findByUser(userId);
+		List<Reservation> all = findReservationsByUser(userId);
 		List<Reservation> pending = new ArrayList<>();
 		for (Reservation reservation : all) {
 			if (reservation.isCancelledByAdmin() && !reservation.isNotified()) {
@@ -236,7 +236,7 @@ public class ReservationService {
 	 */
 	public void markNotified(Reservation reservation) {
 		reservation.setNotified(true);
-		reservationDAO.update(reservation);
+		updateReservationRecord(reservation);
 	}
 
 	/**
@@ -246,7 +246,7 @@ public class ReservationService {
 	 * @return true if the space exists and is available
 	 */
 	public boolean isSpaceAvailable(String spaceCode) {
-		ParkingSpace space = parkingSpaceDAO.findByCode(spaceCode);
+		ParkingSpace space = findSpaceByCode(spaceCode);
 		return space != null && space.isAvailable();
 	}
 
@@ -256,14 +256,14 @@ public class ReservationService {
 			throw new IllegalArgumentException("No logged-in user was found.");
 		}
 
-		ParkingSpace space = parkingSpaceDAO.findByCode(spaceCode);
+		ParkingSpace space = findSpaceByCode(spaceCode);
 		validateSpaceCanBeBooked(space, spaceCode);
 		if (space.getVehicleType() != type) {
 			throw new IllegalArgumentException("Parking space " + spaceCode
 					+ " only accepts " + space.getVehicleType().name() + " vehicles.");
 		}
 
-		Reservation activeReservation = reservationDAO.findByPlate(plate);
+		Reservation activeReservation = findReservationByPlate(plate);
 		if (activeReservation != null && activeReservation.isActive()) {
 			throw new IllegalArgumentException("License plate " + plate + " already has an active reservation.");
 		}
@@ -274,10 +274,10 @@ public class ReservationService {
 					+ " is already parked in space " + occupiedSpace.getId() + ".");
 		}
 
-		Vehicle vehicle = vehicleDAO.findByPlate(plate);
+		Vehicle vehicle = findVehicleByPlate(plate);
 		if (vehicle == null) {
 			vehicle = new Vehicle(plate, type, String.valueOf(userId), false);
-			vehicleDAO.save(vehicle);
+			saveVehicleRecord(vehicle);
 		} else if (!userOwnsVehicle(userId, plate)) {
 			throw new IllegalArgumentException("License plate " + plate
 					+ " is registered to another user.");
@@ -288,19 +288,19 @@ public class ReservationService {
 
 		Reservation reservation = new Reservation(0, null, vehicle, space, LocalDateTime.now());
 		space.reserve(reservation);
-		reservationDAO.save(reservation);
+		saveReservationRecord(reservation);
 		return reservation;
 	}
 
 	/** Cancels a reservation while the caller owns the transaction. */
 	private void cancelReservationInTransaction(Reservation reservation) {
 		reservation.cancel();
-		reservationDAO.update(reservation);
+		updateReservationRecord(reservation);
 
 		ParkingSpace space = reservation.getParkingSpace();
 		if (space != null) {
 			space.cancelReservation();
-			parkingSpaceDAO.update(space);
+			updateParkingSpaceRecord(space);
 		}
 	}
 
@@ -341,7 +341,7 @@ public class ReservationService {
 
 	/** Checks whether a plate belongs to the given user. */
 	private boolean userOwnsVehicle(int userId, String plate) {
-		List<Vehicle> vehicles = vehicleDAO.findByUser(userId);
+		List<Vehicle> vehicles = findVehiclesByUser(userId);
 		for (Vehicle vehicle : vehicles) {
 			if (plate.equalsIgnoreCase(vehicle.getLicensePlate())) {
 				return true;
@@ -352,7 +352,7 @@ public class ReservationService {
 
 	/** Finds where a license plate is currently parked, if it is parked. */
 	private ParkingSpace findOccupiedSpaceByPlate(String plate) {
-		List<ParkingSpace> spaces = parkingSpaceDAO.findAll();
+		List<ParkingSpace> spaces = loadAllSpaces();
 		for (ParkingSpace space : spaces) {
 			if (space.isOccupied()
 					&& space.getParkedVehicle() != null
@@ -361,6 +361,66 @@ public class ReservationService {
 			}
 		}
 		return null;
+	}
+
+	/** Finds a reservation by license plate through persistence. */
+	private Reservation findReservationByPlate(String plate) {
+		return reservationDAO.findByPlate(plate);
+	}
+
+	/** Finds a reservation by ID through persistence. */
+	private Reservation findReservationById(int reservationId) {
+		return reservationDAO.findById(reservationId);
+	}
+
+	/** Finds reservations belonging to a user through persistence. */
+	private List<Reservation> findReservationsByUser(int userId) {
+		return reservationDAO.findByUser(userId);
+	}
+
+	/** Saves a reservation through persistence. */
+	private void saveReservationRecord(Reservation reservation) {
+		reservationDAO.save(reservation);
+	}
+
+	/** Updates a reservation through persistence. */
+	private void updateReservationRecord(Reservation reservation) {
+		reservationDAO.update(reservation);
+	}
+
+	/** Finds a parking space through persistence. */
+	private ParkingSpace findSpaceByCode(String spaceCode) {
+		return parkingSpaceDAO.findByCode(spaceCode);
+	}
+
+	/** Finds available parking spaces through persistence. */
+	private List<ParkingSpace> findAvailableSpacesByType(VehicleType type) {
+		return parkingSpaceDAO.findAvailableByType(type);
+	}
+
+	/** Loads every parking space through persistence. */
+	private List<ParkingSpace> loadAllSpaces() {
+		return parkingSpaceDAO.findAll();
+	}
+
+	/** Updates a parking space through persistence. */
+	private void updateParkingSpaceRecord(ParkingSpace space) {
+		parkingSpaceDAO.update(space);
+	}
+
+	/** Finds a vehicle by license plate through persistence. */
+	private Vehicle findVehicleByPlate(String plate) {
+		return vehicleDAO.findByPlate(plate);
+	}
+
+	/** Saves a vehicle through persistence. */
+	private void saveVehicleRecord(Vehicle vehicle) {
+		vehicleDAO.save(vehicle);
+	}
+
+	/** Finds vehicles belonging to a user through persistence. */
+	private List<Vehicle> findVehiclesByUser(int userId) {
+		return vehicleDAO.findByUser(userId);
 	}
 
 	/**

@@ -42,7 +42,7 @@ public class ParkingService {
 
 	/** Gets all parking spaces. */
 	public List<ParkingSpace> getAllSpaces() {
-		return parkingSpaceDAO.findAll();
+		return loadAllSpaces();
 	}
 
 	/**
@@ -52,7 +52,7 @@ public class ParkingService {
 	 * @return matching space, or null if not found
 	 */
 	public ParkingSpace findByCode(String code) {
-		return parkingSpaceDAO.findByCode(code);
+		return findSpaceByCode(code);
 	}
 
 	/**
@@ -61,7 +61,7 @@ public class ParkingService {
 	 * @param space space with updated details
 	 */
 	public void updateParkingSpaceDetails(ParkingSpace space) {
-		ParkingSpace existing = parkingSpaceDAO.findByCode(space.getId());
+		ParkingSpace existing = findSpaceByCode(space.getId());
 		if (existing == null) {
 			throw new IllegalArgumentException("Space not found: " + space.getId());
 		}
@@ -74,7 +74,7 @@ public class ParkingService {
 			throw new IllegalArgumentException("Vehicle type cannot be edited because the space is reserved.");
 		}
 
-		parkingSpaceDAO.updateDetails(space);
+		updateParkingSpaceDetailsRecord(space);
 	}
 
 	/**
@@ -89,7 +89,7 @@ public class ParkingService {
 
 		if (space.getId() == null || space.getId().isBlank()) {
 			space.setId(generateNextCodeForFloor(space.getFloor()));
-		} else if (parkingSpaceDAO.findByCode(space.getId()) != null) {
+		} else if (findSpaceByCode(space.getId()) != null) {
 			throw new IllegalArgumentException("Space code already exists: " + space.getId());
 		}
 
@@ -97,7 +97,7 @@ public class ParkingService {
 		space.setReserved(false);
 		space.setParkedVehicle(null);
 		space.cancelReservation();
-		parkingSpaceDAO.save(space);
+		saveParkingSpaceRecord(space);
 	}
 
 	/**
@@ -106,7 +106,7 @@ public class ParkingService {
 	 * @param space space with updated state
 	 */
 	public void updateParkingSpace(ParkingSpace space) {
-		parkingSpaceDAO.update(space);
+		updateParkingSpaceRecord(space);
 	}
 
 	/**
@@ -116,10 +116,10 @@ public class ParkingService {
 	 * @return true if the space was deleted
 	 */
 	public boolean deleteParkingSpace(String code) {
-		ParkingSpace space = parkingSpaceDAO.findByCode(code);
+		ParkingSpace space = findSpaceByCode(code);
 		if (space == null || space.isOccupied() || space.isReserved()) return false;
 
-		parkingSpaceDAO.delete(code);
+		deleteParkingSpaceRecord(code);
 		return true;
 	}
 
@@ -130,7 +130,7 @@ public class ParkingService {
 	 * @return available spaces
 	 */
 	public List<ParkingSpace> findAvailableSpaces(VehicleType type) {
-		return parkingSpaceDAO.findAvailableByType(type);
+		return findAvailableSpacesByType(type);
 	}
 
 	/**
@@ -142,7 +142,7 @@ public class ParkingService {
 	public Reservation findActiveReservationByPlate(String plate) {
 		if (plate == null || plate.isBlank()) return null;
 
-		Reservation reservation = reservationDAO.findByPlate(plate);
+		Reservation reservation = findReservationByPlate(plate);
 		if (reservation != null && reservation.isActive()) {
 			return reservation;
 		}
@@ -158,7 +158,7 @@ public class ParkingService {
 	public ParkingSpace findOccupiedSpaceByPlate(String plate) {
 		if (plate == null || plate.isBlank()) return null;
 
-		List<ParkingSpace> allSpaces = parkingSpaceDAO.findAll();
+		List<ParkingSpace> allSpaces = loadAllSpaces();
 		for (ParkingSpace space : allSpaces) {
 			if (space.isOccupied()
 					&& space.getParkedVehicle() != null
@@ -179,13 +179,13 @@ public class ParkingService {
 		List<ParkingSpace> parkedSpaces = new ArrayList<>();
 		if (userId <= 0) return parkedSpaces;
 
-		List<Vehicle> vehicles = vehicleDAO.findByUser(userId);
+		List<Vehicle> vehicles = findVehiclesByUser(userId);
 		Set<String> userPlates = new HashSet<>();
 		for (Vehicle vehicle : vehicles) {
 			userPlates.add(vehicle.getLicensePlate());
 		}
 
-		List<ParkingSpace> spaces = parkingSpaceDAO.findAll();
+		List<ParkingSpace> spaces = loadAllSpaces();
 		for (ParkingSpace space : spaces) {
 			if (space.isOccupied()
 					&& space.getParkedVehicle() != null
@@ -312,7 +312,7 @@ public class ParkingService {
 
 	/** Gets the current parking status. */
 	public List<ParkingSpace> getParkingStatus() {
-		return parkingSpaceDAO.findAll();
+		return loadAllSpaces();
 	}
 
 	/** Registers the user's vehicle if needed, then parks it in the same transaction. */
@@ -321,10 +321,10 @@ public class ParkingService {
 			throw new IllegalArgumentException("No logged-in user was found.");
 		}
 
-		Vehicle vehicle = vehicleDAO.findByPlate(plate);
+		Vehicle vehicle = findVehicleByPlate(plate);
 		if (vehicle == null) {
 			vehicle = new Vehicle(plate, type, String.valueOf(userId), false);
-			vehicleDAO.save(vehicle);
+			saveVehicleRecord(vehicle);
 		} else if (!userOwnsVehicle(userId, plate)) {
 			throw new IllegalArgumentException("License plate " + plate
 					+ " is registered to another user.");
@@ -335,7 +335,7 @@ public class ParkingService {
 
 	/** Parks a vehicle while the caller owns the transaction. */
 	private ParkingSpace handleVehicleEntryInTransaction(String plate, VehicleType type) {
-		Reservation reservation = reservationDAO.findByPlate(plate);
+		Reservation reservation = findReservationByPlate(plate);
 		if (reservation != null && reservation.isActive()) {
 			ParkingSpace reservedSpace = reservation.getParkingSpace();
 			if (reservedSpace != null) {
@@ -343,41 +343,41 @@ public class ParkingService {
 					throw new IllegalStateException("The reserved space is already occupied.");
 				}
 
-				Vehicle vehicle = vehicleDAO.findByPlate(plate);
+				Vehicle vehicle = findVehicleByPlate(plate);
 				if (vehicle == null) {
 					vehicle = new Vehicle(plate, type, null, false);
 				}
 
 				reservedSpace.occupy(vehicle);
-				parkingSpaceDAO.update(reservedSpace);
+				updateParkingSpaceRecord(reservedSpace);
 				return reservedSpace;
 			}
 		}
 
-		List<ParkingSpace> available = parkingSpaceDAO.findAvailableByType(type);
+		List<ParkingSpace> available = findAvailableSpacesByType(type);
 		if (available == null || available.isEmpty()) return null;
 
 		ParkingSpace space = available.get(0);
-		Vehicle vehicle = vehicleDAO.findByPlate(plate);
+		Vehicle vehicle = findVehicleByPlate(plate);
 		if (vehicle == null) {
 			vehicle = new Vehicle(plate, type, null, false);
 		}
 
 		space.occupy(vehicle);
-		parkingSpaceDAO.update(space);
+		updateParkingSpaceRecord(space);
 		return space;
 	}
 
 	/** Frees the space occupied by a plate while the caller owns the transaction. */
 	private void handleVehicleExitInTransaction(String plate) {
-		List<ParkingSpace> allSpaces = parkingSpaceDAO.findAll();
+		List<ParkingSpace> allSpaces = loadAllSpaces();
 		for (ParkingSpace space : allSpaces) {
 			if (space.isOccupied()
 					&& space.getParkedVehicle() != null
 					&& plate.equals(space.getParkedVehicle().getLicensePlate())) {
 				space.freeSpace();
 				deleteUsedReservationForPlate(plate, space);
-				parkingSpaceDAO.update(space);
+				updateParkingSpaceRecord(space);
 				return;
 			}
 		}
@@ -391,7 +391,7 @@ public class ParkingService {
 					&& plate.equals(space.getParkedVehicle().getLicensePlate())) {
 				space.freeSpace();
 				deleteUsedReservationForPlate(plate, space);
-				parkingSpaceDAO.update(space);
+				updateParkingSpaceRecord(space);
 				return space;
 			}
 		}
@@ -400,9 +400,9 @@ public class ParkingService {
 
 	/** Deletes the active reservation for a plate after the reserved vehicle leaves. */
 	private void deleteUsedReservationForPlate(String plate, ParkingSpace space) {
-		Reservation reservation = reservationDAO.findByPlate(plate);
+		Reservation reservation = findReservationByPlate(plate);
 		if (reservation != null && reservation.isActive()) {
-			reservationDAO.delete(reservation.getId());
+			deleteReservationRecord(reservation.getId());
 			if (space != null) {
 				space.cancelReservation();
 			}
@@ -411,7 +411,7 @@ public class ParkingService {
 
 	/** Checks whether a plate belongs to the given user. */
 	private boolean userOwnsVehicle(int userId, String plate) {
-		List<Vehicle> vehicles = vehicleDAO.findByUser(userId);
+		List<Vehicle> vehicles = findVehiclesByUser(userId);
 		for (Vehicle vehicle : vehicles) {
 			if (plate.equals(vehicle.getLicensePlate())) {
 				return true;
@@ -424,7 +424,7 @@ public class ParkingService {
 	private String generateNextCodeForFloor(int floor) {
 		String prefix = floorPrefix(floor) + "-";
 		TreeSet<Integer> used = new TreeSet<>();
-		for (ParkingSpace existing : parkingSpaceDAO.findAll()) {
+		for (ParkingSpace existing : loadAllSpaces()) {
 			String id = existing.getId();
 			if (id == null || !id.startsWith(prefix)) continue;
 			try {
@@ -442,6 +442,66 @@ public class ParkingService {
 	private String floorPrefix(int floor) {
 		int normalized = Math.max(0, floor - 1) % 26;
 		return String.valueOf((char) ('A' + normalized));
+	}
+
+	/** Loads every parking space through persistence. */
+	private List<ParkingSpace> loadAllSpaces() {
+		return parkingSpaceDAO.findAll();
+	}
+
+	/** Finds a parking space through persistence. */
+	private ParkingSpace findSpaceByCode(String code) {
+		return parkingSpaceDAO.findByCode(code);
+	}
+
+	/** Saves a parking space through persistence. */
+	private void saveParkingSpaceRecord(ParkingSpace space) {
+		parkingSpaceDAO.save(space);
+	}
+
+	/** Updates the current state of a parking space through persistence. */
+	private void updateParkingSpaceRecord(ParkingSpace space) {
+		parkingSpaceDAO.update(space);
+	}
+
+	/** Updates editable parking-space details through persistence. */
+	private void updateParkingSpaceDetailsRecord(ParkingSpace space) {
+		parkingSpaceDAO.updateDetails(space);
+	}
+
+	/** Deletes a parking space through persistence. */
+	private void deleteParkingSpaceRecord(String code) {
+		parkingSpaceDAO.delete(code);
+	}
+
+	/** Finds available parking spaces through persistence. */
+	private List<ParkingSpace> findAvailableSpacesByType(VehicleType type) {
+		return parkingSpaceDAO.findAvailableByType(type);
+	}
+
+	/** Finds a reservation by license plate through persistence. */
+	private Reservation findReservationByPlate(String plate) {
+		return reservationDAO.findByPlate(plate);
+	}
+
+	/** Deletes a reservation through persistence. */
+	private void deleteReservationRecord(int reservationId) {
+		reservationDAO.delete(reservationId);
+	}
+
+	/** Finds a vehicle by license plate through persistence. */
+	private Vehicle findVehicleByPlate(String plate) {
+		return vehicleDAO.findByPlate(plate);
+	}
+
+	/** Saves a vehicle through persistence. */
+	private void saveVehicleRecord(Vehicle vehicle) {
+		vehicleDAO.save(vehicle);
+	}
+
+	/** Finds vehicles belonging to a user through persistence. */
+	private List<Vehicle> findVehiclesByUser(int userId) {
+		return vehicleDAO.findByUser(userId);
 	}
 
 	/**

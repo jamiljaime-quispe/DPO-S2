@@ -22,32 +22,32 @@ public class ConfigService {
 		if (configDAO == null) {
 			throw new IllegalArgumentException("ConfigDAO is required.");
 		}
-		this.config = configDAO.loadConfig();
+		this.config = loadConfig(configDAO);
 		validateConfig();
 	}
 
 	/** Checks that all required configuration values are present. */
 	private void validateConfig() {
-		if (isBlank(config.getDbIP())) {
+		if (isBlank(getDbIP())) {
 			throw new IllegalStateException("config.json is missing dbIP.");
 		}
-		if (config.getDbPort() <= 0) {
+		if (getDbPort() <= 0) {
 			throw new IllegalStateException("config.json is missing dbPort.");
 		}
-		if (isBlank(config.getDbName())) {
+		if (isBlank(getDbName())) {
 			throw new IllegalStateException("config.json is missing dbName.");
 		}
-		if (isBlank(config.getDbUser())) {
+		if (isBlank(getDbUser())) {
 			throw new IllegalStateException("config.json is missing dbUser.");
 		}
-		if (config.getDbPassword() == null) {
-			config.setDbPassword("");
+		if (getDbPassword() == null) {
+			setDbPassword("");
 		}
-		if (isBlank(config.getAdminPassword())) {
+		if (isBlank(getAdminPasswordValue())) {
 			throw new IllegalStateException("config.json is missing adminPassword.");
 		}
-		if (config.getSimulatedVehicleDelay() <= 0) {
-			config.setSimulatedVehicleDelay(5);
+		if (getSimulatedVehicleDelay() <= 0) {
+			setSimulatedVehicleDelay(5);
 		}
 	}
 
@@ -63,11 +63,11 @@ public class ConfigService {
 	 */
 	public Map<String, String> getDatabaseConfig() {
 		Map<String, String> dbConfig = new HashMap<>();
-		dbConfig.put("ip", config.getDbIP());
-		dbConfig.put("port", String.valueOf(config.getDbPort()));
-		dbConfig.put("name", config.getDbName());
-		dbConfig.put("user", config.getDbUser());
-		dbConfig.put("password", config.getDbPassword());
+		dbConfig.put("ip", getDbIP());
+		dbConfig.put("port", String.valueOf(getDbPort()));
+		dbConfig.put("name", getDbName());
+		dbConfig.put("user", getDbUser());
+		dbConfig.put("password", getDbPassword());
 		return dbConfig;
 	}
 
@@ -77,7 +77,7 @@ public class ConfigService {
 	 * @return the admin password
 	 */
 	public String getAdminPassword() {
-		return config.getAdminPassword();
+		return getAdminPasswordValue();
 	}
 
 	/**
@@ -86,7 +86,7 @@ public class ConfigService {
 	 * @return the maximum delay between simulated vehicle events
 	 */
 	public int getSimulationDelay() {
-		return config.getSimulatedVehicleDelay();
+		return getSimulatedVehicleDelay();
 	}
 
 	/**
@@ -96,5 +96,55 @@ public class ConfigService {
 	 */
 	public Config getConfig() {
 		return config;
+	}
+
+	/** Loads configuration through the persistence layer. */
+	private Config loadConfig(ConfigDAO configDAO) {
+		return configDAO.loadConfig();
+	}
+
+	/** Gets the configured database IP. */
+	private String getDbIP() {
+		return config.getDbIP();
+	}
+
+	/** Gets the configured database port. */
+	private int getDbPort() {
+		return config.getDbPort();
+	}
+
+	/** Gets the configured database name. */
+	private String getDbName() {
+		return config.getDbName();
+	}
+
+	/** Gets the configured database user. */
+	private String getDbUser() {
+		return config.getDbUser();
+	}
+
+	/** Gets the configured database password. */
+	private String getDbPassword() {
+		return config.getDbPassword();
+	}
+
+	/** Sets the configured database password. */
+	private void setDbPassword(String password) {
+		config.setDbPassword(password);
+	}
+
+	/** Gets the configured admin password. */
+	private String getAdminPasswordValue() {
+		return config.getAdminPassword();
+	}
+
+	/** Gets the configured simulation delay. */
+	private int getSimulatedVehicleDelay() {
+		return config.getSimulatedVehicleDelay();
+	}
+
+	/** Sets the configured simulation delay. */
+	private void setSimulatedVehicleDelay(int delay) {
+		config.setSimulatedVehicleDelay(delay);
 	}
 }

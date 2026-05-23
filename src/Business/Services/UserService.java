@@ -57,14 +57,14 @@ public class UserService {
 			return null;
 
 		// Try by username first, then by email
-		User user = userDAO.findByUsername(id);
+		User user = findUserByUsername(id);
 		if (user == null) {
-			user = userDAO.findByEmail(id);
+			user = findUserByEmail(id);
 		}
 		if (user == null)
 			return null;
 		// Admin password is verified by AuthController against config.json, not here
-		if (!"admin".equals(user.getUsername()) && !PasswordUtil.verify(password, user.getPassword()))
+		if (!"admin".equals(user.getUsername()) && !passwordMatches(password, user.getPassword()))
 			return null;
 		return user;
 	}
@@ -88,8 +88,8 @@ public class UserService {
 		if (!validatePassword(password))
 			return null;
 
-		Client newUser = new Client(null, username, email, PasswordUtil.hash(password), "CLIENT", new ArrayList<>());
-		userDAO.save(newUser);
+		Client newUser = new Client(null, username, email, hashPassword(password), "CLIENT", new ArrayList<>());
+		saveUserRecord(newUser);
 		return newUser;
 	}
 
@@ -126,7 +126,7 @@ public class UserService {
 		if (email == null)
 			return false;
 		String regex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
-		return Pattern.matches(regex, email);
+		return matchesPattern(regex, email);
 	}
 
 	/**
@@ -138,7 +138,7 @@ public class UserService {
 	public boolean isUsernameAvailable(String username) {
 		if (username == null || username.isBlank())
 			return false;
-		return userDAO.findByUsername(username) == null;
+		return findUserByUsername(username) == null;
 	}
 
 	/**
@@ -150,7 +150,7 @@ public class UserService {
 	public boolean isEmailAvailable(String email) {
 		if (email == null || email.isBlank())
 			return false;
-		return userDAO.findByEmail(email) == null;
+		return findUserByEmail(email) == null;
 	}
 
 	/**
@@ -167,7 +167,7 @@ public class UserService {
 			try {
 				beginTransaction();
 				clearParkedVehiclesForUser(userId);
-				userDAO.delete(userId);
+				deleteUserRecord(userId);
 				commitTransaction();
 			} catch (RuntimeException e) {
 				rollbackTransaction();
@@ -180,7 +180,7 @@ public class UserService {
 	private void clearParkedVehiclesForUser(int userId) {
 		if (parkingSpaceDAO == null || userId <= 0) return;
 
-		List<Vehicle> vehicles = vehicleDAO.findByUser(userId);
+		List<Vehicle> vehicles = findVehiclesByUser(userId);
 		Set<String> plates = new HashSet<>();
 		for (Vehicle vehicle : vehicles) {
 			plates.add(vehicle.getLicensePlate());
@@ -188,13 +188,13 @@ public class UserService {
 
 		if (plates.isEmpty()) return;
 
-		List<ParkingSpace> spaces = parkingSpaceDAO.findAll();
+		List<ParkingSpace> spaces = loadAllParkingSpaces();
 		for (ParkingSpace space : spaces) {
 			if (space.isOccupied()
 					&& space.getParkedVehicle() != null
 					&& plates.contains(space.getParkedVehicle().getLicensePlate())) {
 				space.freeSpace();
-				parkingSpaceDAO.update(space);
+				updateParkingSpaceRecord(space);
 			}
 		}
 	}
@@ -206,7 +206,7 @@ public class UserService {
 	 * @return User, or null if not found
 	 */
 	public User getUserById(int userId) {
-		return userDAO.findById(userId);
+		return findUserById(userId);
 	}
 
 	/**
@@ -221,11 +221,11 @@ public class UserService {
 		synchronized (transactionLock()) {
 			try {
 				beginTransaction();
-				vehicleDAO.save(vehicle);
-				User user = userDAO.findById(userId);
+				saveVehicleRecord(vehicle);
+				User user = findUserById(userId);
 				if (user != null) {
 					user.addVehicle(vehicle);
-					userDAO.update(user);
+					updateUserRecord(user);
 				}
 				commitTransaction();
 			} catch (RuntimeException e) {
@@ -247,11 +247,11 @@ public class UserService {
 		synchronized (transactionLock()) {
 			try {
 				beginTransaction();
-				vehicleDAO.delete(plate);
-				User user = userDAO.findById(userId);
+				deleteVehicleRecord(plate);
+				User user = findUserById(userId);
 				if (user != null) {
 					user.removeVehicle(plate);
-					userDAO.update(user);
+					updateUserRecord(user);
 				}
 				commitTransaction();
 			} catch (RuntimeException e) {
@@ -307,6 +307,76 @@ public class UserService {
 	 */
 	public boolean register(String username, String email, String password) {
 		return signup(username, email, password) != null;
+	}
+
+	/** Finds a user by username through persistence. */
+	private User findUserByUsername(String username) {
+		return userDAO.findByUsername(username);
+	}
+
+	/** Finds a user by email through persistence. */
+	private User findUserByEmail(String email) {
+		return userDAO.findByEmail(email);
+	}
+
+	/** Finds a user by ID through persistence. */
+	private User findUserById(int userId) {
+		return userDAO.findById(userId);
+	}
+
+	/** Saves a user through persistence. */
+	private void saveUserRecord(User user) {
+		userDAO.save(user);
+	}
+
+	/** Updates a user through persistence. */
+	private void updateUserRecord(User user) {
+		userDAO.update(user);
+	}
+
+	/** Deletes a user through persistence. */
+	private void deleteUserRecord(int userId) {
+		userDAO.delete(userId);
+	}
+
+	/** Finds vehicles belonging to a user through persistence. */
+	private List<Vehicle> findVehiclesByUser(int userId) {
+		return vehicleDAO.findByUser(userId);
+	}
+
+	/** Saves a vehicle through persistence. */
+	private void saveVehicleRecord(Vehicle vehicle) {
+		vehicleDAO.save(vehicle);
+	}
+
+	/** Deletes a vehicle through persistence. */
+	private void deleteVehicleRecord(String plate) {
+		vehicleDAO.delete(plate);
+	}
+
+	/** Loads every parking space through persistence. */
+	private List<ParkingSpace> loadAllParkingSpaces() {
+		return parkingSpaceDAO.findAll();
+	}
+
+	/** Updates a parking space through persistence. */
+	private void updateParkingSpaceRecord(ParkingSpace space) {
+		parkingSpaceDAO.update(space);
+	}
+
+	/** Hashes a password through the password helper. */
+	private String hashPassword(String password) {
+		return PasswordUtil.hash(password);
+	}
+
+	/** Checks a password against a stored hash. */
+	private boolean passwordMatches(String password, String storedPassword) {
+		return PasswordUtil.verify(password, storedPassword);
+	}
+
+	/** Checks whether text matches a regular expression. */
+	private boolean matchesPattern(String regex, String text) {
+		return Pattern.matches(regex, text);
 	}
 
 	/**
