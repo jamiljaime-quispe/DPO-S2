@@ -35,6 +35,7 @@ public class Main {
         ConfigService configService = new ConfigService(new Config());
 
         javax.swing.SwingUtilities.invokeLater(() -> {
+            try {
 
             // 1. Database
             DatabaseManager db = new DatabaseManager(
@@ -131,6 +132,14 @@ public class Main {
                     simService.stopSimulation();
                 }
             });
+
+            } catch (Exception e) {
+                javax.swing.JOptionPane.showMessageDialog(null,
+                        "Failed to start the application:\n" + e.getMessage(),
+                        "Startup Error",
+                        javax.swing.JOptionPane.ERROR_MESSAGE);
+                System.exit(1);
+            }
         });
     }
 }

@@ -151,31 +151,9 @@ public class AdminSlotBookingController {
                     bookingView.removeBookingSpacesNotIn(loadedCodes);
                     bookingView.closeActiveBookingDialogIfTargetUnavailable();
                     bookingView.closeActiveCancelDialogIfTargetUnavailable();
-                    if (modeForLoad == USER_MODE && userId > 0 && bookingView.reservationsTableModel != null) {
-                        bookingView.reservationsTableModel.setRowCount(0);
-                        for (Reservation reservation : reservationService.getReservationsByUser(userId)) {
-                            ParkingSpace space = reservation.getParkingSpace();
-                            String code = space != null ? space.getId() : "";
-                            Object floor = space != null ? space.getFloor() : "";
-                            String type = space != null ? space.getVehicleType().name() : "";
-                            String plate = reservation.getVehicle() != null
-                                    ? reservation.getVehicle().getLicensePlate()
-                                    : "";
-                            String date = reservation.getReservationDate() != null
-                                    ? reservation.getReservationDate().format(RESERVATION_DATE_FORMAT)
-                                    : "";
-                            String status;
-                            if (reservation.isActive()) {
-                                status = "Active";
-                            } else if (reservation.isCancelledByAdmin()) {
-                                status = "Cancelled by admin";
-                            } else {
-                                status = "Cancelled";
-                            }
-                            bookingView.reservationsTableModel.addRow(new Object[]{
-                                    code, floor, type, plate, date, status
-                            });
-                        }
+                    if (modeForLoad == USER_MODE && userId > 0) {
+                        bookingView.updateReservationsTable(
+                                reservationService.getReservationsByUser(userId));
                     }
                 } catch (Exception e) {
                     bookingView.showError("Failed to load slot bookings: " + e.getMessage());

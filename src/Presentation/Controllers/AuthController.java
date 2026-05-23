@@ -136,7 +136,10 @@ public class AuthController {
     public void logout() {
         System.out.println("Logging out...");
 
-        // 1. Reset and hide the Main Menu
+        // 1. Clear session state from memory
+        userService.clearSession();
+
+        // 2. Reset and hide the Main Menu
         mainMenuView.resetDisplayedContent();
         mainMenuView.setVisible(false);
 
