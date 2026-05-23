@@ -11,12 +11,14 @@ import java.util.List;
  * Updated in real-time via {@link #updateChart(List)}.
  */
 public class OccupancyChartView extends JPanel {
+    private static final int REFRESH_INTERVAL_SECONDS = 60;
+
     private List<Integer> data = new ArrayList<>();
     private ChartPanel chartPanel;
     private JButton backButton;
     private JLabel countdownLabel;
     private Timer countdownTimer;
-    private int secondsLeft = 5;
+    private int secondsLeft = REFRESH_INTERVAL_SECONDS;
 
     public OccupancyChartView() {
     }
@@ -42,7 +44,7 @@ public class OccupancyChartView extends JPanel {
         title.setForeground(new Color(40, 40, 50));
         header.add(title, BorderLayout.CENTER);
 
-        countdownLabel = new JLabel("Next update in 5s", SwingConstants.RIGHT);
+        countdownLabel = new JLabel("Next update in " + REFRESH_INTERVAL_SECONDS + "s", SwingConstants.RIGHT);
         countdownLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
         countdownLabel.setForeground(new Color(140, 140, 150));
         JPanel countdownCorner = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
@@ -88,9 +90,9 @@ public class OccupancyChartView extends JPanel {
         this.data = (data != null) ? data : new ArrayList<>();
         if (chartPanel != null)
             chartPanel.repaint();
-        secondsLeft = 5;
+        secondsLeft = REFRESH_INTERVAL_SECONDS;
         if (countdownLabel != null)
-            countdownLabel.setText("Next update in 5s");
+            countdownLabel.setText("Next update in " + REFRESH_INTERVAL_SECONDS + "s");
     }
 
     public void startAutoRefresh() {
