@@ -26,38 +26,48 @@ public class AdminService {
 		this.reservationDAO = reservationDAO;
 	}
 
-	/**
-	 * Called before deleting a space. Finds the active reservation for that space
-	 * and either reassigns it to a compatible free space, or deletes it if none exists.
-	 * @param spaceCode code of the space being removed
-	 */
-	public void reassignOrDeleteReservation(String spaceCode) {
-		Reservation target = null;
-		for (Reservation r : reservationDAO.findAll()) {
-			if (r.isActive()
-					&& r.getParkingSpace() != null
-					&& spaceCode.equals(r.getParkingSpace().getId())) {
-				target = r;
-				break;
-			}
-		}
-		if (target == null) return;
+    /**
+     * Called before deleting a space. Finds the active reservation for that space
+     * and either reassigns it to a compatible free space, or cancels it if none exists.
+     * In both cases the reservation is flagged so the affected user is notified at
+     * their next login.
+     *
+     * @param spaceCode code of the space being removed
+     */
+    public void reassignOrDeleteReservation(String spaceCode) {
+        Reservation target = null;
+        for (Reservation r : reservationDAO.findAll()) {
+            if (r.isActive()
+                    && r.getParkingSpace() != null
+                    && spaceCode.equals(r.getParkingSpace().getId())) {
+                target = r;
+                break;
+            }
+        }
+        if (target == null) return;
 
-		VehicleType type = target.getVehicle() != null ? target.getVehicle().getType() : null;
-		List<ParkingSpace> alternatives = type != null
-				? parkingService.findAvailableSpaces(type)
-				: null;
+        VehicleType type = target.getVehicle() != null ? target.getVehicle().getType() : null;
+        List<ParkingSpace> alternatives = type != null
+                ? parkingService.findAvailableSpaces(type)
+                : null;
 
-		ParkingSpace oldSpace = target.getParkingSpace();
-		ParkingSpace newSpace = findBestAlternativeSpace(alternatives, spaceCode, oldSpace);
+        ParkingSpace oldSpace = target.getParkingSpace();
+        ParkingSpace newSpace = findBestAlternativeSpace(alternatives, spaceCode, oldSpace);
 
-		if (newSpace != null) {
-			target.setParkingSpace(newSpace);
-			reservationDAO.update(target);
-		} else {
-			cancelReservation(target.getId());
-		}
-	}
+        if (newSpace != null) {
+            target.setPreviousSpaceCode(spaceCode);
+            target.setParkingSpace(newSpace);
+            target.setCancelledByAdmin(true);
+            target.setNotified(false);
+            reservationDAO.update(target);
+        } else {
+            target.setPreviousSpaceCode(spaceCode);
+            target.setCancelledByAdmin(true);
+            target.setNotified(false);
+            target.cancel();
+            reservationDAO.update(target);
+        }
+    }
 
 	private ParkingSpace findBestAlternativeSpace(List<ParkingSpace> alternatives, String deletedCode,
 			ParkingSpace oldSpace) {
@@ -70,7 +80,7 @@ public class AdminService {
 			if (alternative.getId().equals(deletedCode)) {
 				continue;
 			}
-			if (alternative.getFloor() == preferredFloor) {
+			if (alternative.getFloor() == preferredFloor) {x
 				return alternative;
 			}
 			if (fallback == null) {
