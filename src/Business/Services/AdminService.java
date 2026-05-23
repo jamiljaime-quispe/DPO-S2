@@ -80,7 +80,7 @@ public class AdminService {
 			if (alternative.getId().equals(deletedCode)) {
 				continue;
 			}
-			if (alternative.getFloor() == preferredFloor) {x
+			if (alternative.getFloor() == preferredFloor) {
 				return alternative;
 			}
 			if (fallback == null) {
