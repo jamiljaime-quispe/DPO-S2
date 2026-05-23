@@ -53,7 +53,7 @@ public class AdminController {
         }
     }
 
-    public void createSpace(String code, int floor, VehicleType type) {
+    public void createSpace(int floor, VehicleType type) {
         adminView.setLoading(true);
         new SwingWorker<Boolean, Void>() {
             private String errorMessage;
@@ -62,7 +62,7 @@ public class AdminController {
             protected Boolean doInBackground() {
                 try {
                     simulateDatabaseDelay();
-                    ParkingSpace space = new ParkingSpace(code, floor, type, false, false, null, null);
+                    ParkingSpace space = new ParkingSpace(null, floor, type, false, false, null, null);
                     parkingService.createParkingSpace(space);
                     return true;
                 } catch (Exception e) {
