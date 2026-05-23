@@ -177,8 +177,20 @@ public class AdminSlotBookingManagementView extends JDialog {
     private void showAddBookingDialog() {
         if (currentMode != USER_MODE) return;
 
+        if (userBookingPlate == null || userBookingPlate.isBlank() || userBookingType == null) {
+            BookingVehicleInput selection = promptForBookingVehicle();
+            if (selection == null) return;
+            if (controller != null) {
+                controller.prepareUserBooking(selection.getPlate(), selection.getType());
+            }
+            return;
+        }
+
         int row = bookingsTable.getSelectedRow();
-        if (row < 0) return;
+        if (row < 0) {
+            showError("Select an available space to book.");
+            return;
+        }
 
         int modelRow = bookingsTable.convertRowIndexToModel(row);
         String currentCode = String.valueOf(tableModel.getValueAt(modelRow, 0));
@@ -186,10 +198,6 @@ public class AdminSlotBookingManagementView extends JDialog {
         String currentStatus = String.valueOf(tableModel.getValueAt(modelRow, 3));
         String currentReservation = String.valueOf(tableModel.getValueAt(modelRow, 4));
 
-        if (userBookingPlate == null || userBookingPlate.isBlank() || userBookingType == null) {
-            showError("Choose a license plate and vehicle type before booking.");
-            return;
-        }
         if ("Occupied".equals(currentStatus)) {
             showError("Space \"" + currentCode + "\" cannot be booked because a vehicle is parked there.");
             return;
@@ -663,7 +671,8 @@ public class AdminSlotBookingManagementView extends JDialog {
             if (tabbedPane.indexOfComponent(reservationsPanel) < 0) {
                 tabbedPane.addTab("My reservations", reservationsPanel);
             }
-            addButton.setText("Book Slot");
+            tabbedPane.setSelectedComponent(reservationsPanel);
+            addButton.setText("Choose Vehicle");
             addButton.setVisible(true);
             editButton.setVisible(false);
             deleteButton.setVisible(true);
@@ -703,6 +712,14 @@ public class AdminSlotBookingManagementView extends JDialog {
     public void setUserBookingVehicle(String plate, VehicleType type) {
         userBookingPlate = plate;
         userBookingType = type;
+        updateActionButtons();
+    }
+
+    /** Shows the table used to choose a slot for a new booking. */
+    public void showSlotBookingsTab() {
+        if (tabbedPane != null) {
+            tabbedPane.setSelectedIndex(0);
+        }
     }
 
     /**
@@ -765,8 +782,15 @@ public class AdminSlotBookingManagementView extends JDialog {
         boolean availableSlot = selected && isSelectedSlotAvailableForBooking(row);
         boolean reservedSlot = selected && isSelectedSlotReserved(row);
         boolean userBooking = selected && isSelectedUserBooking(row);
+        boolean needsVehicleSelection = user && (userBookingPlate == null
+                || userBookingPlate.isBlank()
+                || userBookingType == null);
 
-        addButton.setEnabled(!loading && user && availableSlot);
+        if (user) {
+            addButton.setText(needsVehicleSelection ? "Choose Vehicle" : "Book Slot");
+        }
+
+        addButton.setEnabled(!loading && user && (needsVehicleSelection || availableSlot));
         editButton.setEnabled(!loading && admin && reservedSlot);
         deleteButton.setEnabled(!loading && ((admin && reservedSlot) || (user && userBooking)));
         refreshButton.setEnabled(!loading);
@@ -816,6 +840,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         private static final Color OCCUPIED_COLOR = new Color(253, 235, 235);
         private static final Color MY_BOOKING_COLOR = new Color(225, 240, 255);
 
+        /** Colors booking rows and status cells according to their current state. */
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                                                        boolean hasFocus, int row, int column) {

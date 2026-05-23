@@ -10,8 +10,6 @@ import java.util.List;
 
 /**
  * Calculates and records parking occupancy statistics.
- * NOTE: constructor signature extended with parkingSpaceDAO and occupancyDAO
- * compared to the original UML draft; update Main.java wiring accordingly.
  */
 public class StatisticsService {
 	private OccupancyTracker occupancyTracker;

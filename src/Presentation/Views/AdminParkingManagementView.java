@@ -244,14 +244,20 @@ public class AdminParkingManagementView extends JDialog {
         activeDeleteSpaceCode = code;
 
         dialog.setLayout(new BorderLayout(10, 10));
-        dialog.setSize(460, 180);
         dialog.setLocationRelativeTo(this);
         dialog.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         ((JComponent) dialog.getContentPane()).setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
 
-        JLabel messageLabel = new JLabel("<html>" + message.replace("\n", "<br>") + "</html>");
-        messageLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
-        dialog.add(messageLabel, BorderLayout.CENTER);
+        JTextArea messageArea = new JTextArea(message);
+        messageArea.setEditable(false);
+        messageArea.setFocusable(false);
+        messageArea.setOpaque(false);
+        messageArea.setLineWrap(true);
+        messageArea.setWrapStyleWord(true);
+        messageArea.setColumns(42);
+        messageArea.setRows(5);
+        messageArea.setFont(new Font("SansSerif", Font.BOLD, 14));
+        dialog.add(messageArea, BorderLayout.CENTER);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
         JButton yesButton = new JButton("Yes");
@@ -283,6 +289,9 @@ public class AdminParkingManagementView extends JDialog {
             }
         });
 
+        dialog.pack();
+        dialog.setSize(new Dimension(Math.max(dialog.getWidth(), 540), dialog.getHeight()));
+        dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
 
@@ -493,6 +502,7 @@ public class AdminParkingManagementView extends JDialog {
         private static final Color VACANT_COLOR = new Color(232, 248, 238);
         private static final Color OCCUPIED_COLOR = new Color(253, 235, 235);
 
+        /** Colors the status column according to vacancy. */
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                                                        boolean hasFocus, int row, int column) {

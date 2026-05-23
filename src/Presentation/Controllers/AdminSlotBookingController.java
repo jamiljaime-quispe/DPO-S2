@@ -72,19 +72,9 @@ public class AdminSlotBookingController {
      * @param mode ADMIN_MODE (1) or USER_MODE (2)
      */
     public void showView(int mode) {
-        String selectedPlate = null;
-        VehicleType selectedType = null;
-
-        if (mode == USER_MODE) {
-            AdminSlotBookingManagementView.BookingVehicleInput selection = bookingView.promptForBookingVehicle();
-            if (selection == null) return;
-            selectedPlate = selection.getPlate();
-            selectedType = selection.getType();
-        }
-
         currentMode = mode;
-        currentUserBookingPlate = selectedPlate;
-        currentUserBookingType = selectedType;
+        currentUserBookingPlate = null;
+        currentUserBookingType = null;
         bookingView.setMode(mode);
         bookingView.setUserBookingVehicle(currentUserBookingPlate, currentUserBookingType);
         bookingView.clearBookingsTable();
@@ -213,6 +203,21 @@ public class AdminSlotBookingController {
                 }
             }
         }.execute();
+    }
+
+    /**
+     * Stores the vehicle chosen by a regular user before showing compatible spaces.
+     *
+     * @param plate license plate chosen for the new booking
+     * @param type  vehicle type chosen for the new booking
+     */
+    public void prepareUserBooking(String plate, VehicleType type) {
+        currentUserBookingPlate = normalizePlate(plate);
+        currentUserBookingType = type;
+        bookingView.setUserBookingVehicle(currentUserBookingPlate, currentUserBookingType);
+        bookingView.showSlotBookingsTab();
+        bookingView.clearBookingsTable();
+        loadBookings();
     }
 
     /**

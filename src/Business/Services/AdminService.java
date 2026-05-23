@@ -35,6 +35,9 @@ public class AdminService {
 	 * If the space has an active reservation, the reservation is moved to another
 	 * compatible space. If none exists, the reservation is cancelled and the user
 	 * will be notified on their next login.
+	 * This method synchronizes the transaction because deleting a space may also
+	 * move or cancel a reservation. Those related database changes must not be
+	 * interrupted by another parking update.
 	 *
 	 * @param spaceCode code of the space being removed
 	 */
@@ -68,6 +71,8 @@ public class AdminService {
 	/**
 	 * Reassigns the active reservation for a space, or cancels it when no suitable
 	 * replacement exists.
+	 * This method synchronizes the transaction because the old reservation and the
+	 * replacement space are chosen and saved together.
 	 *
 	 * @param spaceCode code of the space being removed
 	 */
@@ -96,6 +101,8 @@ public class AdminService {
 	/**
 	 * Cancels a reservation as an admin action.
 	 * The user will be notified the next time they log in.
+	 * This method synchronizes the transaction because the reservation state and
+	 * the space state must be updated together.
 	 *
 	 * @param reservationId ID of the reservation to cancel
 	 */
@@ -119,6 +126,8 @@ public class AdminService {
 
 	/**
 	 * Cancels the active reservation associated with a license plate.
+	 * This method synchronizes the transaction because it finds the active booking
+	 * and frees the reserved space in one protected operation.
 	 *
 	 * @param plate license plate associated with the booking
 	 * @return true if an active booking was cancelled
@@ -223,7 +232,11 @@ public class AdminService {
 		return fallback;
 	}
 
-	/** Gets the object used to serialize transaction work. */
+	/**
+	 * Gets the shared lock used by synchronized transaction blocks.
+	 * The simulation thread and SwingWorkers can both change parking data, so
+	 * this lock makes one multi-step database operation finish before another begins.
+	 */
 	private Object transactionLock() {
 		return transactionManager != null ? transactionManager : this;
 	}

@@ -46,13 +46,13 @@ public class Main {
      * @param args command-line arguments, not used
      */
     public static void main(String[] args) {
-        // Business asks Persistence for config before Swing starts.
-        ConfigService configService = new ConfigService(new ConfigDAOImpl());
-
         javax.swing.SwingUtilities.invokeLater(() -> {
             try {
 
-            // 1. Database
+            // 1. Configuration
+            ConfigService configService = new ConfigService(new ConfigDAOImpl());
+
+            // 2. Database
             DatabaseManager db = new DatabaseManager(
                     configService.getConfig().getDbIP(),
                     configService.getConfig().getDbPort(),
@@ -60,14 +60,14 @@ public class Main {
                     configService.getConfig().getDbUser(),
                     configService.getConfig().getDbPassword());
 
-            // 2. DAOs
+            // 3. DAOs
             UserDAOImpl userDAO = new UserDAOImpl(db);
             VehicleDAOImpl vehicleDAO = new VehicleDAOImpl(db);
             ParkingSpaceDAOImpl parkingSpaceDAO = new ParkingSpaceDAOImpl(db);
             ReservationDAOImpl reservationDAO = new ReservationDAOImpl(db);
             OccupancyDAOImpl occupancyDAO = new OccupancyDAOImpl(db);
 
-            // 3. Services
+            // 4. Services
             UserService userService = new UserService(userDAO, vehicleDAO, parkingSpaceDAO, db);
             ParkingService parkingService = new ParkingService(parkingSpaceDAO, vehicleDAO, reservationDAO, db);
             ReservationService reservationService = new ReservationService(reservationDAO, parkingSpaceDAO,
@@ -81,12 +81,12 @@ public class Main {
             SimulationService simService = new SimulationService(parkingService, configService.getConfig(),
                     new Random(), new ArrayList<>(), vehicleDAO);
 
-            // 4. Views
+            // 5. Views
             LoginView loginView = new LoginView();
             SignupView signupView = new SignupView();
             MainMenuView mainMenuView = new MainMenuView();
 
-            // 5. Auth Controller
+            // 6. Auth Controller
             AuthController authController = new AuthController(loginView, userService);
             loginView.authenControllerSetter(authController);
             signupView.setController(authController);
@@ -94,18 +94,18 @@ public class Main {
             authController.setConfigService(configService);
             authController.setReservationService(reservationService);
 
-            // 6. Init view layouts (LoginView.initComponents calls setVisible(true))
+            // 7. Init view layouts (LoginView.initComponents calls setVisible(true))
             loginView.initComponents();
             signupView.initComponents();
             mainMenuView.initComponents();
 
-            // 7. Main Menu
+            // 8. Main Menu
             MainController mainController = new MainController(mainMenuView);
             mainMenuView.setController(mainController);
             authController.setMainMenuController(mainController, mainMenuView);
             mainController.setAuthController(authController);
 
-            // 8. Statistics
+            // 9. Statistics
             StatisticsController statsCtrl = new StatisticsController(mainMenuView.getOccupancyChartView(),
                     statsService);
             mainController.setStatisticsController(statsCtrl);
@@ -137,7 +137,7 @@ public class Main {
             occupancyRecorder.setInitialDelay(0);
             occupancyRecorder.start();
 
-            // 9. Parking
+            // 10. Parking
             ParkingController parkingController = new ParkingController(parkingService);
             parkingController.setMainMenuView(mainMenuView);
             parkingController.setUserService(userService);
@@ -145,21 +145,21 @@ public class Main {
             mainController.setParkingController(parkingController);
             simService.setParkingStatusChangeListener(parkingController);
 
-            // 10. Admin parking management
+            // 11. Admin parking management
             AdminParkingManagementView adminView = new AdminParkingManagementView(mainMenuView);
             AdminController adminController = new AdminController(adminView, parkingService);
             adminController.setAdminService(adminService);
             parkingController.setAdminController(adminController);
             mainController.setAdminController(adminController);
 
-            // 11. Slot booking management
+            // 12. Slot booking management
             AdminSlotBookingManagementView bookingView = new AdminSlotBookingManagementView(mainMenuView);
             AdminSlotBookingController bookingController = new AdminSlotBookingController(
                     bookingView, parkingService, adminService, reservationService, userService);
             parkingController.setSlotBookingController(bookingController);
             mainController.setSlotBookingController(bookingController);
 
-            // 12. Simulation - startSimulation() sets running=true and stores thread ref
+            // 13. Simulation - startSimulation() sets running=true and stores thread ref
             // for clean interrupt
             // This starts the independent background thread that repeatedly runs
             // SimulationService.run().

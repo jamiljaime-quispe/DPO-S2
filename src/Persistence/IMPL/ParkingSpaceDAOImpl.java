@@ -27,8 +27,8 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         this.db = db;
     }
 
-    @Override
     /** Loads all parking spaces. */
+    @Override
     public List<ParkingSpace> findAll() {
         String sql = """
                 SELECT p.code, p.floor, p.vehicleType, p.isOccupied, p.occupiedByPlate,
@@ -55,8 +55,8 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         return list;
     }
 
-    @Override
     /** Finds one parking space by code. */
+    @Override
     public ParkingSpace findByCode(String code) {
         String sql = """
                 SELECT p.code, p.floor, p.vehicleType, p.isOccupied, p.occupiedByPlate,
@@ -83,8 +83,8 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         return null;
     }
 
-    @Override
     /** Loads vacant and unreserved spaces for a vehicle type. */
+    @Override
     public List<ParkingSpace> findAvailableByType(VehicleType type) {
         String sql = """
                 SELECT p.code, p.floor, p.vehicleType, p.isOccupied, p.occupiedByPlate,
@@ -114,8 +114,8 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         return list;
     }
 
-    @Override
     /** Saves a new parking space. */
+    @Override
     public void save(ParkingSpace space) {
         String sql = "INSERT INTO parking_space (code, floor, vehicleType, isOccupied, occupiedByPlate) VALUES (?, ?, ?, ?, ?)";
 
@@ -131,8 +131,8 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         }
     }
 
-    @Override
     /** Updates the occupied state of a parking space. */
+    @Override
     public void update(ParkingSpace space) {
         String sql = "UPDATE parking_space SET isOccupied = ?, occupiedByPlate = ? WHERE code = ?";
 
@@ -146,8 +146,8 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         }
     }
 
-    @Override
     /** Updates the editable details of a parking space. */
+    @Override
     public void updateDetails(ParkingSpace space) {
         String sql = "UPDATE parking_space SET floor = ?, vehicleType = ? WHERE code = ?";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
@@ -160,8 +160,8 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         }
     }
 
-    @Override
     /** Deletes a parking space by code. */
+    @Override
     public void delete(String code) {
         String sql = "DELETE FROM parking_space WHERE code = ?";
 

@@ -503,6 +503,7 @@ public class MainMenuView extends JFrame {
         private static final Color OCCUPIED_COLOR = new Color(253, 235, 235);
         private static final Color MY_PARKED_COLOR = new Color(225, 240, 255);
 
+        /** Colors parking status rows according to status and ownership. */
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                                                        boolean hasFocus, int row, int column) {
@@ -800,8 +801,8 @@ public class MainMenuView extends JFrame {
             return space;
         }
 
-        @Override
         /** Formats the option shown in the exit combo box. */
+        @Override
         public String toString() {
             String plate = space.getParkedVehicle() != null
                     ? space.getParkedVehicle().getLicensePlate()

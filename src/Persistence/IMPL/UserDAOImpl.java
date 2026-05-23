@@ -21,8 +21,8 @@ public class UserDAOImpl implements UserDAO {
         this.db = db;
     }
 
-    @Override
     /** Saves a new user. */
+    @Override
     public void save(User user) {
         String sql = "INSERT INTO user (username, email, password, isAdmin) VALUES (?, ?, ?, ?)";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -41,8 +41,8 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
-    @Override
     /** Finds a user by ID. */
+    @Override
     public User findById(int id) {
         String sql = "SELECT * FROM user WHERE userId = ?";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
@@ -57,8 +57,8 @@ public class UserDAOImpl implements UserDAO {
         return null;
     }
 
-    @Override
     /** Finds a user by username. */
+    @Override
     public User findByUsername(String username) {
         String sql = "SELECT * FROM user WHERE username = ?";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
@@ -73,8 +73,8 @@ public class UserDAOImpl implements UserDAO {
         return null;
     }
 
-    @Override
     /** Finds a user by email address. */
+    @Override
     public User findByEmail(String email) {
         String sql = "SELECT * FROM user WHERE email = ?";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
@@ -89,8 +89,8 @@ public class UserDAOImpl implements UserDAO {
         return null;
     }
 
-    @Override
     /** Deletes a user by ID. */
+    @Override
     public void delete(int id) {
         String sql = "DELETE FROM user WHERE userId = ?";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
@@ -101,8 +101,8 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
-    @Override
     /** Updates an existing user. */
+    @Override
     public void update(User user) {
         String sql = "UPDATE user SET username = ?, email = ?, password = ?, isAdmin = ? WHERE userId = ?";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {

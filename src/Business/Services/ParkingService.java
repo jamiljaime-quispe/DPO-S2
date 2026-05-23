@@ -209,6 +209,10 @@ public class ParkingService {
 
 	/**
 	 * Handles entry for a logged-in user and registers new vehicles to that user.
+	 * This method synchronizes the transaction because it may create a vehicle,
+	 * check ownership, and occupy a space as one database operation. Without this,
+	 * the simulation thread or another UI action could change the same space between
+	 * those steps.
 	 *
 	 * @param userId owner user ID
 	 * @param plate  license plate
@@ -235,6 +239,9 @@ public class ParkingService {
 	 * Handles a vehicle entering the parking lot.
 	 * A reserved plate uses its reserved space; otherwise the first compatible
 	 * available space is used.
+	 * This method synchronizes the transaction because entry checks availability
+	 * and then changes a parking space. Those steps must not be interleaved with
+	 * another vehicle entry, exit, or simulation update.
 	 *
 	 * @param plate license plate of the entering vehicle
 	 * @param type  vehicle type
@@ -258,6 +265,9 @@ public class ParkingService {
 
 	/**
 	 * Handles a vehicle exiting the parking lot.
+	 * This method synchronizes the transaction because it searches for the parked
+	 * vehicle, frees its space, and removes any active reservation that was already
+	 * used by that vehicle. Those steps must see the same parking state.
 	 *
 	 * @param plate license plate of the exiting vehicle
 	 */
@@ -276,6 +286,9 @@ public class ParkingService {
 
 	/**
 	 * Handles exit for a logged-in user.
+	 * This method synchronizes the transaction because it verifies that the parked
+	 * vehicle belongs to the user before freeing the space and removing any used
+	 * reservation. The verification and update must happen together.
 	 *
 	 * @param userId owner user ID
 	 * @param plate  license plate to exit with
@@ -336,11 +349,7 @@ public class ParkingService {
 				}
 
 				reservedSpace.occupy(vehicle);
-				reservedSpace.setReserved(false);
 				parkingSpaceDAO.update(reservedSpace);
-
-				reservation.cancel();
-				reservationDAO.update(reservation);
 				return reservedSpace;
 			}
 		}
@@ -367,6 +376,7 @@ public class ParkingService {
 					&& space.getParkedVehicle() != null
 					&& plate.equals(space.getParkedVehicle().getLicensePlate())) {
 				space.freeSpace();
+				deleteUsedReservationForPlate(plate, space);
 				parkingSpaceDAO.update(space);
 				return;
 			}
@@ -380,11 +390,23 @@ public class ParkingService {
 			if (space.getParkedVehicle() != null
 					&& plate.equals(space.getParkedVehicle().getLicensePlate())) {
 				space.freeSpace();
+				deleteUsedReservationForPlate(plate, space);
 				parkingSpaceDAO.update(space);
 				return space;
 			}
 		}
 		return null;
+	}
+
+	/** Deletes the active reservation for a plate after the reserved vehicle leaves. */
+	private void deleteUsedReservationForPlate(String plate, ParkingSpace space) {
+		Reservation reservation = reservationDAO.findByPlate(plate);
+		if (reservation != null && reservation.isActive()) {
+			reservationDAO.delete(reservation.getId());
+			if (space != null) {
+				space.cancelReservation();
+			}
+		}
 	}
 
 	/** Checks whether a plate belongs to the given user. */
@@ -422,7 +444,11 @@ public class ParkingService {
 		return String.valueOf((char) ('A' + normalized));
 	}
 
-	/** Gets the object used to serialize transaction work. */
+	/**
+	 * Gets the shared lock used by synchronized transaction blocks.
+	 * The simulation thread and SwingWorkers can both change parking data, so
+	 * this lock makes one multi-step database operation finish before another begins.
+	 */
 	private Object transactionLock() {
 		return transactionManager != null ? transactionManager : this;
 	}

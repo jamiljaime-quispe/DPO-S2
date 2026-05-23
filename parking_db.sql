@@ -7,6 +7,9 @@
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.2.4
 
+CREATE DATABASE IF NOT EXISTS `parking_db`;
+USE `parking_db`;
+
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
@@ -20,8 +23,6 @@ SET time_zone = "+00:00";
 --
 -- Database: `parking_db`
 --
-CREATE DATABASE IF NOT EXISTS `parking_db`;
-USE `parking_db`;
 
 -- --------------------------------------------------------
 
@@ -2005,7 +2006,7 @@ INSERT INTO `vehicle` (`licensePlate`, `userId`, `vehicleType`) VALUES
 ('BLABLACAR', 13, 'MOTORCYCLE'),
 ('BLEBLE', 15, 'MOTORCYCLE'),
 ('ILIKEDPO', 13, 'CAR'),
-('TEST999', 13, 'CAR');
+('NIGGER', 13, 'CAR');
 
 --
 -- Indexes for dumped tables
@@ -2077,8 +2078,9 @@ ALTER TABLE `user`
 -- Constraints for table `reservation`
 --
 ALTER TABLE `reservation`
-  ADD CONSTRAINT `reservation_ibfk_1` FOREIGN KEY (`spaceId`) REFERENCES `parking_space` (`spaceId`) ON DELETE SET NULL,
-  ADD CONSTRAINT `reservation_ibfk_2` FOREIGN KEY (`licensePlate`) REFERENCES `vehicle` (`licensePlate`) ON DELETE CASCADE;
+  ADD CONSTRAINT `reservation_ibfk_1` FOREIGN KEY (`spaceId`) REFERENCES `parking_space` (`spaceId`) ON DELETE CASCADE,
+  ADD CONSTRAINT `reservation_ibfk_2` FOREIGN KEY (`licensePlate`) REFERENCES `vehicle` (`licensePlate`) ON DELETE CASCADE,
+  ADD CONSTRAINT `reservation_ibfk_3` FOREIGN KEY (`spaceId`) REFERENCES `parking_space` (`spaceId`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `vehicle`

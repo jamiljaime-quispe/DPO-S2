@@ -22,8 +22,8 @@ public class VehicleDAOImpl implements VehicleDAO {
         this.db = db;
     }
 
-    @Override
     /** Saves a vehicle. */
+    @Override
     public void save(Vehicle vehicle) {
         String sql = """
                 INSERT INTO vehicle (licensePlate, userId, vehicleType)
@@ -41,8 +41,8 @@ public class VehicleDAOImpl implements VehicleDAO {
         }
     }
 
-    @Override
     /** Finds a vehicle by license plate. */
+    @Override
     public Vehicle findByPlate(String plate) {
         String sql = """
                 SELECT v.licensePlate, v.vehicleType, u.username
@@ -65,8 +65,8 @@ public class VehicleDAOImpl implements VehicleDAO {
         return null;
     }
 
-    @Override
     /** Loads vehicles owned by a user. */
+    @Override
     public List<Vehicle> findByUser(int userId) {
         String sql = """
                 SELECT v.licensePlate, v.vehicleType, u.username
@@ -91,8 +91,8 @@ public class VehicleDAOImpl implements VehicleDAO {
         return list;
     }
 
-    @Override
     /** Deletes a vehicle by license plate. */
+    @Override
     public void delete(String plate) {
         String sql = "DELETE FROM vehicle WHERE licensePlate = ?";
 

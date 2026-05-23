@@ -543,6 +543,7 @@ public class ParkingController implements ParkingStatusChangeListener {
 
 					mainMenuView.showInfo("Parking exit",
 							"Vehicle " + plate + " has left space " + freedSpace.getId() + ".");
+					parkingStatusChanged();
 					refreshExitButtonState();
 				} catch (InterruptedException | ExecutionException e) {
 					Throwable cause = e.getCause();

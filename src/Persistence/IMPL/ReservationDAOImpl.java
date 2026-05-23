@@ -29,8 +29,8 @@ public class ReservationDAOImpl implements ReservationDAO {
         this.db = db;
     }
 
-    @Override
     /** Saves a new reservation. */
+    @Override
     public void save(Reservation reservation) {
         String sql = """
                 INSERT INTO reservation (spaceId, licensePlate, reservationDate, cancelledByAdmin, notified, isActive, previousSpaceCode)
@@ -57,8 +57,8 @@ public class ReservationDAOImpl implements ReservationDAO {
         }
     }
 
-    @Override
     /** Deletes a reservation by ID. */
+    @Override
     public void delete(int id) {
         String sql = "DELETE FROM reservation WHERE reservationId = ?";
 
@@ -70,8 +70,8 @@ public class ReservationDAOImpl implements ReservationDAO {
         }
     }
 
-    @Override
     /** Finds a reservation by ID. */
+    @Override
     public Reservation findById(int id) {
         String sql = baseReservationQuery() + " WHERE r.reservationId = ?";
 
@@ -86,8 +86,8 @@ public class ReservationDAOImpl implements ReservationDAO {
         return null;
     }
 
-    @Override
     /** Loads reservations that belong to a user. */
+    @Override
     public List<Reservation> findByUser(int userId) {
         String sql = baseReservationQuery() + " WHERE u.userId = ? ORDER BY r.reservationDate DESC";
         List<Reservation> reservations = new ArrayList<>();
@@ -105,8 +105,8 @@ public class ReservationDAOImpl implements ReservationDAO {
         return reservations;
     }
 
-    @Override
     /** Finds the active reservation for a license plate. */
+    @Override
     public Reservation findByPlate(String plate) {
         String sql = baseReservationQuery() + " WHERE r.licensePlate = ? AND r.isActive = TRUE";
 
@@ -121,8 +121,8 @@ public class ReservationDAOImpl implements ReservationDAO {
         return null;
     }
 
-    @Override
     /** Loads all reservations. */
+    @Override
     public List<Reservation> findAll() {
         String sql = baseReservationQuery() + " ORDER BY r.reservationDate DESC";
         List<Reservation> reservations = new ArrayList<>();
@@ -138,8 +138,8 @@ public class ReservationDAOImpl implements ReservationDAO {
         return reservations;
     }
 
-    @Override
     /** Updates an existing reservation. */
+    @Override
     public void update(Reservation reservation) {
         String sql = """
                 UPDATE reservation

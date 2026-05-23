@@ -14,8 +14,8 @@ import java.io.IOException;
 public class ConfigDAOImpl implements ConfigDAO {
 	private static final String CONFIG_FILE_NAME = "config.json";
 
-	@Override
 	/** Loads config.json from the project root. */
+	@Override
 	public Config loadConfig() {
 		File configFile = new File(CONFIG_FILE_NAME);
 		if (!configFile.exists()) {

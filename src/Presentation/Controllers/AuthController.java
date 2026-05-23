@@ -69,6 +69,7 @@ public class AuthController {
         createLoginWorker(id, password).execute();
     }
 
+    /** Creates the background worker that validates login credentials. */
     private SwingWorker<Integer, Void> createLoginWorker(String id, String password) {
         return new SwingWorker<>() {
             private List<Reservation> pendingNotifications = new ArrayList<>();
@@ -302,6 +303,7 @@ public class AuthController {
         createRegistrationWorker(username, email, password).execute();
     }
 
+    /** Creates the background worker that saves a new account and logs it in. */
     SwingWorker<Integer, Void> createRegistrationWorker(String username, String email, String password) {
         return new SwingWorker<>() {
             /** Creates the account and authenticates it away from the EDT. */

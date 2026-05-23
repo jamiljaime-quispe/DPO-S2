@@ -20,8 +20,8 @@ public class OccupancyDAOImpl implements OccupancyDAO {
         this.db = db;
     }
 
-    @Override
     /** Saves one occupancy value in the database. */
+    @Override
     public void saveRecord(LocalDateTime timestamp, int occupancy) {
         String sql = "INSERT INTO occupancy_log (timestamp, occupiedCount) VALUES (?, ?)";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
@@ -33,8 +33,8 @@ public class OccupancyDAOImpl implements OccupancyDAO {
         }
     }
 
-    @Override
     /** Loads occupancy values recorded during the last hour. */
+    @Override
     public List<Integer> getLastHourData() {
         String sql = """
                 SELECT occupiedCount

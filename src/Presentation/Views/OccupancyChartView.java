@@ -100,29 +100,20 @@ public class OccupancyChartView extends JPanel {
             countdownLabel.setText("Next update in " + REFRESH_INTERVAL_SECONDS + "s");
     }
 
-    /** Starts chart refresh mode. */
-    public void startAutoRefresh() {
-    }
-
-    /** Stops chart refresh mode. */
-    public void stopAutoRefresh() {
-    }
-
-
     private class ChartPanel extends JPanel {
         private static final int PAD_LEFT = 50;
         private static final int PAD_RIGHT = 20;
         private static final int PAD_TOP = 20;
         private static final int PAD_BOTTOM = 40;
 
-        @Override
         /** Gives the chart a stable preferred size. */
+        @Override
         public Dimension getPreferredSize() {
             return new Dimension(600, 300);
         }
 
-        @Override
         /** Draws the bar chart. */
+        @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2 = (Graphics2D) g.create();

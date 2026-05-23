@@ -40,6 +40,10 @@ public class ReservationService {
 
 	/**
 	 * Creates a reservation for a vehicle in a selected space.
+	 * This method synchronizes the transaction because it checks the space, checks
+	 * the vehicle, may create the vehicle, and saves the reservation. Those steps
+	 * must be protected from simulation or user actions that could take the same
+	 * space at the same time.
 	 *
 	 * @param userId    ID of the user making the reservation
 	 * @param plate     license plate of the vehicle
@@ -65,6 +69,8 @@ public class ReservationService {
 
 	/**
 	 * Reassigns an active reservation to a different available space.
+	 * This method synchronizes the transaction because the reservation and the
+	 * target space are validated together before the reservation is moved.
 	 *
 	 * @param plate        license plate whose active reservation should be moved
 	 * @param newSpaceCode target parking space code
@@ -102,6 +108,8 @@ public class ReservationService {
 
 	/**
 	 * Cancels a reservation by ID.
+	 * This method synchronizes the transaction because cancelling the reservation
+	 * and freeing its space must happen as one consistent change.
 	 *
 	 * @param reservationId ID of the reservation to cancel
 	 */
@@ -125,6 +133,8 @@ public class ReservationService {
 
 	/**
 	 * Cancels the active reservation for a license plate.
+	 * This method synchronizes the transaction because it finds the active
+	 * reservation and updates its parking space in the same operation.
 	 *
 	 * @param plate license plate of the vehicle whose reservation should be cancelled
 	 */
@@ -148,6 +158,8 @@ public class ReservationService {
 
 	/**
 	 * Cancels the active reservation for a plate only if it belongs to the user.
+	 * This method synchronizes the transaction because ownership validation and
+	 * cancellation must not be separated by another update.
 	 *
 	 * @param userId user requesting the cancellation
 	 * @param plate  license plate whose reservation should be cancelled
@@ -256,6 +268,12 @@ public class ReservationService {
 			throw new IllegalArgumentException("License plate " + plate + " already has an active reservation.");
 		}
 
+		ParkingSpace occupiedSpace = findOccupiedSpaceByPlate(plate);
+		if (occupiedSpace != null) {
+			throw new IllegalArgumentException("License plate " + plate
+					+ " is already parked in space " + occupiedSpace.getId() + ".");
+		}
+
 		Vehicle vehicle = vehicleDAO.findByPlate(plate);
 		if (vehicle == null) {
 			vehicle = new Vehicle(plate, type, String.valueOf(userId), false);
@@ -332,7 +350,24 @@ public class ReservationService {
 		return false;
 	}
 
-	/** Gets the object used to serialize transaction work. */
+	/** Finds where a license plate is currently parked, if it is parked. */
+	private ParkingSpace findOccupiedSpaceByPlate(String plate) {
+		List<ParkingSpace> spaces = parkingSpaceDAO.findAll();
+		for (ParkingSpace space : spaces) {
+			if (space.isOccupied()
+					&& space.getParkedVehicle() != null
+					&& plate.equalsIgnoreCase(space.getParkedVehicle().getLicensePlate())) {
+				return space;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Gets the shared lock used by synchronized transaction blocks.
+	 * The simulation thread and SwingWorkers can both change parking data, so
+	 * this lock makes one multi-step database operation finish before another begins.
+	 */
 	private Object transactionLock() {
 		return transactionManager != null ? transactionManager : this;
 	}

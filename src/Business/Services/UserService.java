@@ -156,6 +156,9 @@ public class UserService {
 	/**
 	 * Deletes a user account and all associated data.
 	 * Occupied spaces are freed before persistence cascades vehicles and reservations.
+	 * This method synchronizes the transaction because the user's parked vehicles
+	 * are cleared before the user row is deleted. Both changes must be committed
+	 * together so no space remains occupied by a deleted account.
 	 * 
 	 * @param userId ID of the user to delete
 	 */
@@ -208,6 +211,8 @@ public class UserService {
 
 	/**
 	 * Registers a vehicle and associates it with a user.
+	 * This method synchronizes the transaction because saving the vehicle and
+	 * refreshing the user record belong to the same account update.
 	 * 
 	 * @param userId  owner's user ID
 	 * @param vehicle vehicle to register
@@ -232,6 +237,8 @@ public class UserService {
 
 	/**
 	 * Removes a vehicle from the system and from the user's vehicle list.
+	 * This method synchronizes the transaction because the vehicle deletion and
+	 * user update must stay consistent.
 	 *
 	 * @param userId owner's user ID
 	 * @param plate  license plate of the vehicle to remove
@@ -302,7 +309,11 @@ public class UserService {
 		return signup(username, email, password) != null;
 	}
 
-	/** Gets the object used to serialize transaction work. */
+	/**
+	 * Gets the shared lock used by synchronized transaction blocks.
+	 * The simulation thread and SwingWorkers can both change parking data, so
+	 * this lock makes one multi-step database operation finish before another begins.
+	 */
 	private Object transactionLock() {
 		return transactionManager != null ? transactionManager : this;
 	}
