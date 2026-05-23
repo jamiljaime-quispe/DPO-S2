@@ -31,7 +31,7 @@ import java.util.Random;
 
 public class Main {
     private static final int OCCUPANCY_TRACKER_CAPACITY = 60;
-    private static final int OCCUPANCY_RECORD_INTERVAL_MS = 5_000;
+    private static final int OCCUPANCY_RECORD_INTERVAL_MS = 60_000;
 
     public static void main(String[] args) {
         // Load config before entering the EDT (reads config.json from project root)
