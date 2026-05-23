@@ -3,10 +3,16 @@ package Business.Services;
 import Persistence.UserDAO;
 import Persistence.VehicleDAO;
 import Business.Entities.Client;
+import Business.Entities.ParkingSpace;
 import Business.Entities.User;
 import Business.Entities.Vehicle;
+import Persistence.ParkingSpaceDAO;
+import Persistence.TransactionManager;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -15,6 +21,8 @@ import java.util.regex.Pattern;
 public class UserService {
 	private UserDAO userDAO;
 	private VehicleDAO vehicleDAO;
+	private ParkingSpaceDAO parkingSpaceDAO;
+	private TransactionManager transactionManager;
 
 	private String lastLoggedInUsername;
 	private int lastLoggedInUserId = -1;
@@ -24,10 +32,15 @@ public class UserService {
 	 *
 	 * @param userDAO    the data access object for users
 	 * @param vehicleDAO the data access object for vehicles
+	 * @param parkingSpaceDAO the data access object for parking spaces
+	 * @param transactionManager object that controls database transactions
 	 */
-	public UserService(UserDAO userDAO, VehicleDAO vehicleDAO) {
+	public UserService(UserDAO userDAO, VehicleDAO vehicleDAO, ParkingSpaceDAO parkingSpaceDAO,
+			TransactionManager transactionManager) {
 		this.userDAO = userDAO;
 		this.vehicleDAO = vehicleDAO;
+		this.parkingSpaceDAO = parkingSpaceDAO;
+		this.transactionManager = transactionManager;
 	}
 
 	/**
@@ -44,14 +57,14 @@ public class UserService {
 			return null;
 
 		// Try by username first, then by email
-		User user = userDAO.findByUsername(id);
+		User user = findUserByUsername(id);
 		if (user == null) {
-			user = userDAO.findByEmail(id);
+			user = findUserByEmail(id);
 		}
 		if (user == null)
 			return null;
 		// Admin password is verified by AuthController against config.json, not here
-		if (!"admin".equals(user.getUsername()) && !PasswordUtil.verify(password, user.getPassword()))
+		if (!"admin".equals(user.getUsername()) && !passwordMatches(password, user.getPassword()))
 			return null;
 		return user;
 	}
@@ -70,11 +83,13 @@ public class UserService {
 			return null;
 		if (!isEmailValid(email))
 			return null;
+		if (!isEmailAvailable(email))
+			return null;
 		if (!validatePassword(password))
 			return null;
 
-		Client newUser = new Client(null, username, email, PasswordUtil.hash(password), "CLIENT", new ArrayList<>());
-		userDAO.save(newUser);
+		Client newUser = new Client(null, username, email, hashPassword(password), "CLIENT", new ArrayList<>());
+		saveUserRecord(newUser);
 		return newUser;
 	}
 
@@ -111,7 +126,7 @@ public class UserService {
 		if (email == null)
 			return false;
 		String regex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
-		return Pattern.matches(regex, email);
+		return matchesPattern(regex, email);
 	}
 
 	/**
@@ -123,17 +138,65 @@ public class UserService {
 	public boolean isUsernameAvailable(String username) {
 		if (username == null || username.isBlank())
 			return false;
-		return userDAO.findByUsername(username) == null;
+		return findUserByUsername(username) == null;
+	}
+
+	/**
+	 * Checks that an email address is not already used by another account.
+	 *
+	 * @param email email to check
+	 * @return true if available
+	 */
+	public boolean isEmailAvailable(String email) {
+		if (email == null || email.isBlank())
+			return false;
+		return findUserByEmail(email) == null;
 	}
 
 	/**
 	 * Deletes a user account and all associated data.
-	 * Note: the Persistence layer must cascade-delete vehicles and reservations.
+	 * Occupied spaces are freed before persistence cascades vehicles and reservations.
+	 * This method synchronizes the transaction because the user's parked vehicles
+	 * are cleared before the user row is deleted. Both changes must be committed
+	 * together so no space remains occupied by a deleted account.
 	 * 
 	 * @param userId ID of the user to delete
 	 */
 	public void deleteUser(int userId) {
-		userDAO.delete(userId);
+		synchronized (transactionLock()) {
+			try {
+				beginTransaction();
+				clearParkedVehiclesForUser(userId);
+				deleteUserRecord(userId);
+				commitTransaction();
+			} catch (RuntimeException e) {
+				rollbackTransaction();
+				throw e;
+			}
+		}
+	}
+
+	/** Frees spaces occupied by vehicles owned by the user being deleted. */
+	private void clearParkedVehiclesForUser(int userId) {
+		if (parkingSpaceDAO == null || userId <= 0) return;
+
+		List<Vehicle> vehicles = findVehiclesByUser(userId);
+		Set<String> plates = new HashSet<>();
+		for (Vehicle vehicle : vehicles) {
+			plates.add(vehicle.getLicensePlate());
+		}
+
+		if (plates.isEmpty()) return;
+
+		List<ParkingSpace> spaces = loadAllParkingSpaces();
+		for (ParkingSpace space : spaces) {
+			if (space.isOccupied()
+					&& space.getParkedVehicle() != null
+					&& plates.contains(space.getParkedVehicle().getLicensePlate())) {
+				space.freeSpace();
+				updateParkingSpaceRecord(space);
+			}
+		}
 	}
 
 	/**
@@ -143,42 +206,64 @@ public class UserService {
 	 * @return User, or null if not found
 	 */
 	public User getUserById(int userId) {
-		return userDAO.findById(userId);
+		return findUserById(userId);
 	}
 
 	/**
 	 * Registers a vehicle and associates it with a user.
+	 * This method synchronizes the transaction because saving the vehicle and
+	 * refreshing the user record belong to the same account update.
 	 * 
 	 * @param userId  owner's user ID
 	 * @param vehicle vehicle to register
 	 */
 	public void addVehicle(int userId, Vehicle vehicle) {
-		vehicleDAO.save(vehicle);
-		User user = userDAO.findById(userId);
-		if (user != null) {
-			user.addVehicle(vehicle);
-			userDAO.update(user);
+		synchronized (transactionLock()) {
+			try {
+				beginTransaction();
+				saveVehicleRecord(vehicle);
+				User user = findUserById(userId);
+				if (user != null) {
+					user.addVehicle(vehicle);
+					updateUserRecord(user);
+				}
+				commitTransaction();
+			} catch (RuntimeException e) {
+				rollbackTransaction();
+				throw e;
+			}
 		}
 	}
 
 	/**
 	 * Removes a vehicle from the system and from the user's vehicle list.
+	 * This method synchronizes the transaction because the vehicle deletion and
+	 * user update must stay consistent.
 	 *
 	 * @param userId owner's user ID
 	 * @param plate  license plate of the vehicle to remove
 	 */
 	public void removeVehicle(int userId, String plate) {
-		vehicleDAO.delete(plate);
-		User user = userDAO.findById(userId);
-		if (user != null) {
-			user.removeVehicle(plate);
-			userDAO.update(user);
+		synchronized (transactionLock()) {
+			try {
+				beginTransaction();
+				deleteVehicleRecord(plate);
+				User user = findUserById(userId);
+				if (user != null) {
+					user.removeVehicle(plate);
+					updateUserRecord(user);
+				}
+				commitTransaction();
+			} catch (RuntimeException e) {
+				rollbackTransaction();
+				throw e;
+			}
 		}
 	}
 
 	/**
 	 * Authenticates a user and returns their role code.
-	 * Admin password is intentionally NOT checked here — AuthController verifies it against config.json.
+	 * Admin password is intentionally not checked here; AuthController verifies it against config.json.
 	 *
 	 * @param id       username or email
 	 * @param password plain-text password
@@ -222,5 +307,99 @@ public class UserService {
 	 */
 	public boolean register(String username, String email, String password) {
 		return signup(username, email, password) != null;
+	}
+
+	/** Finds a user by username through persistence. */
+	private User findUserByUsername(String username) {
+		return userDAO.findByUsername(username);
+	}
+
+	/** Finds a user by email through persistence. */
+	private User findUserByEmail(String email) {
+		return userDAO.findByEmail(email);
+	}
+
+	/** Finds a user by ID through persistence. */
+	private User findUserById(int userId) {
+		return userDAO.findById(userId);
+	}
+
+	/** Saves a user through persistence. */
+	private void saveUserRecord(User user) {
+		userDAO.save(user);
+	}
+
+	/** Updates a user through persistence. */
+	private void updateUserRecord(User user) {
+		userDAO.update(user);
+	}
+
+	/** Deletes a user through persistence. */
+	private void deleteUserRecord(int userId) {
+		userDAO.delete(userId);
+	}
+
+	/** Finds vehicles belonging to a user through persistence. */
+	private List<Vehicle> findVehiclesByUser(int userId) {
+		return vehicleDAO.findByUser(userId);
+	}
+
+	/** Saves a vehicle through persistence. */
+	private void saveVehicleRecord(Vehicle vehicle) {
+		vehicleDAO.save(vehicle);
+	}
+
+	/** Deletes a vehicle through persistence. */
+	private void deleteVehicleRecord(String plate) {
+		vehicleDAO.delete(plate);
+	}
+
+	/** Loads every parking space through persistence. */
+	private List<ParkingSpace> loadAllParkingSpaces() {
+		return parkingSpaceDAO.findAll();
+	}
+
+	/** Updates a parking space through persistence. */
+	private void updateParkingSpaceRecord(ParkingSpace space) {
+		parkingSpaceDAO.update(space);
+	}
+
+	/** Hashes a password through the password helper. */
+	private String hashPassword(String password) {
+		return PasswordUtil.hash(password);
+	}
+
+	/** Checks a password against a stored hash. */
+	private boolean passwordMatches(String password, String storedPassword) {
+		return PasswordUtil.verify(password, storedPassword);
+	}
+
+	/** Checks whether text matches a regular expression. */
+	private boolean matchesPattern(String regex, String text) {
+		return Pattern.matches(regex, text);
+	}
+
+	/**
+	 * Gets the shared lock used by synchronized transaction blocks.
+	 * The simulation thread and SwingWorkers can both change parking data, so
+	 * this lock makes one multi-step database operation finish before another begins.
+	 */
+	private Object transactionLock() {
+		return transactionManager != null ? transactionManager : this;
+	}
+
+	/** Starts a transaction when transaction support is available. */
+	private void beginTransaction() {
+		if (transactionManager != null) transactionManager.beginTransaction();
+	}
+
+	/** Commits a transaction when transaction support is available. */
+	private void commitTransaction() {
+		if (transactionManager != null) transactionManager.commit();
+	}
+
+	/** Rolls back a transaction when transaction support is available. */
+	private void rollbackTransaction() {
+		if (transactionManager != null) transactionManager.rollback();
 	}
 }

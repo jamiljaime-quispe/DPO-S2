@@ -16,6 +16,7 @@ public class LoginView extends JFrame {
     private JButton signupButton;
     private AuthController controller;
 
+    /** Creates the login window. */
     public LoginView() {
         setTitle("Login - Parking System");
         setSize(930, 650);
@@ -23,6 +24,7 @@ public class LoginView extends JFrame {
         setLocationRelativeTo(null);
     }
 
+    /** Builds the login window components. */
     public void initComponents() {
 
         JPanel mainPanel = new JPanel();
@@ -107,6 +109,7 @@ public class LoginView extends JFrame {
         setVisible(true);
     }
 
+    /** Creates a label for a form field. */
     private JLabel fieldLabel(String text) {
         JLabel l = new JLabel(text);
         l.setFont(new Font("SansSerif", Font.BOLD, 12));
@@ -115,6 +118,7 @@ public class LoginView extends JFrame {
         return l;
     }
 
+    /** Applies the standard text-field style. */
     private void styleField(JTextField f) {
         f.setFont(new Font("SansSerif", Font.PLAIN, 14));
         f.setPreferredSize(new Dimension(320, 40));
@@ -125,6 +129,7 @@ public class LoginView extends JFrame {
                 BorderFactory.createEmptyBorder(6, 12, 6, 12)));
     }
 
+    /** Creates a primary action button. */
     private JButton primaryButton(String text) {
         JButton b = new JButton(text);
         b.setForeground(Color.WHITE);
@@ -140,6 +145,7 @@ public class LoginView extends JFrame {
         return b;
     }
 
+    /** Creates a link-style button. */
     private JButton linkButton(String text) {
         JButton b = new JButton(text);
         b.setForeground(new Color(33, 99, 168));
@@ -153,14 +159,17 @@ public class LoginView extends JFrame {
         return b;
     }
 
+    /** Gets the username or email typed by the user. */
     public String getUsernameOrEmail() {
         return userField.getText().trim();
     }
 
+    /** Gets the password typed by the user. */
     public String getPassword() {
         return new String(passwordField.getPassword());
     }
 
+    /** Enables or disables the login form while work is running. */
     public void setLoadingState(boolean isLoading) {
         if (isLoading) {
             loginButton.setEnabled(false);
@@ -175,12 +184,33 @@ public class LoginView extends JFrame {
         }
     }
 
+    /** Sets the authentication controller used by this view. */
     public void authenControllerSetter(AuthController controller) {
         this.controller = controller;
     }
 
+    /** Clears the login fields. */
     public void clearFields() {
         userField.setText("");
         passwordField.setText("");
+    }
+
+    /**
+     * Shows an error message owned by the login window.
+     *
+     * @param title   dialog title
+     * @param message message to show
+     */
+    public void showError(String title, String message) {
+        JOptionPane.showMessageDialog(this, message, title, JOptionPane.ERROR_MESSAGE);
+    }
+
+    /**
+     * Shows a startup error before the normal windows can be opened.
+     *
+     * @param message message to show
+     */
+    public static void showStartupError(String message) {
+        JOptionPane.showMessageDialog(null, message, "Startup Error", JOptionPane.ERROR_MESSAGE);
     }
 }

@@ -24,10 +24,12 @@ import Persistence.ReservationDAO;
 public class ReservationDAOImpl implements ReservationDAO {
     private final DatabaseManager db;
 
+    /** Creates the DAO with the shared database manager. */
     public ReservationDAOImpl(DatabaseManager db) {
         this.db = db;
     }
 
+    /** Saves a new reservation. */
     @Override
     public void save(Reservation reservation) {
         String sql = """
@@ -55,6 +57,7 @@ public class ReservationDAOImpl implements ReservationDAO {
         }
     }
 
+    /** Deletes a reservation by ID. */
     @Override
     public void delete(int id) {
         String sql = "DELETE FROM reservation WHERE reservationId = ?";
@@ -67,6 +70,7 @@ public class ReservationDAOImpl implements ReservationDAO {
         }
     }
 
+    /** Finds a reservation by ID. */
     @Override
     public Reservation findById(int id) {
         String sql = baseReservationQuery() + " WHERE r.reservationId = ?";
@@ -82,6 +86,7 @@ public class ReservationDAOImpl implements ReservationDAO {
         return null;
     }
 
+    /** Loads reservations that belong to a user. */
     @Override
     public List<Reservation> findByUser(int userId) {
         String sql = baseReservationQuery() + " WHERE u.userId = ? ORDER BY r.reservationDate DESC";
@@ -100,6 +105,7 @@ public class ReservationDAOImpl implements ReservationDAO {
         return reservations;
     }
 
+    /** Finds the active reservation for a license plate. */
     @Override
     public Reservation findByPlate(String plate) {
         String sql = baseReservationQuery() + " WHERE r.licensePlate = ? AND r.isActive = TRUE";
@@ -115,6 +121,7 @@ public class ReservationDAOImpl implements ReservationDAO {
         return null;
     }
 
+    /** Loads all reservations. */
     @Override
     public List<Reservation> findAll() {
         String sql = baseReservationQuery() + " ORDER BY r.reservationDate DESC";
@@ -131,6 +138,7 @@ public class ReservationDAOImpl implements ReservationDAO {
         return reservations;
     }
 
+    /** Updates an existing reservation. */
     @Override
     public void update(Reservation reservation) {
         String sql = """
@@ -160,6 +168,7 @@ public class ReservationDAOImpl implements ReservationDAO {
         }
     }
 
+    /** Builds the common reservation query used by the finder methods. */
     private String baseReservationQuery() {
         return """
                 SELECT r.reservationId, r.licensePlate, r.reservationDate,
@@ -175,6 +184,7 @@ public class ReservationDAOImpl implements ReservationDAO {
                 """;
     }
 
+    /** Converts a database row into a Reservation object. */
     private Reservation mapRow(ResultSet rs) throws SQLException {
         VehicleType vehicleType = VehicleType.valueOf(rs.getString("vehicleType"));
         String spaceCode = rs.getString("code");

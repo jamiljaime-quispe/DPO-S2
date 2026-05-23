@@ -29,11 +29,13 @@ public class ParkingSpaceDetailsView extends JDialog {
     private JButton closeButton;
     private ParkingSpace displayedSpace;
 
+    /** Creates the parking-space details dialog. */
     public ParkingSpaceDetailsView(Frame parent) {
         super(parent, "Parking Space Details", true);
         initComponents();
     }
 
+    /** Builds the details dialog components. */
     private void initComponents() {
         setLayout(new BorderLayout(10, 10));
         getContentPane().setBackground(new Color(245, 247, 250));
@@ -84,6 +86,7 @@ public class ParkingSpaceDetailsView extends JDialog {
         add(buttonPanel, BorderLayout.SOUTH);
     }
 
+    /** Adds one label-value row to the details panel. */
     private void addRow(JPanel panel, String label, JLabel value) {
         JLabel name = new JLabel(label);
         name.setFont(new Font("SansSerif", Font.BOLD, 13));
@@ -94,6 +97,7 @@ public class ParkingSpaceDetailsView extends JDialog {
         panel.add(value);
     }
 
+    /** Applies the main button style. */
     private void stylePrimaryButton(JButton b) {
         b.setForeground(Color.WHITE);
         b.setBackground(new Color(33, 99, 168));
@@ -104,12 +108,14 @@ public class ParkingSpaceDetailsView extends JDialog {
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
+    /** Opens the dialog with the selected space details. */
     public void displaySpaceDetails(ParkingSpace space) {
         updateSpaceDetails(space);
         setLocationRelativeTo(getParent());
         setVisible(true);
     }
 
+    /** Updates the displayed space details. */
     public void updateSpaceDetails(ParkingSpace space) {
         displayedSpace = space;
         Reservation reservation = space.getReservation();
@@ -139,11 +145,13 @@ public class ParkingSpaceDetailsView extends JDialog {
         }
     }
 
+    /** Gets the code of the space currently displayed. */
     public String getDisplayedSpaceCode() {
         if (displayedSpace == null) return "";
         return displayedSpace.getId();
     }
 
+    /** Gets the license plate of the active reservation being displayed. */
     public String getDisplayedReservationPlate() {
         if (displayedSpace == null
                 || displayedSpace.getReservation() == null
@@ -153,24 +161,44 @@ public class ParkingSpaceDetailsView extends JDialog {
         return displayedSpace.getReservation().getVehicle().getLicensePlate();
     }
 
+    /** Sets the listener for the cancel-reservation button. */
     public void setCancelReservationListener(ActionListener listener) {
         cancelReservationButton.addActionListener(listener);
     }
 
+    /** Enables or disables the dialog while work is running. */
     public void setLoading(boolean loading) {
         setCursor(Cursor.getPredefinedCursor(loading ? Cursor.WAIT_CURSOR : Cursor.DEFAULT_CURSOR));
         cancelReservationButton.setEnabled(!loading);
         closeButton.setEnabled(!loading);
     }
 
+    /** Shows an error message owned by this dialog. */
     public void showError(String message) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
+    /** Shows an information message owned by this dialog. */
     public void showInfo(String message) {
         JOptionPane.showMessageDialog(this, message, "Info", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    /**
+     * Asks the admin to confirm reservation cancellation from the details dialog.
+     *
+     * @param spaceCode parking space code
+     * @param plate     booked license plate
+     * @return true if the admin confirms
+     */
+    public boolean confirmCancelReservation(String spaceCode, String plate) {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Cancel the reservation for plate \"" + plate + "\" in space \"" + spaceCode + "\"?",
+                "Cancel Reservation",
+                JOptionPane.YES_NO_OPTION);
+        return confirm == JOptionPane.YES_OPTION;
+    }
+
+    /** Gets the parked or reserved plate shown in the details dialog. */
     private String resolveLicensePlate(ParkingSpace space) {
         if (space.getParkedVehicle() != null) {
             return space.getParkedVehicle().getLicensePlate();

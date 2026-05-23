@@ -16,10 +16,12 @@ import java.util.ArrayList;
 public class UserDAOImpl implements UserDAO {
     private final DatabaseManager db;
 
+    /** Creates the DAO with the shared database manager. */
     public UserDAOImpl(DatabaseManager db) {
         this.db = db;
     }
 
+    /** Saves a new user. */
     @Override
     public void save(User user) {
         String sql = "INSERT INTO user (username, email, password, isAdmin) VALUES (?, ?, ?, ?)";
@@ -39,6 +41,7 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
+    /** Finds a user by ID. */
     @Override
     public User findById(int id) {
         String sql = "SELECT * FROM user WHERE userId = ?";
@@ -54,6 +57,7 @@ public class UserDAOImpl implements UserDAO {
         return null;
     }
 
+    /** Finds a user by username. */
     @Override
     public User findByUsername(String username) {
         String sql = "SELECT * FROM user WHERE username = ?";
@@ -69,6 +73,7 @@ public class UserDAOImpl implements UserDAO {
         return null;
     }
 
+    /** Finds a user by email address. */
     @Override
     public User findByEmail(String email) {
         String sql = "SELECT * FROM user WHERE email = ?";
@@ -84,6 +89,7 @@ public class UserDAOImpl implements UserDAO {
         return null;
     }
 
+    /** Deletes a user by ID. */
     @Override
     public void delete(int id) {
         String sql = "DELETE FROM user WHERE userId = ?";
@@ -95,6 +101,7 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
+    /** Updates an existing user. */
     @Override
     public void update(User user) {
         String sql = "UPDATE user SET username = ?, email = ?, password = ?, isAdmin = ? WHERE userId = ?";
@@ -110,6 +117,7 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
+    /** Converts a database row into a User object. */
     private User mapRow(ResultSet rs) throws SQLException {
         String id = String.valueOf(rs.getInt("userId"));
         String username = rs.getString("username");

@@ -32,11 +32,14 @@ public class AdminSlotBookingController {
     private UserService userService;
     private int currentMode = ADMIN_MODE;
     private volatile int bookingsLoadId;
+    private String currentUserBookingPlate;
+    private VehicleType currentUserBookingType;
 
     private static class BookingRow {
         private ParkingSpace space;
         private boolean userBooking;
 
+        /** Stores one booking row loaded for the table. */
         private BookingRow(ParkingSpace space, boolean userBooking) {
             this.space = space;
             this.userBooking = userBooking;
@@ -60,7 +63,7 @@ public class AdminSlotBookingController {
         this.adminService = adminService;
         this.reservationService = reservationService;
         this.userService = userService;
-        bookingView.setController(this);
+        setViewController();
     }
 
     /**
@@ -70,10 +73,13 @@ public class AdminSlotBookingController {
      */
     public void showView(int mode) {
         currentMode = mode;
-        bookingView.setMode(mode);
-        bookingView.clearBookingsTable();
+        currentUserBookingPlate = null;
+        currentUserBookingType = null;
+        setBookingViewMode(mode);
+        setUserBookingVehicle(currentUserBookingPlate, currentUserBookingType);
+        clearBookingsTable();
         loadBookings();
-        bookingView.setVisible(true);
+        showBookingView();
     }
 
     /**
@@ -81,12 +87,13 @@ public class AdminSlotBookingController {
      * Safe to call from any thread.
      */
     public void refreshIfVisible() {
-        if (bookingView == null || !bookingView.isVisible()) return;
+        if (!isBookingViewVisible()) return;
 
-        if (SwingUtilities.isEventDispatchThread()) {
+        if (isEventDispatchThread()) {
             loadBookings();
         } else {
-            SwingUtilities.invokeLater(new Runnable() {
+            runOnEventDispatchThread(new Runnable() {
+                /** Reloads the booking view on the EDT. */
                 @Override
                 public void run() {
                     loadBookings();
@@ -103,21 +110,28 @@ public class AdminSlotBookingController {
         bookingsLoadId++;
         int loadId = bookingsLoadId;
 
-        bookingView.setLoading(true);
+        setLoading(true);
 
         int modeForLoad = currentMode;
-        int userId = userService.getLastLoggedInUserId();
+        int userId = getCurrentUserId();
+        VehicleType typeForLoad = currentUserBookingType;
 
         new SwingWorker<Set<String>, BookingRow>() {
+            /** Loads booking rows away from the EDT. */
             @Override
             protected Set<String> doInBackground() {
-                List<ParkingSpace> spaces = parkingService.getAllSpaces();
+                List<ParkingSpace> spaces;
+                if (modeForLoad == USER_MODE && typeForLoad != null) {
+                    spaces = findAvailableSpaces(typeForLoad);
+                } else {
+                    spaces = loadAllSpaces();
+                }
                 Set<String> userBookingCodes = new HashSet<>();
                 List<ParkingSpace> orderedSpaces = new ArrayList<>();
                 Set<String> loadedCodes = new HashSet<>();
 
                 if (modeForLoad == USER_MODE && userId > 0) {
-                    List<Reservation> userReservations = reservationService.getReservationsByUser(userId);
+                    List<Reservation> userReservations = getReservationsByUser(userId);
                     for (Reservation reservation : userReservations) {
                         if (!reservation.isActive()) {
                             continue;
@@ -155,38 +169,55 @@ public class AdminSlotBookingController {
                 return loadedCodes;
             }
 
+            /** Adds loaded booking rows to the table on the EDT. */
             @Override
             protected void process(List<BookingRow> chunks) {
                 if (loadId != bookingsLoadId) return;
 
                 for (BookingRow row : chunks) {
-                    bookingView.addBookingToTable(row.space, row.userBooking);
+                    addBookingToTable(row.space, row.userBooking);
                 }
             }
 
+            /** Finishes refreshing the booking tables. */
             @Override
             protected void done() {
                 if (loadId != bookingsLoadId) return;
 
                 try {
                     Set<String> loadedCodes = get();
-                    bookingView.removeBookingSpacesNotIn(loadedCodes);
-                    bookingView.closeActiveBookingDialogIfTargetUnavailable();
-                    bookingView.closeActiveCancelDialogIfTargetUnavailable();
+                    removeBookingSpacesNotIn(loadedCodes);
+                    closeActiveBookingDialogIfTargetUnavailable();
+                    closeActiveCancelDialogIfTargetUnavailable();
                     if (modeForLoad == USER_MODE && userId > 0) {
                         List<Reservation> active = new ArrayList<>();
-                        for (Reservation r : reservationService.getReservationsByUser(userId)) {
+                        for (Reservation r : getReservationsByUser(userId)) {
                             if (r.isActive()) active.add(r);
                         }
-                        bookingView.updateReservationsTable(active);
+                        updateReservationsTable(active);
                     }
                 } catch (InterruptedException | ExecutionException e) {
-                    bookingView.showError("Failed to load slot bookings: " + e.getMessage());
+                    showError("Failed to load slot bookings: " + e.getMessage());
                 } finally {
-                    bookingView.setLoading(false);
+                    setLoading(false);
                 }
             }
         }.execute();
+    }
+
+    /**
+     * Stores the vehicle chosen by a regular user before showing compatible spaces.
+     *
+     * @param plate license plate chosen for the new booking
+     * @param type  vehicle type chosen for the new booking
+     */
+    public void prepareUserBooking(String plate, VehicleType type) {
+        currentUserBookingPlate = normalizePlate(plate);
+        currentUserBookingType = type;
+        setUserBookingVehicle(currentUserBookingPlate, currentUserBookingType);
+        showSlotBookingsTab();
+        clearBookingsTable();
+        loadBookings();
     }
 
     /**
@@ -197,43 +228,55 @@ public class AdminSlotBookingController {
      * @param spaceCode target parking space code
      */
     public void createBooking(String plate, VehicleType type, String spaceCode) {
-        if (plate == null || plate.isBlank() || spaceCode == null || spaceCode.isBlank()) {
-            bookingView.showError("License plate and space code cannot be empty.");
+        String bookingPlate = currentMode == USER_MODE && currentUserBookingPlate != null
+                ? currentUserBookingPlate
+                : normalizePlate(plate);
+        VehicleType bookingType = currentMode == USER_MODE && currentUserBookingType != null
+                ? currentUserBookingType
+                : type;
+
+        if (bookingPlate == null || bookingPlate.isBlank()
+                || bookingType == null
+                || spaceCode == null || spaceCode.isBlank()) {
+            showError("License plate and space code cannot be empty.");
             return;
         }
 
-        bookingView.setLoading(true);
+        setLoading(true);
         new SwingWorker<Reservation, Void>() {
+            /** Creates the booking away from the EDT. */
             @Override
             protected Reservation doInBackground() throws Exception {
-                return reservationService.createReservation(
-                        userService.getLastLoggedInUserId(),
-                        normalizePlate(plate),
-                        type,
+                return createReservation(
+                        getCurrentUserId(),
+                        bookingPlate,
+                        bookingType,
                         spaceCode);
             }
 
+            /** Updates the booking view after creation finishes. */
             @Override
             protected void done() {
                 try {
                     Reservation reservation = get();
                     if (reservation != null) {
-                        bookingView.showInfo("Booking created for space \"" + spaceCode
-                                + "\" and plate \"" + normalizePlate(plate) + "\".");
+                        showInfo("Booking created for space \"" + spaceCode
+                                + "\" and plate \"" + bookingPlate + "\".");
                         loadBookings();
                     } else {
-                        bookingView.setLoading(false);
-                        bookingView.showError("Booking could not be created.");
+                        setLoading(false);
+                        showError("Booking could not be created.");
                     }
                 } catch (InterruptedException | ExecutionException e) {
-                    bookingView.setLoading(false);
+                    setLoading(false);
                     Throwable cause = e.getCause();
-                    bookingView.showError(cause != null ? cause.getMessage() : "Failed to create booking.");
+                    showError(cause != null ? cause.getMessage() : "Failed to create booking.");
                 }
             }
         }.execute();
     }
 
+    /** Finds a parking space inside a loaded list by code. */
     private ParkingSpace findSpaceByCode(List<ParkingSpace> spaces, String code) {
         for (ParkingSpace space : spaces) {
             if (space.getId().equals(code)) {
@@ -253,33 +296,35 @@ public class AdminSlotBookingController {
      */
     public void editBooking(String originalSpaceCode, String plate, VehicleType type, String spaceCode) {
         if (plate == null || plate.isBlank() || spaceCode == null || spaceCode.isBlank()) {
-            bookingView.showError("License plate and space code cannot be empty.");
+            showError("License plate and space code cannot be empty.");
             return;
         }
 
-        bookingView.setLoading(true);
+        setLoading(true);
         new SwingWorker<Reservation, Void>() {
+            /** Reassigns the booking away from the EDT. */
             @Override
             protected Reservation doInBackground() throws Exception {
-                return reservationService.reassignReservation(normalizePlate(plate), spaceCode);
+                return reassignReservation(normalizePlate(plate), spaceCode);
             }
 
+            /** Updates the booking view after reassignment finishes. */
             @Override
             protected void done() {
                 try {
                     Reservation reservation = get();
                     if (reservation != null) {
-                        bookingView.showInfo("Booking reassigned from space \"" + originalSpaceCode
+                        showInfo("Booking reassigned from space \"" + originalSpaceCode
                                 + "\" to space \"" + spaceCode + "\".");
                         loadBookings();
                     } else {
-                        bookingView.setLoading(false);
-                        bookingView.showError("Booking could not be reassigned.");
+                        setLoading(false);
+                        showError("Booking could not be reassigned.");
                     }
                 } catch (InterruptedException | ExecutionException e) {
-                    bookingView.setLoading(false);
+                    setLoading(false);
                     Throwable cause = e.getCause();
-                    bookingView.showError(cause != null ? cause.getMessage() : "Failed to reassign booking.");
+                    showError(cause != null ? cause.getMessage() : "Failed to reassign booking.");
                 }
             }
         }.execute();
@@ -294,48 +339,177 @@ public class AdminSlotBookingController {
      */
     public void deleteBooking(String spaceCode, String plate) {
         if (plate == null || plate.isBlank()) {
-            bookingView.showError("Cannot cancel a booking without a license plate.");
+            showError("Cannot cancel a booking without a license plate.");
             return;
         }
 
-        bookingView.setLoading(true);
+        setLoading(true);
         new SwingWorker<Boolean, Void>() {
+            /** Cancels the booking away from the EDT. */
             @Override
             protected Boolean doInBackground() throws Exception {
                 if (currentMode == USER_MODE) {
-                    return reservationService.cancelReservationByPlateForUser(
-                            userService.getLastLoggedInUserId(),
+                    return cancelReservationByPlateForUser(
+                            getCurrentUserId(),
                             normalizePlate(plate));
                 }
-                return adminService.cancelReservationByPlate(normalizePlate(plate));
+                return cancelReservationByPlateAsAdmin(normalizePlate(plate));
             }
 
+            /** Updates the booking view after cancellation finishes. */
             @Override
             protected void done() {
                 try {
                     boolean cancelled = get();
                     if (cancelled) {
                         if (currentMode == USER_MODE) {
-                            bookingView.showInfo("Your booking for space \"" + spaceCode + "\" has been cancelled.");
+                            showInfo("Your booking for space \"" + spaceCode + "\" has been cancelled.");
                         } else {
-                            bookingView.showInfo("Booking for space \"" + spaceCode
+                            showInfo("Booking for space \"" + spaceCode
                                     + "\" has been cancelled. The space may still show occupied if a vehicle is parked there.");
                         }
                         loadBookings();
                     } else {
-                        bookingView.setLoading(false);
-                        bookingView.showError("No active booking found for license plate \"" + plate + "\".");
+                        setLoading(false);
+                        showError("No active booking found for license plate \"" + plate + "\".");
                     }
                 } catch (InterruptedException | ExecutionException e) {
-                    bookingView.setLoading(false);
+                    setLoading(false);
                     Throwable cause = e.getCause();
-                    bookingView.showError(cause != null ? cause.getMessage() : "Failed to cancel booking.");
+                    showError(cause != null ? cause.getMessage() : "Failed to cancel booking.");
                 }
             }
         }.execute();
     }
 
+    /** Normalizes a license plate entered by the user. */
     private String normalizePlate(String plate) {
+        if (plate == null) return "";
         return plate.trim().toUpperCase();
+    }
+
+    /** Sets this controller on the booking view. */
+    private void setViewController() {
+        bookingView.setController(this);
+    }
+
+    /** Sets the booking view mode. */
+    private void setBookingViewMode(int mode) {
+        bookingView.setMode(mode);
+    }
+
+    /** Sets the selected user booking vehicle on the view. */
+    private void setUserBookingVehicle(String plate, VehicleType type) {
+        bookingView.setUserBookingVehicle(plate, type);
+    }
+
+    /** Clears the bookings table. */
+    private void clearBookingsTable() {
+        bookingView.clearBookingsTable();
+    }
+
+    /** Shows the booking view. */
+    private void showBookingView() {
+        bookingView.setVisible(true);
+    }
+
+    /** Checks whether the booking view is visible. */
+    private boolean isBookingViewVisible() {
+        return bookingView != null && bookingView.isVisible();
+    }
+
+    /** Checks whether the current thread is the EDT. */
+    private boolean isEventDispatchThread() {
+        return SwingUtilities.isEventDispatchThread();
+    }
+
+    /** Runs a task on the EDT. */
+    private void runOnEventDispatchThread(Runnable task) {
+        SwingUtilities.invokeLater(task);
+    }
+
+    /** Sets the booking view loading state. */
+    private void setLoading(boolean loading) {
+        bookingView.setLoading(loading);
+    }
+
+    /** Gets the current logged-in user ID. */
+    private int getCurrentUserId() {
+        return userService.getLastLoggedInUserId();
+    }
+
+    /** Finds available spaces through the reservation service. */
+    private List<ParkingSpace> findAvailableSpaces(VehicleType type) {
+        return reservationService.getAvailableSpaces(type);
+    }
+
+    /** Loads every parking space through the parking service. */
+    private List<ParkingSpace> loadAllSpaces() {
+        return parkingService.getAllSpaces();
+    }
+
+    /** Gets reservations belonging to a user. */
+    private List<Reservation> getReservationsByUser(int userId) {
+        return reservationService.getReservationsByUser(userId);
+    }
+
+    /** Adds one booking row to the view. */
+    private void addBookingToTable(ParkingSpace space, boolean userBooking) {
+        bookingView.addBookingToTable(space, userBooking);
+    }
+
+    /** Removes booking rows not present in the latest load. */
+    private void removeBookingSpacesNotIn(Set<String> loadedCodes) {
+        bookingView.removeBookingSpacesNotIn(loadedCodes);
+    }
+
+    /** Closes a booking dialog if its target is no longer available. */
+    private void closeActiveBookingDialogIfTargetUnavailable() {
+        bookingView.closeActiveBookingDialogIfTargetUnavailable();
+    }
+
+    /** Closes a cancellation dialog if its target is no longer valid. */
+    private void closeActiveCancelDialogIfTargetUnavailable() {
+        bookingView.closeActiveCancelDialogIfTargetUnavailable();
+    }
+
+    /** Updates the reservation table. */
+    private void updateReservationsTable(List<Reservation> reservations) {
+        bookingView.updateReservationsTable(reservations);
+    }
+
+    /** Shows an error in the booking view. */
+    private void showError(String message) {
+        bookingView.showError(message);
+    }
+
+    /** Shows an informational message in the booking view. */
+    private void showInfo(String message) {
+        bookingView.showInfo(message);
+    }
+
+    /** Shows the slot bookings tab. */
+    private void showSlotBookingsTab() {
+        bookingView.showSlotBookingsTab();
+    }
+
+    /** Creates a reservation through the reservation service. */
+    private Reservation createReservation(int userId, String plate, VehicleType type, String spaceCode) {
+        return reservationService.createReservation(userId, plate, type, spaceCode);
+    }
+
+    /** Reassigns a reservation through the reservation service. */
+    private Reservation reassignReservation(String plate, String spaceCode) {
+        return reservationService.reassignReservation(plate, spaceCode);
+    }
+
+    /** Cancels a user reservation through the reservation service. */
+    private boolean cancelReservationByPlateForUser(int userId, String plate) {
+        return reservationService.cancelReservationByPlateForUser(userId, plate);
+    }
+
+    /** Cancels a reservation through the admin service. */
+    private boolean cancelReservationByPlateAsAdmin(String plate) {
+        return adminService.cancelReservationByPlate(plate);
     }
 }

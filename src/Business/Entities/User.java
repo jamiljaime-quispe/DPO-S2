@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Abstract base class representing a user in the system.
- * A user has a unique ID, credentials, a role type, and a list of registered vehicles.
+ * Base class for users of the parking system.
+ * A user has login data, a role, and a list of registered vehicles.
  */
 public abstract class User {
 	private String id;
@@ -21,9 +21,9 @@ public abstract class User {
 	 * @param id       the unique user identifier
 	 * @param username the chosen username
 	 * @param email    the user's email address
-	 * @param password the user's plain-text password
-	 * @param userType the role string ("ADMIN" or "CLIENT")
-	 * @param vehicles the initial list of vehicles owned by this user
+	 * @param password the stored password value
+	 * @param userType the role string
+	 * @param vehicles the initial vehicles owned by this user
 	 */
 	public User(String id, String username, String email, String password, String userType,
 				List<Vehicle> vehicles) {
@@ -35,81 +35,37 @@ public abstract class User {
 		this.vehicles = vehicles != null ? vehicles : new ArrayList<>();
 	}
 
-	/**
-	 * Gets the user ID.
-	 *
-	 * @return the user ID
-	 */
+	/** Gets the user ID. */
 	public String getId() { return id; }
 
-	/**
-	 * Gets the username.
-	 *
-	 * @return the username
-	 */
+	/** Gets the username. */
 	public String getUsername() { return username; }
 
-	/**
-	 * Gets the email address.
-	 *
-	 * @return the email address
-	 */
+	/** Gets the email address. */
 	public String getEmail() { return email; }
 
-	/**
-	 * Gets the password.
-	 *
-	 * @return the plain-text password
-	 */
+	/** Gets the stored password value. */
 	public String getPassword() { return password; }
 
-	/**
-	 * Gets the user type.
-	 *
-	 * @return the user type string ("ADMIN" or "CLIENT")
-	 */
+	/** Gets the user role. */
 	public String getUserType() { return userType; }
 
-	/**
-	 * Gets the list of vehicles owned by this user.
-	 *
-	 * @return the list of vehicles
-	 */
+	/** Gets this user's vehicles. */
 	public List<Vehicle> getVehicles() { return vehicles; }
 
-	/**
-	 * Sets the user ID.
-	 *
-	 * @param id the new user ID
-	 */
+	/** Sets the user ID. */
 	public void setId(String id) { this.id = id; }
 
-	/**
-	 * Sets the username.
-	 *
-	 * @param username the new username
-	 */
+	/** Sets the username. */
 	public void setUsername(String username) { this.username = username; }
 
-	/**
-	 * Sets the email address.
-	 *
-	 * @param email the new email address
-	 */
+	/** Sets the email address. */
 	public void setEmail(String email) { this.email = email; }
 
-	/**
-	 * Sets the password.
-	 *
-	 * @param password the new plain-text password
-	 */
+	/** Sets the stored password value. */
 	public void setPassword(String password) { this.password = password; }
 
-	/**
-	 * Sets the user type.
-	 *
-	 * @param userType the new user type string
-	 */
+	/** Sets the user role. */
 	public void setUserType(String userType) { this.userType = userType; }
 
 	/**
@@ -125,32 +81,16 @@ public abstract class User {
 	/**
 	 * Removes a vehicle from this user's vehicle list by license plate.
 	 *
-	 * @param licencePlate the plate of the vehicle to remove
+	 * @param licensePlate the plate of the vehicle to remove
 	 */
-	public void removeVehicle(String licencePlate) {
-		if (vehicles != null) {
-			vehicles.removeIf(v -> licencePlate.equals(v.getLicensePlate()));
+	public void removeVehicle(String licensePlate) {
+		if (vehicles == null) return;
+
+		for (int i = vehicles.size() - 1; i >= 0; i--) {
+			Vehicle vehicle = vehicles.get(i);
+			if (vehicle != null && licensePlate.equals(vehicle.getLicensePlate())) {
+				vehicles.remove(i);
+			}
 		}
 	}
-
-	/**
-	 * Authentication stub — logic is delegated to UserService.
-	 *
-	 * @param id       the username or email
-	 * @param password the password to check
-	 * @return always false at entity level
-	 */
-	public boolean login(String id, String password) {
-		return false;
-	}
-
-	/**
-	 * Logout stub — logic is delegated to AuthController.
-	 */
-	public void logout() {}
-
-	/**
-	 * Account deletion stub — logic is delegated to UserService.
-	 */
-	public void deleteAccount() {}
 }

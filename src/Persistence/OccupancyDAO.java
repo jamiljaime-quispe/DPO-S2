@@ -17,7 +17,7 @@ public interface OccupancyDAO {
     void saveRecord(LocalDateTime timestamp, int occupancy);
 
     /**
-     * Retrieves the last 60 occupancy records ordered from oldest to newest.
+     * Retrieves occupancy records from the last hour ordered from oldest to newest.
      *
      * @return list of occupied-space counts; may be empty
      */

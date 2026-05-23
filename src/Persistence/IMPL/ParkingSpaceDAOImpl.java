@@ -22,10 +22,12 @@ import java.time.LocalDateTime;
 public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
     private final DatabaseManager db;
 
+    /** Creates the DAO with the shared database manager. */
     public ParkingSpaceDAOImpl(DatabaseManager db) {
         this.db = db;
     }
 
+    /** Loads all parking spaces. */
     @Override
     public List<ParkingSpace> findAll() {
         String sql = """
@@ -53,6 +55,7 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         return list;
     }
 
+    /** Finds one parking space by code. */
     @Override
     public ParkingSpace findByCode(String code) {
         String sql = """
@@ -80,6 +83,7 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         return null;
     }
 
+    /** Loads vacant and unreserved spaces for a vehicle type. */
     @Override
     public List<ParkingSpace> findAvailableByType(VehicleType type) {
         String sql = """
@@ -110,6 +114,7 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         return list;
     }
 
+    /** Saves a new parking space. */
     @Override
     public void save(ParkingSpace space) {
         String sql = "INSERT INTO parking_space (code, floor, vehicleType, isOccupied, occupiedByPlate) VALUES (?, ?, ?, ?, ?)";
@@ -126,6 +131,7 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         }
     }
 
+    /** Updates the occupied state of a parking space. */
     @Override
     public void update(ParkingSpace space) {
         String sql = "UPDATE parking_space SET isOccupied = ?, occupiedByPlate = ? WHERE code = ?";
@@ -140,6 +146,7 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         }
     }
 
+    /** Updates the editable details of a parking space. */
     @Override
     public void updateDetails(ParkingSpace space) {
         String sql = "UPDATE parking_space SET floor = ?, vehicleType = ? WHERE code = ?";
@@ -153,6 +160,7 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         }
     }
 
+    /** Deletes a parking space by code. */
     @Override
     public void delete(String code) {
         String sql = "DELETE FROM parking_space WHERE code = ?";
@@ -165,6 +173,7 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         }
     }
 
+    /** Converts a database row into a ParkingSpace object. */
     private ParkingSpace mapRow(ResultSet rs) throws SQLException {
         String code = rs.getString("code");
         int floor = rs.getInt("floor");

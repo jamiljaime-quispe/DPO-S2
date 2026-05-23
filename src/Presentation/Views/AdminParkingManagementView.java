@@ -29,11 +29,13 @@ public class AdminParkingManagementView extends JDialog {
     private String activeEditSpaceCode;
     private boolean activeEditAllowsTypeChange;
 
+    /** Creates the admin parking management dialog. */
     public AdminParkingManagementView(Frame parent) {
         super(parent, "Manage Parking Slots", true);
         initComponents();
     }
 
+    /** Builds the dialog components. */
     private void initComponents() {
         setLayout(new BorderLayout(10, 10));
         getContentPane().setBackground(new Color(245, 247, 250));
@@ -43,6 +45,7 @@ public class AdminParkingManagementView extends JDialog {
 
         String[] columns = {"Code", "Floor", "Type", "Status", "Reservation", "License Plate"};
         tableModel = new DefaultTableModel(columns, 0) {
+            /** Keeps table cells read-only. */
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
         };
@@ -90,6 +93,7 @@ public class AdminParkingManagementView extends JDialog {
         refreshButton.addActionListener(e -> { if (controller != null) controller.loadSpaces(); });
     }
 
+    /** Applies the main button style. */
     private void stylePrimaryButton(JButton b) {
         b.setForeground(Color.WHITE);
         b.setBackground(new Color(33, 99, 168));
@@ -100,6 +104,7 @@ public class AdminParkingManagementView extends JDialog {
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
+    /** Opens the dialog used to add a parking space. */
     private void showAddDialog() {
         JDialog dialog = new JDialog(this, "Add Parking Space", true);
         dialog.setLayout(new GridLayout(3, 2, 10, 10));
@@ -132,6 +137,7 @@ public class AdminParkingManagementView extends JDialog {
         dialog.setVisible(true);
     }
 
+    /** Opens the dialog used to edit the selected parking space. */
     private void showEditDialog() {
         int row = getSelectedModelRow();
         if (row < 0) return;
@@ -188,6 +194,7 @@ public class AdminParkingManagementView extends JDialog {
         });
 
         dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            /** Clears the tracked edit dialog when it closes. */
             @Override
             public void windowClosed(java.awt.event.WindowEvent e) {
                 if (activeEditDialog == dialog) {
@@ -199,12 +206,14 @@ public class AdminParkingManagementView extends JDialog {
         dialog.setVisible(true);
     }
 
+    /** Clears the tracked edit dialog state. */
     private void clearActiveEditDialog() {
         activeEditDialog = null;
         activeEditSpaceCode = null;
         activeEditAllowsTypeChange = false;
     }
 
+    /** Starts the delete flow for the selected parking space. */
     private void handleDelete() {
         int row = getSelectedModelRow();
         if (row < 0) return;
@@ -222,26 +231,33 @@ public class AdminParkingManagementView extends JDialog {
         if ("Reserved".equals(reservation)) {
             message = message
                     + "\n\nThis space has an active reservation. The system will try to move it to a similar vacant space."
-                    + "\nIf no similar vacant space exists, the reservation will be deleted.";
+                    + "\nIf no similar vacant space exists, the reservation will be cancelled and the user will be notified.";
         }
 
         showDeleteConfirmationDialog(code, message);
     }
 
+    /** Opens the delete confirmation dialog for a parking space. */
     private void showDeleteConfirmationDialog(String code, String message) {
         JDialog dialog = new JDialog(this, "Confirm Delete", true);
         activeDeleteDialog = dialog;
         activeDeleteSpaceCode = code;
 
         dialog.setLayout(new BorderLayout(10, 10));
-        dialog.setSize(460, 180);
         dialog.setLocationRelativeTo(this);
         dialog.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         ((JComponent) dialog.getContentPane()).setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
 
-        JLabel messageLabel = new JLabel("<html>" + message.replace("\n", "<br>") + "</html>");
-        messageLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
-        dialog.add(messageLabel, BorderLayout.CENTER);
+        JTextArea messageArea = new JTextArea(message);
+        messageArea.setEditable(false);
+        messageArea.setFocusable(false);
+        messageArea.setOpaque(false);
+        messageArea.setLineWrap(true);
+        messageArea.setWrapStyleWord(true);
+        messageArea.setColumns(42);
+        messageArea.setRows(5);
+        messageArea.setFont(new Font("SansSerif", Font.BOLD, 14));
+        dialog.add(messageArea, BorderLayout.CENTER);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
         JButton yesButton = new JButton("Yes");
@@ -264,6 +280,7 @@ public class AdminParkingManagementView extends JDialog {
         });
 
         dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            /** Clears the tracked delete dialog when it closes. */
             @Override
             public void windowClosed(java.awt.event.WindowEvent e) {
                 if (activeDeleteDialog == dialog) {
@@ -272,14 +289,19 @@ public class AdminParkingManagementView extends JDialog {
             }
         });
 
+        dialog.pack();
+        dialog.setSize(new Dimension(Math.max(dialog.getWidth(), 540), dialog.getHeight()));
+        dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
 
+    /** Clears the tracked delete dialog state. */
     private void clearActiveDeleteDialog() {
         activeDeleteDialog = null;
         activeDeleteSpaceCode = null;
     }
 
+    /** Replaces the table with the given parking spaces. */
     public void updateSpaces(List<ParkingSpace> spaces) {
         clearSpacesTable();
         for (ParkingSpace space : spaces) {
@@ -287,10 +309,12 @@ public class AdminParkingManagementView extends JDialog {
         }
     }
 
+    /** Clears the parking-space table. */
     public void clearSpacesTable() {
         tableModel.setRowCount(0);
     }
 
+    /** Adds or updates one parking-space row. */
     public void addSpaceToTable(ParkingSpace space) {
         Object[] rowData = buildSpaceRow(space);
         int existingRow = findSpaceRow(space.getId());
@@ -314,6 +338,7 @@ public class AdminParkingManagementView extends JDialog {
         updateActionButtons();
     }
 
+    /** Builds a table row for a parking space. */
     private Object[] buildSpaceRow(ParkingSpace space) {
         return new Object[]{
             space.getId(),
@@ -325,6 +350,7 @@ public class AdminParkingManagementView extends JDialog {
         };
     }
 
+    /** Finds the table row for a parking space code. */
     private int findSpaceRow(String code) {
         for (int row = 0; row < tableModel.getRowCount(); row++) {
             String currentCode = String.valueOf(tableModel.getValueAt(row, 0));
@@ -336,6 +362,7 @@ public class AdminParkingManagementView extends JDialog {
         return -1;
     }
 
+    /** Removes rows for spaces that are no longer present. */
     public void removeSpacesNotIn(java.util.Set<String> visibleCodes) {
         for (int row = tableModel.getRowCount() - 1; row >= 0; row--) {
             String currentCode = String.valueOf(tableModel.getValueAt(row, 0));
@@ -347,6 +374,7 @@ public class AdminParkingManagementView extends JDialog {
         updateActionButtons();
     }
 
+    /** Closes the delete confirmation if the selected space can no longer be deleted. */
     public void closeActiveDeleteDialogIfTargetUnavailable() {
         if (activeDeleteDialog == null
                 || !activeDeleteDialog.isVisible()
@@ -376,6 +404,7 @@ public class AdminParkingManagementView extends JDialog {
         }
     }
 
+    /** Closes the edit dialog if the selected space changes state. */
     public void closeActiveEditDialogIfTargetUnavailable() {
         if (activeEditDialog == null
                 || !activeEditDialog.isVisible()
@@ -410,14 +439,17 @@ public class AdminParkingManagementView extends JDialog {
         }
     }
 
+    /** Shows an error message owned by this dialog. */
     public void showError(String message) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
+    /** Shows an information message owned by this dialog. */
     public void showInfo(String message) {
         JOptionPane.showMessageDialog(this, message, "Info", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    /** Enables or disables controls while work is running. */
     public void setLoading(boolean loading) {
         this.loading = loading;
         setCursor(Cursor.getPredefinedCursor(loading ? Cursor.WAIT_CURSOR : Cursor.DEFAULT_CURSOR));
@@ -425,10 +457,12 @@ public class AdminParkingManagementView extends JDialog {
         updateActionButtons();
     }
 
+    /** Sets the controller used by this dialog. */
     public void setController(AdminController controller) {
         this.controller = controller;
     }
 
+    /** Enables or disables buttons based on the current selection. */
     private void updateActionButtons() {
         boolean selected = spacesTable.getSelectedRow() >= 0;
         boolean occupied = isSelectedSpaceOccupied();
@@ -438,6 +472,7 @@ public class AdminParkingManagementView extends JDialog {
         refreshButton.setEnabled(!loading);
     }
 
+    /** Checks whether the selected table row is occupied. */
     private boolean isSelectedSpaceOccupied() {
         int row = getSelectedModelRow();
         if (row < 0) return false;
@@ -446,12 +481,14 @@ public class AdminParkingManagementView extends JDialog {
         return "Occupied".equals(status);
     }
 
+    /** Gets the selected row index in the table model. */
     private int getSelectedModelRow() {
         int row = spacesTable.getSelectedRow();
         if (row < 0) return -1;
         return spacesTable.convertRowIndexToModel(row);
     }
 
+    /** Gets the plate displayed for a parking space. */
     private String getLicensePlate(ParkingSpace space) {
         if (space.getParkedVehicle() != null) {
             return space.getParkedVehicle().getLicensePlate();
@@ -465,6 +502,7 @@ public class AdminParkingManagementView extends JDialog {
         private static final Color VACANT_COLOR = new Color(232, 248, 238);
         private static final Color OCCUPIED_COLOR = new Color(253, 235, 235);
 
+        /** Colors the status column according to vacancy. */
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                                                        boolean hasFocus, int row, int column) {

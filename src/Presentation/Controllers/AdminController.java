@@ -32,7 +32,7 @@ public class AdminController {
     public AdminController(AdminParkingManagementView adminView, ParkingService parkingService) {
         this.adminView = adminView;
         this.parkingService = parkingService;
-        adminView.setController(this);
+        setViewController();
     }
 
     /** Sets the admin service used for reservation operations. */
@@ -42,9 +42,9 @@ public class AdminController {
 
     /** Clears the table, loads all spaces, and makes the view visible. */
     public void showView() {
-        adminView.clearSpacesTable();
+        clearSpacesTable();
         loadSpaces();
-        adminView.setVisible(true);
+        showAdminView();
     }
 
     /**
@@ -52,13 +52,14 @@ public class AdminController {
      * Safe to call from any thread.
      */
     public void refreshIfVisible() {
-        if (adminView == null || !adminView.isVisible())
+        if (!isAdminViewVisible())
             return;
 
         if (SwingUtilities.isEventDispatchThread()) {
             loadSpaces();
         } else {
             SwingUtilities.invokeLater(new Runnable() {
+                /** Reloads the admin view on the EDT. */
                 @Override
                 public void run() {
                     loadSpaces();
@@ -75,24 +76,26 @@ public class AdminController {
      * @param type  the vehicle type for the space
      */
     public void createSpace(int floor, VehicleType type) {
-        adminView.setLoading(true);
+        setLoading(true);
         new SwingWorker<Void, Void>() {
+            /** Creates the space away from the EDT. */
             @Override
             protected Void doInBackground() throws Exception {
                 ParkingSpace space = new ParkingSpace(null, floor, type, false, false, null, null);
-                parkingService.createParkingSpace(space);
+                createParkingSpace(space);
                 return null;
             }
 
+            /** Refreshes the view after the create operation finishes. */
             @Override
             protected void done() {
                 try {
                     get();
                     loadSpaces();
                 } catch (InterruptedException | ExecutionException e) {
-                    adminView.setLoading(false);
+                    setLoading(false);
                     Throwable cause = e.getCause();
-                    adminView.showError(cause != null ? cause.getMessage() : "Failed to create space.");
+                    showError(cause != null ? cause.getMessage() : "Failed to create space.");
                 }
             }
         }.execute();
@@ -106,29 +109,31 @@ public class AdminController {
      * @param type  the new vehicle type
      */
     public void editSpace(String code, int floor, VehicleType type) {
-        adminView.setLoading(true);
+        setLoading(true);
         new SwingWorker<Void, Void>() {
+            /** Saves the edited space away from the EDT. */
             @Override
             protected Void doInBackground() throws Exception {
-                ParkingSpace space = parkingService.findByCode(code);
+                ParkingSpace space = findParkingSpace(code);
                 if (space == null) {
                     throw new IllegalArgumentException("Space not found: " + code);
                 }
                 space.setFloor(floor);
                 space.setVehicleType(type);
-                parkingService.updateParkingSpaceDetails(space);
+                updateParkingSpaceDetails(space);
                 return null;
             }
 
+            /** Refreshes the view after the edit operation finishes. */
             @Override
             protected void done() {
                 try {
                     get();
                     loadSpaces();
                 } catch (InterruptedException | ExecutionException e) {
-                    adminView.setLoading(false);
+                    setLoading(false);
                     Throwable cause = e.getCause();
-                    adminView.showError(cause != null ? cause.getMessage() : "Failed to edit space.");
+                    showError(cause != null ? cause.getMessage() : "Failed to edit space.");
                 }
             }
         }.execute();
@@ -137,40 +142,34 @@ public class AdminController {
     /**
      * Deletes a parking space by code.
      * Occupied spaces cannot be deleted.
-     * Any active reservation is reassigned or cancelled before deletion.
+     * Any active reservation is reassigned or cancelled by the admin service
+     * before deletion.
      *
      * @param code the space code to delete
      */
     public void deleteSpace(String code) {
-        adminView.setLoading(true);
+        setLoading(true);
         new SwingWorker<Void, Void>() {
+            /** Deletes the space away from the EDT. */
             @Override
             protected Void doInBackground() throws Exception {
-                ParkingSpace space = parkingService.findByCode(code);
-                if (space == null) {
-                    throw new IllegalArgumentException("Space not found: " + code);
+                if (adminService == null) {
+                    throw new IllegalStateException("Admin service is not available.");
                 }
-                if (space.isOccupied()) {
-                    throw new IllegalStateException("Cannot delete space \"" + code + "\": it is currently occupied.");
-                }
-                if (adminService != null) {
-                    adminService.reassignOrDeleteReservation(code);
-                }
-                if (!parkingService.deleteParkingSpace(code)) {
-                    throw new IllegalStateException("Could not delete space \"" + code + "\".");
-                }
+                deleteParkingSpace(code);
                 return null;
             }
 
+            /** Refreshes the view after the delete operation finishes. */
             @Override
             protected void done() {
                 try {
                     get();
                     loadSpaces();
                 } catch (InterruptedException | ExecutionException e) {
-                    adminView.setLoading(false);
+                    setLoading(false);
                     Throwable cause = e.getCause();
-                    adminView.showError(cause != null ? cause.getMessage() : "Failed to delete space.");
+                    showError(cause != null ? cause.getMessage() : "Failed to delete space.");
                 }
             }
         }.execute();
@@ -184,12 +183,13 @@ public class AdminController {
         spacesLoadId++;
         int loadId = spacesLoadId;
 
-        adminView.setLoading(true);
+        setLoading(true);
 
         new SwingWorker<Set<String>, ParkingSpace>() {
+            /** Loads spaces away from the EDT. */
             @Override
             protected Set<String> doInBackground() {
-                List<ParkingSpace> spaces = parkingService.getAllSpaces();
+                List<ParkingSpace> spaces = loadAllSpaces();
                 Set<String> loadedCodes = new HashSet<>();
 
                 for (ParkingSpace space : spaces) {
@@ -205,16 +205,18 @@ public class AdminController {
                 return loadedCodes;
             }
 
+            /** Adds loaded rows to the table on the EDT. */
             @Override
             protected void process(List<ParkingSpace> chunks) {
                 if (loadId != spacesLoadId)
                     return;
 
                 for (ParkingSpace space : chunks) {
-                    adminView.addSpaceToTable(space);
+                    addSpaceToTable(space);
                 }
             }
 
+            /** Finishes the table refresh after loading spaces. */
             @Override
             protected void done() {
                 if (loadId != spacesLoadId)
@@ -222,16 +224,91 @@ public class AdminController {
 
                 try {
                     Set<String> loadedCodes = get();
-                    adminView.removeSpacesNotIn(loadedCodes);
-                    adminView.closeActiveDeleteDialogIfTargetUnavailable();
-                    adminView.closeActiveEditDialogIfTargetUnavailable();
+                    removeSpacesNotIn(loadedCodes);
+                    closeActiveDeleteDialogIfTargetUnavailable();
+                    closeActiveEditDialogIfTargetUnavailable();
                 } catch (InterruptedException | ExecutionException e) {
-                    adminView.showError("Failed to load spaces: " + e.getMessage());
+                    showError("Failed to load spaces: " + e.getMessage());
                 } finally {
-                    adminView.setLoading(false);
+                    setLoading(false);
                 }
             }
         }.execute();
+    }
+
+    /** Sets this controller on the admin view. */
+    private void setViewController() {
+        adminView.setController(this);
+    }
+
+    /** Clears the parking-space table. */
+    private void clearSpacesTable() {
+        adminView.clearSpacesTable();
+    }
+
+    /** Makes the admin view visible. */
+    private void showAdminView() {
+        adminView.setVisible(true);
+    }
+
+    /** Checks whether the admin view is visible. */
+    private boolean isAdminViewVisible() {
+        return adminView != null && adminView.isVisible();
+    }
+
+    /** Sets the loading state on the admin view. */
+    private void setLoading(boolean loading) {
+        adminView.setLoading(loading);
+    }
+
+    /** Shows an error in the admin view. */
+    private void showError(String message) {
+        adminView.showError(message);
+    }
+
+    /** Creates a parking space through the parking service. */
+    private void createParkingSpace(ParkingSpace space) {
+        parkingService.createParkingSpace(space);
+    }
+
+    /** Finds a parking space through the parking service. */
+    private ParkingSpace findParkingSpace(String code) {
+        return parkingService.findByCode(code);
+    }
+
+    /** Updates parking space details through the parking service. */
+    private void updateParkingSpaceDetails(ParkingSpace space) {
+        parkingService.updateParkingSpaceDetails(space);
+    }
+
+    /** Deletes a parking space through the admin service. */
+    private void deleteParkingSpace(String code) {
+        adminService.deleteParkingSpace(code);
+    }
+
+    /** Loads all parking spaces through the parking service. */
+    private List<ParkingSpace> loadAllSpaces() {
+        return parkingService.getAllSpaces();
+    }
+
+    /** Adds a parking space row to the view. */
+    private void addSpaceToTable(ParkingSpace space) {
+        adminView.addSpaceToTable(space);
+    }
+
+    /** Removes rows that are no longer present. */
+    private void removeSpacesNotIn(Set<String> loadedCodes) {
+        adminView.removeSpacesNotIn(loadedCodes);
+    }
+
+    /** Closes delete dialogs that are no longer valid. */
+    private void closeActiveDeleteDialogIfTargetUnavailable() {
+        adminView.closeActiveDeleteDialogIfTargetUnavailable();
+    }
+
+    /** Closes edit dialogs that are no longer valid. */
+    private void closeActiveEditDialogIfTargetUnavailable() {
+        adminView.closeActiveEditDialogIfTargetUnavailable();
     }
 
 }

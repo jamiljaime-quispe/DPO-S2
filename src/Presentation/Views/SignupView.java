@@ -18,6 +18,7 @@ public class SignupView extends JFrame {
     private JButton backButton;
     private AuthController controller;
 
+    /** Creates the signup window. */
     public SignupView() {
         setTitle("Sign Up - Parking System");
         setSize(930, 650);
@@ -25,6 +26,7 @@ public class SignupView extends JFrame {
         setLocationRelativeTo(null);
     }
 
+    /** Builds the signup window components. */
     public void initComponents() {
 
         JPanel mainPanel = new JPanel();
@@ -85,7 +87,7 @@ public class SignupView extends JFrame {
         styleField(confirmPasswordField);
 
         signupButton = primaryButton("Create account");
-        backButton = linkButton("← Back to login");
+        backButton = linkButton("<- Back to login");
 
         card.add(heading);
         card.add(Box.createRigidArea(new Dimension(0, 6)));
@@ -120,6 +122,7 @@ public class SignupView extends JFrame {
         setContentPane(mainPanel);
     }
 
+    /** Creates a label for a form field. */
     private JLabel fieldLabel(String text) {
         JLabel l = new JLabel(text);
         l.setFont(new Font("SansSerif", Font.BOLD, 12));
@@ -128,6 +131,7 @@ public class SignupView extends JFrame {
         return l;
     }
 
+    /** Applies the standard text-field style. */
     private void styleField(JTextField f) {
         f.setFont(new Font("SansSerif", Font.PLAIN, 14));
         f.setPreferredSize(new Dimension(340, 38));
@@ -138,6 +142,7 @@ public class SignupView extends JFrame {
                 BorderFactory.createEmptyBorder(6, 12, 6, 12)));
     }
 
+    /** Creates a primary action button. */
     private JButton primaryButton(String text) {
         JButton b = new JButton(text);
         b.setForeground(Color.WHITE);
@@ -153,6 +158,7 @@ public class SignupView extends JFrame {
         return b;
     }
 
+    /** Creates a link-style button. */
     private JButton linkButton(String text) {
         JButton b = new JButton(text);
         b.setForeground(new Color(33, 99, 168));
@@ -166,22 +172,27 @@ public class SignupView extends JFrame {
         return b;
     }
 
+    /** Gets the username typed by the user. */
     public String getUsername() {
         return usernameField.getText().trim();
     }
 
+    /** Gets the email typed by the user. */
     public String getEmail() {
         return emailField.getText().trim();
     }
 
+    /** Gets the password typed by the user. */
     public String getPassword() {
         return new String(passwordField.getPassword());
     }
 
+    /** Gets the repeated password typed by the user. */
     public String getConfirmPassword() {
         return new String(confirmPasswordField.getPassword());
     }
 
+    /** Clears the signup form. */
     public void clearForm() {
         usernameField.setText("");
         emailField.setText("");
@@ -189,6 +200,7 @@ public class SignupView extends JFrame {
         confirmPasswordField.setText("");
     }
 
+    /** Enables or disables the signup form while work is running. */
     public void setLoadingState(boolean isLoading) {
         if (isLoading) {
             signupButton.setEnabled(false);
@@ -203,7 +215,18 @@ public class SignupView extends JFrame {
         }
     }
 
+    /** Sets the authentication controller used by this view. */
     public void setController(AuthController controller) {
         this.controller = controller;
+    }
+
+    /**
+     * Shows an error message owned by the sign-up window.
+     *
+     * @param title   dialog title
+     * @param message message to show
+     */
+    public void showError(String title, String message) {
+        JOptionPane.showMessageDialog(this, message, title, JOptionPane.ERROR_MESSAGE);
     }
 }

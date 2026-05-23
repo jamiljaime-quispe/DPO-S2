@@ -38,6 +38,7 @@ public class PasswordUtil {
         return parts[1].equals(digest(plainPassword, salt));
     }
 
+    /** Creates a SHA-256 digest for a password and salt. */
     private static String digest(String password, byte[] salt) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");

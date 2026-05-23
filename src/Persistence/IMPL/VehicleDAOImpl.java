@@ -17,10 +17,12 @@ import Persistence.VehicleDAO;
 public class VehicleDAOImpl implements VehicleDAO {
     private final DatabaseManager db;
 
+    /** Creates the DAO with the shared database manager. */
     public VehicleDAOImpl(DatabaseManager db) {
         this.db = db;
     }
 
+    /** Saves a vehicle. */
     @Override
     public void save(Vehicle vehicle) {
         String sql = """
@@ -39,6 +41,7 @@ public class VehicleDAOImpl implements VehicleDAO {
         }
     }
 
+    /** Finds a vehicle by license plate. */
     @Override
     public Vehicle findByPlate(String plate) {
         String sql = """
@@ -62,6 +65,7 @@ public class VehicleDAOImpl implements VehicleDAO {
         return null;
     }
 
+    /** Loads vehicles owned by a user. */
     @Override
     public List<Vehicle> findByUser(int userId) {
         String sql = """
@@ -87,6 +91,7 @@ public class VehicleDAOImpl implements VehicleDAO {
         return list;
     }
 
+    /** Deletes a vehicle by license plate. */
     @Override
     public void delete(String plate) {
         String sql = "DELETE FROM vehicle WHERE licensePlate = ?";
@@ -99,6 +104,7 @@ public class VehicleDAOImpl implements VehicleDAO {
         }
     }
 
+    /** Converts a database row into a Vehicle object. */
     private Vehicle mapRow(ResultSet rs) throws SQLException {
         return new Vehicle(
                 rs.getString("licensePlate"),
@@ -107,6 +113,7 @@ public class VehicleDAOImpl implements VehicleDAO {
                 false);
     }
 
+    /** Resolves the owner value into a database user ID. */
     private int resolveOwnerUserId(String owner) throws SQLException {
         if (owner == null || owner.isBlank()) {
             throw new SQLException("Vehicle owner is required.");
