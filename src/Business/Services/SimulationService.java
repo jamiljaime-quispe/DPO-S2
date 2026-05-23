@@ -5,6 +5,7 @@ import Business.Entities.ParkingSpace;
 import Business.Entities.Vehicle;
 import Business.Entities.VehicleType;
 import Business.Listeners.ParkingStatusChangeListener;
+import Persistence.VehicleDAO;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +26,7 @@ public class SimulationService implements Runnable {
 	private Random random;
 	// This list tracks only the vehicles created by the simulation, so bots only exit bot vehicles.
 	private List<Vehicle> simulatedVehicles;
+	private VehicleDAO vehicleDAO;
 
 	// This is the actual Java thread object that runs the simulation loop in the background.
 	private Thread simulationThread;
@@ -54,9 +56,10 @@ public class SimulationService implements Runnable {
 	 * @param config            the application config (provides simulatedVehicleDelay)
 	 * @param random            the random number generator
 	 * @param simulatedVehicles the mutable list tracking currently simulated vehicles
+	 * @param vehicleDAO        the DAO for vehicles
 	 */
 	public SimulationService(ParkingService parkingService, Config config, Random random,
-							 List<Vehicle> simulatedVehicles) {
+							 List<Vehicle> simulatedVehicles, VehicleDAO vehicleDAO) {
 		// Store the business service used later to update the database through normal parking logic.
 		this.parkingService = parkingService;
 		// Store the config so run() can read the delay between simulated actions.
@@ -65,6 +68,7 @@ public class SimulationService implements Runnable {
 		this.random = random;
 		// Use the provided simulated-vehicle list, or create an empty one if none was provided.
 		this.simulatedVehicles = simulatedVehicles != null ? simulatedVehicles : new ArrayList<>();
+		this.vehicleDAO = vehicleDAO;
 	}
 
 	@Override
@@ -231,7 +235,21 @@ public class SimulationService implements Runnable {
 	 * @return generated plate string
 	 */
 	public String generateRandomPlate() {
-		// Create a plate like SIM-0427 so simulated cars are easy to recognize.
-		return "SIM-" + String.format("%04d", random.nextInt(10000));
+		for (int attempt = 0; attempt < 1000; attempt++) {
+			String candidate = "SIM-" + String.format("%04d", random.nextInt(10000));
+			if (isPlateAvailable(candidate)) return candidate;
+		}
+		while (true) {
+			String candidate = "SIM-" + System.nanoTime() + "-" + random.nextInt(10000);
+			if (isPlateAvailable(candidate)) return candidate;
+		}
+	}
+
+	private boolean isPlateAvailable(String plate) {
+		if (vehicleDAO != null && vehicleDAO.findByPlate(plate) != null) return false;
+		for (Vehicle vehicle : simulatedVehicles) {
+			if (plate.equalsIgnoreCase(vehicle.getLicensePlate())) return false;
+		}
+		return true;
 	}
 }
