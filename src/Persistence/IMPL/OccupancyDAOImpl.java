@@ -31,7 +31,7 @@ public class OccupancyDAOImpl implements OccupancyDAO {
     public List<Integer> getLastHourData() {
         String sql = "SELECT occupiedCount FROM "
                 + "(SELECT occupiedCount, timestamp FROM occupancy_log "
-                + " ORDER BY timestamp DESC LIMIT 20) recent "
+                + " ORDER BY timestamp DESC LIMIT 60) recent "
                 + "ORDER BY timestamp ASC";
         List<Integer> data = new ArrayList<>();
 

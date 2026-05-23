@@ -14,6 +14,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * Controller for user authentication (login, signup, logout, account deletion).
+ * Runs credential verification in a background thread to keep the EDT responsive.
+ */
 public class AuthController {
     private LoginView loginView;
     private SignupView signupView;

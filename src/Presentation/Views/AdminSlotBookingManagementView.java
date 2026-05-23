@@ -159,7 +159,7 @@ public class AdminSlotBookingManagementView extends JDialog {
             return;
         }
 
-        JDialog dialog = createBookingDialog(currentMode == USER_MODE ? "Book Selected Slot" : "Add Slot Booking");
+        JDialog dialog = createBookingDialog("Book Selected Slot");
 
         JTextField plateField = new JTextField();
         JTextField spaceCodeField = new JTextField(currentCode);

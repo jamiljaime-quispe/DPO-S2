@@ -18,9 +18,13 @@ import java.awt.GridLayout;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
+/**
+ * Controller for parking status, vehicle entry/exit, and space details.
+ * Implements {@link ParkingStatusChangeListener} to react to simulation events.
+ */
 public class ParkingController implements ParkingStatusChangeListener {
-	private static final int BACKGROUND_TEST_DELAY_MS = 300;
 
 	private ParkingStatusView parkingStatusView;
 	private EntryExitView entryExitView;
@@ -34,14 +38,14 @@ public class ParkingController implements ParkingStatusChangeListener {
 	private boolean exitAllowed;
 	private volatile int parkingStatusLoadId;
 
-    @Override
-    public void parkingStatusChanged() {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                if (mainMenuView != null && mainMenuView.isParkingSlotsTableVisible()) {
-                    loadParkingStatus();
-                }
+	@Override
+	public void parkingStatusChanged() {
+		SwingUtilities.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				if (mainMenuView != null && mainMenuView.isParkingSlotsTableVisible()) {
+					loadParkingStatus();
+				}
 				refreshSpaceDetailsIfVisible();
 				if (adminController != null) {
 					adminController.refreshIfVisible();
@@ -49,9 +53,9 @@ public class ParkingController implements ParkingStatusChangeListener {
 				if (slotBookingController != null) {
 					slotBookingController.refreshIfVisible();
 				}
-            }
-        });
-    }
+			}
+		});
+	}
 
 	private static class ExitOption {
 		private ParkingSpace space;
@@ -127,7 +131,11 @@ public class ParkingController implements ParkingStatusChangeListener {
 	}
 
 	/**
-	 *  
+	 * Constructs the controller.
+	 *
+	 * @param parkingStatusView the parking status view (may be null)
+	 * @param entryExitView     the entry/exit view (may be null)
+	 * @param parkingService    the parking service
 	 */
 	public ParkingController(ParkingStatusView parkingStatusView, EntryExitView entryExitView,
 			ParkingService parkingService) {
@@ -136,6 +144,10 @@ public class ParkingController implements ParkingStatusChangeListener {
 		this.parkingService = parkingService;
 	}
 
+	/**
+	 * Loads all parking spaces and updates the main menu table.
+	 * Uses a generation counter to discard results from stale background tasks.
+	 */
 	public void loadParkingStatus() {
 		if (mainMenuView == null) return;
 
@@ -161,14 +173,6 @@ public class ParkingController implements ParkingStatusChangeListener {
 
 				for (ParkingSpace space : spaces) {
 					loadedCodes.add(space.getId());
-					// Row-by-row display delay disabled because automatic refreshes should be fast.
-					// try {
-					// 	Thread.sleep(100);
-					// } catch (InterruptedException e) {
-					// 	Thread.currentThread().interrupt();
-					// 	break;
-					// }
-
 					if (loadId == parkingStatusLoadId) {
 						publish(new StatusRow(space, userParkedCodes.contains(space.getId())));
 					}
@@ -194,7 +198,7 @@ public class ParkingController implements ParkingStatusChangeListener {
 					Set<String> loadedCodes = get();
 					mainMenuView.removeParkingSpacesNotIn(loadedCodes);
 					System.out.println("Parking spaces loaded successfully.");
-				} catch (Exception e) {
+				} catch (InterruptedException | ExecutionException e) {
 					JOptionPane.showMessageDialog(mainMenuView,
 							"Failed to load parking spaces: " + e.getMessage(),
 							"Parking status",
@@ -206,6 +210,11 @@ public class ParkingController implements ParkingStatusChangeListener {
 		worker.execute();
 	}
 
+	/**
+	 * Loads and displays the details dialog for the given parking space code.
+	 *
+	 * @param code the parking space code
+	 */
 	public void showSpaceDetails(String code) {
 		if (mainMenuView == null) return;
 
@@ -214,11 +223,6 @@ public class ParkingController implements ParkingStatusChangeListener {
 		new SwingWorker<ParkingSpace, Void>() {
 			@Override
 			protected ParkingSpace doInBackground() {
-				try {
-					Thread.sleep(300);
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-				}
 				return parkingService.findByCode(code);
 			}
 
@@ -239,7 +243,7 @@ public class ParkingController implements ParkingStatusChangeListener {
 						parkingSpaceDetailsView.setCancelReservationListener(e -> cancelReservationFromDetails());
 					}
 					parkingSpaceDetailsView.displaySpaceDetails(space);
-				} catch (Exception e) {
+				} catch (InterruptedException | ExecutionException e) {
 					JOptionPane.showMessageDialog(mainMenuView,
 							"Failed to load parking space details: " + e.getMessage(),
 							"Details unavailable",
@@ -280,7 +284,7 @@ public class ParkingController implements ParkingStatusChangeListener {
 					}
 
 					parkingSpaceDetailsView.updateSpaceDetails(space);
-				} catch (Exception e) {
+				} catch (InterruptedException | ExecutionException e) {
 					JOptionPane.showMessageDialog(mainMenuView,
 							"Failed to refresh parking space details: " + e.getMessage(),
 							"Parking space updated",
@@ -290,6 +294,7 @@ public class ParkingController implements ParkingStatusChangeListener {
 		}.execute();
 	}
 
+	/** Opens the vehicle entry dialog. Prompts for a license plate, then processes entry. */
 	public void showVehicleEntryDialog() {
 		if (mainMenuView == null) return;
 
@@ -333,36 +338,30 @@ public class ParkingController implements ParkingStatusChangeListener {
 
 		new SwingWorker<EntryResult, Void>() {
 			@Override
-			protected EntryResult doInBackground() {
-				try {
-					simulateDatabaseDelay();
-
-					ParkingSpace alreadyParked = parkingService.findOccupiedSpaceByPlate(plate);
-					if (alreadyParked != null) {
-						return EntryResult.alreadyParked(alreadyParked);
-					}
-
-					Reservation reservation = parkingService.findActiveReservationByPlate(plate);
-					if (reservation == null) {
-						return EntryResult.needsVehicleType();
-					}
-
-					ParkingSpace reservedSpace = reservation.getParkingSpace();
-					if (reservedSpace != null && reservedSpace.isOccupied()) {
-						return EntryResult.error("The reserved space is already occupied.");
-					}
-
-					ParkingSpace assignedSpace = parkingService.handleVehicleEntry(
-							plate,
-							resolveReservationVehicleType(reservation));
-					if (assignedSpace == null) {
-						return EntryResult.error("Could not occupy the reserved parking space.");
-					}
-
-					return EntryResult.assignedFromReservation(assignedSpace);
-				} catch (Exception e) {
-					return EntryResult.error("Failed to process parking entry: " + e.getMessage());
+			protected EntryResult doInBackground() throws Exception {
+				ParkingSpace alreadyParked = parkingService.findOccupiedSpaceByPlate(plate);
+				if (alreadyParked != null) {
+					return EntryResult.alreadyParked(alreadyParked);
 				}
+
+				Reservation reservation = parkingService.findActiveReservationByPlate(plate);
+				if (reservation == null) {
+					return EntryResult.needsVehicleType();
+				}
+
+				ParkingSpace reservedSpace = reservation.getParkingSpace();
+				if (reservedSpace != null && reservedSpace.isOccupied()) {
+					return EntryResult.error("The reserved space is already occupied.");
+				}
+
+				ParkingSpace assignedSpace = parkingService.handleVehicleEntry(
+						plate,
+						resolveReservationVehicleType(reservation));
+				if (assignedSpace == null) {
+					return EntryResult.error("Could not occupy the reserved parking space.");
+				}
+
+				return EntryResult.assignedFromReservation(assignedSpace);
 			}
 
 			@Override
@@ -370,7 +369,7 @@ public class ParkingController implements ParkingStatusChangeListener {
 				setParkingEntryLoading(false);
 				try {
 					handleEntryResult(plate, get());
-				} catch (Exception e) {
+				} catch (InterruptedException | ExecutionException e) {
 					showEntryError("Failed to process parking entry: " + e.getMessage());
 				}
 			}
@@ -382,27 +381,21 @@ public class ParkingController implements ParkingStatusChangeListener {
 
 		new SwingWorker<EntryResult, Void>() {
 			@Override
-			protected EntryResult doInBackground() {
-				try {
-					simulateDatabaseDelay();
-
-					ParkingSpace alreadyParked = parkingService.findOccupiedSpaceByPlate(plate);
-					if (alreadyParked != null) {
-						return EntryResult.alreadyParked(alreadyParked);
-					}
-
-					ParkingSpace assignedSpace = parkingService.handleUserVehicleEntry(
-							userService.getLastLoggedInUserId(),
-							plate,
-							type);
-					if (assignedSpace == null) {
-						return EntryResult.noSpace(type);
-					}
-
-					return EntryResult.assignedWithoutReservation(assignedSpace);
-				} catch (Exception e) {
-					return EntryResult.error("Failed to process parking entry: " + e.getMessage());
+			protected EntryResult doInBackground() throws Exception {
+				ParkingSpace alreadyParked = parkingService.findOccupiedSpaceByPlate(plate);
+				if (alreadyParked != null) {
+					return EntryResult.alreadyParked(alreadyParked);
 				}
+
+				ParkingSpace assignedSpace = parkingService.handleUserVehicleEntry(
+						userService.getLastLoggedInUserId(),
+						plate,
+						type);
+				if (assignedSpace == null) {
+					return EntryResult.noSpace(type);
+				}
+
+				return EntryResult.assignedWithoutReservation(assignedSpace);
 			}
 
 			@Override
@@ -410,7 +403,7 @@ public class ParkingController implements ParkingStatusChangeListener {
 				setParkingEntryLoading(false);
 				try {
 					handleEntryResult(plate, get());
-				} catch (Exception e) {
+				} catch (InterruptedException | ExecutionException e) {
 					showEntryError("Failed to process parking entry: " + e.getMessage());
 				}
 			}
@@ -510,6 +503,7 @@ public class ParkingController implements ParkingStatusChangeListener {
 				: Cursor.getDefaultCursor());
 	}
 
+	/** Checks whether the current user has any parked vehicles and updates the Exit button state. */
 	public void refreshExitButtonState() {
 		if (mainMenuView == null || userService == null) return;
 
@@ -517,7 +511,6 @@ public class ParkingController implements ParkingStatusChangeListener {
 		new SwingWorker<Boolean, Void>() {
 			@Override
 			protected Boolean doInBackground() {
-				simulateDatabaseDelay();
 				List<ParkingSpace> parkedSpaces = parkingService.getParkedSpacesByUser(
 						userService.getLastLoggedInUserId());
 				return !parkedSpaces.isEmpty();
@@ -527,7 +520,7 @@ public class ParkingController implements ParkingStatusChangeListener {
 			protected void done() {
 				try {
 					exitAllowed = get();
-				} catch (Exception e) {
+				} catch (InterruptedException | ExecutionException e) {
 					exitAllowed = false;
 				}
 
@@ -536,22 +529,15 @@ public class ParkingController implements ParkingStatusChangeListener {
 		}.execute();
 	}
 
+	/** Opens the vehicle exit dialog, listing the user's currently parked vehicles. */
 	public void showVehicleExitDialog() {
 		if (mainMenuView == null || userService == null) return;
 
 		setExitLoading(true);
 		new SwingWorker<List<ParkingSpace>, Void>() {
-			private String errorMessage;
-
 			@Override
-			protected List<ParkingSpace> doInBackground() {
-				try {
-					simulateDatabaseDelay();
-					return parkingService.getParkedSpacesByUser(userService.getLastLoggedInUserId());
-				} catch (Exception e) {
-					errorMessage = e.getMessage();
-					return null;
-				}
+			protected List<ParkingSpace> doInBackground() throws Exception {
+				return parkingService.getParkedSpacesByUser(userService.getLastLoggedInUserId());
 			}
 
 			@Override
@@ -559,15 +545,7 @@ public class ParkingController implements ParkingStatusChangeListener {
 				setExitLoading(false);
 				try {
 					List<ParkingSpace> parkedSpaces = get();
-					if (parkedSpaces == null) {
-						showExitError(errorMessage != null
-								? errorMessage
-								: "Failed to load parked vehicles.");
-						refreshExitButtonState();
-						return;
-					}
-
-					if (parkedSpaces.isEmpty()) {
+					if (parkedSpaces == null || parkedSpaces.isEmpty()) {
 						JOptionPane.showMessageDialog(mainMenuView,
 								"You do not have any parked vehicles right now.",
 								"Parking exit",
@@ -580,8 +558,9 @@ public class ParkingController implements ParkingStatusChangeListener {
 					if (selectedOption != null) {
 						exitWithVehicle(selectedOption);
 					}
-				} catch (Exception e) {
-					showExitError("Failed to load parked vehicles: " + e.getMessage());
+				} catch (InterruptedException | ExecutionException e) {
+					Throwable cause = e.getCause();
+					showExitError(cause != null ? cause.getMessage() : "Failed to load parked vehicles.");
 					refreshExitButtonState();
 				}
 			}
@@ -614,19 +593,11 @@ public class ParkingController implements ParkingStatusChangeListener {
 	private void exitWithVehicle(ExitOption selectedOption) {
 		setExitLoading(true);
 		new SwingWorker<ParkingSpace, Void>() {
-			private String errorMessage;
-
 			@Override
-			protected ParkingSpace doInBackground() {
-				try {
-					simulateDatabaseDelay();
-					return parkingService.handleUserVehicleExit(
-							userService.getLastLoggedInUserId(),
-							selectedOption.getPlate());
-				} catch (Exception e) {
-					errorMessage = e.getMessage();
-					return null;
-				}
+			protected ParkingSpace doInBackground() throws Exception {
+				return parkingService.handleUserVehicleExit(
+						userService.getLastLoggedInUserId(),
+						selectedOption.getPlate());
 			}
 
 			@Override
@@ -635,9 +606,7 @@ public class ParkingController implements ParkingStatusChangeListener {
 				try {
 					ParkingSpace freedSpace = get();
 					if (freedSpace == null) {
-						showExitError(errorMessage != null
-								? errorMessage
-								: "That vehicle is not currently parked.");
+						showExitError("That vehicle is not currently parked.");
 						refreshExitButtonState();
 						return;
 					}
@@ -648,8 +617,9 @@ public class ParkingController implements ParkingStatusChangeListener {
 							"Parking exit",
 							JOptionPane.INFORMATION_MESSAGE);
 					refreshExitButtonState();
-				} catch (Exception e) {
-					showExitError("Failed to process parking exit: " + e.getMessage());
+				} catch (InterruptedException | ExecutionException e) {
+					Throwable cause = e.getCause();
+					showExitError(cause != null ? cause.getMessage() : "Failed to process parking exit.");
 					refreshExitButtonState();
 				}
 			}
@@ -671,14 +641,6 @@ public class ParkingController implements ParkingStatusChangeListener {
 				message,
 				"Parking exit",
 				JOptionPane.ERROR_MESSAGE);
-	}
-
-	private void simulateDatabaseDelay() {
-		try {
-			Thread.sleep(BACKGROUND_TEST_DELAY_MS);
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-		}
 	}
 
 	public void vehicleEntry(String plate, VehicleType type) {
@@ -705,17 +667,9 @@ public class ParkingController implements ParkingStatusChangeListener {
 
 		detailsView.setLoading(true);
 		new SwingWorker<Boolean, Void>() {
-			private String errorMessage;
-
 			@Override
-			protected Boolean doInBackground() {
-				try {
-					simulateDatabaseDelay();
-					return adminService.cancelReservationByPlate(plate);
-				} catch (Exception e) {
-					errorMessage = e.getMessage();
-					return false;
-				}
+			protected Boolean doInBackground() throws Exception {
+				return adminService.cancelReservationByPlate(plate);
 			}
 
 			@Override
@@ -736,12 +690,11 @@ public class ParkingController implements ParkingStatusChangeListener {
 						mainMenuView.rebuildParkingSlotsPanel();
 						loadParkingStatus();
 					} else {
-						detailsView.showError(errorMessage != null
-								? errorMessage
-								: "No active reservation was found for plate \"" + plate + "\".");
+						detailsView.showError("No active reservation was found for plate \"" + plate + "\".");
 					}
-				} catch (Exception e) {
-					detailsView.showError("Failed to cancel reservation: " + e.getMessage());
+				} catch (InterruptedException | ExecutionException e) {
+					Throwable cause = e.getCause();
+					detailsView.showError(cause != null ? cause.getMessage() : "Failed to cancel reservation.");
 				}
 			}
 		}.execute();
@@ -751,24 +704,29 @@ public class ParkingController implements ParkingStatusChangeListener {
 
 	}
 
+	/** Sets the main menu view and initialises the space details view. */
 	public void setMainMenuView(MainMenuView mainMenuView) {
 		this.mainMenuView = mainMenuView;
 		this.parkingSpaceDetailsView = new ParkingSpaceDetailsView(mainMenuView);
 		this.parkingSpaceDetailsView.setCancelReservationListener(e -> cancelReservationFromDetails());
 	}
 
+	/** Sets the user service. */
 	public void setUserService(UserService userService) {
 		this.userService = userService;
 	}
 
+	/** Sets the admin service. */
 	public void setAdminService(AdminService adminService) {
 		this.adminService = adminService;
 	}
 
+	/** Sets the admin controller to refresh when parking status changes. */
 	public void setAdminController(AdminController adminController) {
 		this.adminController = adminController;
 	}
 
+	/** Sets the slot booking controller to refresh when parking status changes. */
 	public void setSlotBookingController(AdminSlotBookingController slotBookingController) {
 		this.slotBookingController = slotBookingController;
 	}
