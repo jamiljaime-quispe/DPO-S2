@@ -17,7 +17,7 @@ public class StatisticsController {
     private OccupancyChartView chartView;
     private Timer refreshTimer;
 
-    private static final int REFRESH_INTERVAL_MS = 5_000;
+    private static final int REFRESH_INTERVAL_MS = 60_000;
 
     public StatisticsController(OccupancyChartView chartView, StatisticsService statisticsService) {
         this.chartView = chartView;
