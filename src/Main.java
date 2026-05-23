@@ -62,7 +62,7 @@ public class Main {
             // delay,
             // Random to make decisions, and a list to remember simulated parked vehicles.
             SimulationService simService = new SimulationService(parkingService, configService.getConfig(),
-                    new Random(), new ArrayList<>());
+                    new Random(), new ArrayList<>(), vehicleDAO);
 
             // 4. Views
             LoginView loginView = new LoginView();
