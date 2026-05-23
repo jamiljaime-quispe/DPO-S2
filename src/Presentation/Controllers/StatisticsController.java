@@ -6,13 +6,18 @@ import Presentation.Views.OccupancyChartView;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
+/**
+ * Controller for the occupancy bar chart.
+ * Loads historical occupancy data in the background and schedules periodic refreshes.
+ */
 public class StatisticsController {
     private StatisticsService statisticsService;
     private OccupancyChartView chartView;
     private Timer refreshTimer;
 
-    private static final int REFRESH_INTERVAL_MS = 5_000;
+    private static final int REFRESH_INTERVAL_MS = 60_000;
 
     public StatisticsController(OccupancyChartView chartView, StatisticsService statisticsService) {
         this.chartView = chartView;
@@ -31,7 +36,7 @@ public class StatisticsController {
             protected void done() {
                 try {
                     chartView.updateChart(get());
-                } catch (Exception e) {
+                } catch (InterruptedException | ExecutionException e) {
                     e.printStackTrace();
                 }
             }

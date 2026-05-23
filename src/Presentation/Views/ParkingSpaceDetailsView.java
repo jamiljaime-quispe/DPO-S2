@@ -9,6 +9,10 @@ import java.awt.*;
 import java.awt.event.ActionListener;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * Modal dialog shown when an admin clicks a parking space in the status table.
+ * Displays space details, the active reservation (if any), and a button to cancel it.
+ */
 public class ParkingSpaceDetailsView extends JDialog {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 

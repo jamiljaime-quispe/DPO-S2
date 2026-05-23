@@ -11,18 +11,19 @@ import Presentation.Views.AdminSlotBookingManagementView;
 
 import javax.swing.SwingWorker;
 import javax.swing.SwingUtilities;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
+/**
+ * Controller for the slot booking management view.
+ * Supports both admin mode (manage all bookings) and user mode (manage own bookings).
+ */
 public class AdminSlotBookingController {
     private static final int ADMIN_MODE = 1;
     private static final int USER_MODE = 2;
-    private static final int BACKGROUND_TEST_DELAY_MS = 300;
-    private static final int ROW_LOAD_DELAY_MS = 100;
-    private static final DateTimeFormatter RESERVATION_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private AdminSlotBookingManagementView bookingView;
     private ParkingService parkingService;
@@ -42,6 +43,15 @@ public class AdminSlotBookingController {
         }
     }
 
+    /**
+     * Constructs the controller and wires it to the given view.
+     *
+     * @param bookingView        the slot booking management view
+     * @param parkingService     the parking service
+     * @param adminService       the admin service
+     * @param reservationService the reservation service
+     * @param userService        the user service
+     */
     public AdminSlotBookingController(AdminSlotBookingManagementView bookingView, ParkingService parkingService,
                                       AdminService adminService, ReservationService reservationService,
                                       UserService userService) {
@@ -53,6 +63,11 @@ public class AdminSlotBookingController {
         bookingView.setController(this);
     }
 
+    /**
+     * Configures the view for the given mode and makes it visible.
+     *
+     * @param mode ADMIN_MODE (1) or USER_MODE (2)
+     */
     public void showView(int mode) {
         currentMode = mode;
         bookingView.setMode(mode);
@@ -61,6 +76,10 @@ public class AdminSlotBookingController {
         bookingView.setVisible(true);
     }
 
+    /**
+     * Reloads the view if it is currently visible.
+     * Safe to call from any thread.
+     */
     public void refreshIfVisible() {
         if (bookingView == null || !bookingView.isVisible()) return;
 
@@ -76,6 +95,10 @@ public class AdminSlotBookingController {
         }
     }
 
+    /**
+     * Loads all parking spaces and highlights the user's own bookings in USER_MODE.
+     * Uses a generation counter to discard results from stale background tasks.
+     */
     public void loadBookings() {
         bookingsLoadId++;
         int loadId = bookingsLoadId;
@@ -121,7 +144,6 @@ public class AdminSlotBookingController {
 
                 for (ParkingSpace space : orderedSpaces) {
                     loadedCodes.add(space.getId());
-                    delayRowLoad();
                     if (Thread.currentThread().isInterrupted()) {
                         break;
                     }
@@ -151,33 +173,14 @@ public class AdminSlotBookingController {
                     bookingView.removeBookingSpacesNotIn(loadedCodes);
                     bookingView.closeActiveBookingDialogIfTargetUnavailable();
                     bookingView.closeActiveCancelDialogIfTargetUnavailable();
-                    if (modeForLoad == USER_MODE && userId > 0 && bookingView.reservationsTableModel != null) {
-                        bookingView.reservationsTableModel.setRowCount(0);
-                        for (Reservation reservation : reservationService.getReservationsByUser(userId)) {
-                            ParkingSpace space = reservation.getParkingSpace();
-                            String code = space != null ? space.getId() : "";
-                            Object floor = space != null ? space.getFloor() : "";
-                            String type = space != null ? space.getVehicleType().name() : "";
-                            String plate = reservation.getVehicle() != null
-                                    ? reservation.getVehicle().getLicensePlate()
-                                    : "";
-                            String date = reservation.getReservationDate() != null
-                                    ? reservation.getReservationDate().format(RESERVATION_DATE_FORMAT)
-                                    : "";
-                            String status;
-                            if (reservation.isActive()) {
-                                status = "Active";
-                            } else if (reservation.isCancelledByAdmin()) {
-                                status = "Cancelled by admin";
-                            } else {
-                                status = "Cancelled";
-                            }
-                            bookingView.reservationsTableModel.addRow(new Object[]{
-                                    code, floor, type, plate, date, status
-                            });
+                    if (modeForLoad == USER_MODE && userId > 0) {
+                        List<Reservation> active = new ArrayList<>();
+                        for (Reservation r : reservationService.getReservationsByUser(userId)) {
+                            if (r.isActive()) active.add(r);
                         }
+                        bookingView.updateReservationsTable(active);
                     }
-                } catch (Exception e) {
+                } catch (InterruptedException | ExecutionException e) {
                     bookingView.showError("Failed to load slot bookings: " + e.getMessage());
                 } finally {
                     bookingView.setLoading(false);
@@ -186,6 +189,13 @@ public class AdminSlotBookingController {
         }.execute();
     }
 
+    /**
+     * Creates a reservation for the given plate, vehicle type, and space code.
+     *
+     * @param plate     license plate
+     * @param type      vehicle type
+     * @param spaceCode target parking space code
+     */
     public void createBooking(String plate, VehicleType type, String spaceCode) {
         if (plate == null || plate.isBlank() || spaceCode == null || spaceCode.isBlank()) {
             bookingView.showError("License plate and space code cannot be empty.");
@@ -194,21 +204,13 @@ public class AdminSlotBookingController {
 
         bookingView.setLoading(true);
         new SwingWorker<Reservation, Void>() {
-            private String errorMessage;
-
             @Override
-            protected Reservation doInBackground() {
-                try {
-                    simulateDatabaseDelay();
-                    return reservationService.createReservation(
-                            userService.getLastLoggedInUserId(),
-                            normalizePlate(plate),
-                            type,
-                            spaceCode);
-                } catch (Exception e) {
-                    errorMessage = e.getMessage();
-                    return null;
-                }
+            protected Reservation doInBackground() throws Exception {
+                return reservationService.createReservation(
+                        userService.getLastLoggedInUserId(),
+                        normalizePlate(plate),
+                        type,
+                        spaceCode);
             }
 
             @Override
@@ -221,13 +223,12 @@ public class AdminSlotBookingController {
                         loadBookings();
                     } else {
                         bookingView.setLoading(false);
-                        bookingView.showError(errorMessage != null
-                                ? errorMessage
-                                : "Booking could not be created.");
+                        bookingView.showError("Booking could not be created.");
                     }
-                } catch (Exception e) {
+                } catch (InterruptedException | ExecutionException e) {
                     bookingView.setLoading(false);
-                    bookingView.showError("Failed to create booking: " + e.getMessage());
+                    Throwable cause = e.getCause();
+                    bookingView.showError(cause != null ? cause.getMessage() : "Failed to create booking.");
                 }
             }
         }.execute();
@@ -242,6 +243,14 @@ public class AdminSlotBookingController {
         return null;
     }
 
+    /**
+     * Reassigns an existing reservation identified by plate to a different space.
+     *
+     * @param originalSpaceCode the original space code (for feedback messages)
+     * @param plate             the license plate on the reservation
+     * @param type              the vehicle type
+     * @param spaceCode         the target space code
+     */
     public void editBooking(String originalSpaceCode, String plate, VehicleType type, String spaceCode) {
         if (plate == null || plate.isBlank() || spaceCode == null || spaceCode.isBlank()) {
             bookingView.showError("License plate and space code cannot be empty.");
@@ -250,17 +259,9 @@ public class AdminSlotBookingController {
 
         bookingView.setLoading(true);
         new SwingWorker<Reservation, Void>() {
-            private String errorMessage;
-
             @Override
-            protected Reservation doInBackground() {
-                try {
-                    simulateDatabaseDelay();
-                    return reservationService.reassignReservation(normalizePlate(plate), spaceCode);
-                } catch (Exception e) {
-                    errorMessage = e.getMessage();
-                    return null;
-                }
+            protected Reservation doInBackground() throws Exception {
+                return reservationService.reassignReservation(normalizePlate(plate), spaceCode);
             }
 
             @Override
@@ -273,18 +274,24 @@ public class AdminSlotBookingController {
                         loadBookings();
                     } else {
                         bookingView.setLoading(false);
-                        bookingView.showError(errorMessage != null
-                                ? errorMessage
-                                : "Booking could not be reassigned.");
+                        bookingView.showError("Booking could not be reassigned.");
                     }
-                } catch (Exception e) {
+                } catch (InterruptedException | ExecutionException e) {
                     bookingView.setLoading(false);
-                    bookingView.showError("Failed to reassign booking: " + e.getMessage());
+                    Throwable cause = e.getCause();
+                    bookingView.showError(cause != null ? cause.getMessage() : "Failed to reassign booking.");
                 }
             }
         }.execute();
     }
 
+    /**
+     * Cancels the reservation for the given space and plate.
+     * In USER_MODE only the current user's own reservation is cancelled.
+     *
+     * @param spaceCode the space code (for feedback messages)
+     * @param plate     the license plate on the reservation
+     */
     public void deleteBooking(String spaceCode, String plate) {
         if (plate == null || plate.isBlank()) {
             bookingView.showError("Cannot cancel a booking without a license plate.");
@@ -293,22 +300,14 @@ public class AdminSlotBookingController {
 
         bookingView.setLoading(true);
         new SwingWorker<Boolean, Void>() {
-            private String errorMessage;
-
             @Override
-            protected Boolean doInBackground() {
-                try {
-                    simulateDatabaseDelay();
-                    if (currentMode == USER_MODE) {
-                        return reservationService.cancelReservationByPlateForUser(
-                                userService.getLastLoggedInUserId(),
-                                normalizePlate(plate));
-                    }
-                    return adminService.cancelReservationByPlate(normalizePlate(plate));
-                } catch (Exception e) {
-                    errorMessage = "Failed to cancel booking: " + e.getMessage();
-                    return false;
+            protected Boolean doInBackground() throws Exception {
+                if (currentMode == USER_MODE) {
+                    return reservationService.cancelReservationByPlateForUser(
+                            userService.getLastLoggedInUserId(),
+                            normalizePlate(plate));
                 }
+                return adminService.cancelReservationByPlate(normalizePlate(plate));
             }
 
             @Override
@@ -325,33 +324,15 @@ public class AdminSlotBookingController {
                         loadBookings();
                     } else {
                         bookingView.setLoading(false);
-                        bookingView.showError(errorMessage != null
-                                ? errorMessage
-                                : "No active booking found for license plate \"" + plate + "\".");
+                        bookingView.showError("No active booking found for license plate \"" + plate + "\".");
                     }
-                } catch (Exception e) {
+                } catch (InterruptedException | ExecutionException e) {
                     bookingView.setLoading(false);
-                    bookingView.showError("Failed to cancel booking: " + e.getMessage());
+                    Throwable cause = e.getCause();
+                    bookingView.showError(cause != null ? cause.getMessage() : "Failed to cancel booking.");
                 }
             }
         }.execute();
-    }
-
-    private void delayRowLoad() {
-        // Row-by-row display delay disabled because automatic refreshes should be fast.
-        // try {
-        //     Thread.sleep(ROW_LOAD_DELAY_MS);
-        // } catch (InterruptedException e) {
-        //     Thread.currentThread().interrupt();
-        // }
-    }
-
-    private void simulateDatabaseDelay() {
-        try {
-            Thread.sleep(BACKGROUND_TEST_DELAY_MS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
     }
 
     private String normalizePlate(String plate) {

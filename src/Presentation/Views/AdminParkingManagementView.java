@@ -10,6 +10,10 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.List;
 
+/**
+ * Modal dialog for admin parking space management.
+ * Lists all parking spaces in a table and provides Add, Edit, and Delete controls.
+ */
 public class AdminParkingManagementView extends JDialog {
     private JTable spacesTable;
     private DefaultTableModel tableModel;

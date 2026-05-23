@@ -198,12 +198,17 @@ public class UserService {
 	/** Gets the ID of the currently logged-in user, or -1 if none. */
 	public int getLastLoggedInUserId() { return lastLoggedInUserId; }
 
+	/** Clears the current session state without deleting the account (called on logout). */
+	public void clearSession() {
+		lastLoggedInUserId = -1;
+		lastLoggedInUsername = null;
+	}
+
 	/** Deletes the currently logged-in user's account and clears session state. */
 	public void deleteCurrentUser() {
 		if (lastLoggedInUserId != -1) {
 			deleteUser(lastLoggedInUserId);
-			lastLoggedInUserId = -1;
-			lastLoggedInUsername = null;
+			clearSession();
 		}
 	}
 

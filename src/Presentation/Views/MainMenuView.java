@@ -10,6 +10,10 @@ import Presentation.Controllers.MainController;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
+/**
+ * Main application window shown after a successful login.
+ * Adapts its navigation options depending on whether the logged-in user is an admin or a regular client.
+ */
 public class MainMenuView extends JFrame {
     private MainController controller;
 
@@ -31,6 +35,7 @@ public class MainMenuView extends JFrame {
     private JPanel visGroup;
     private JPanel accountGroup;
     private JPanel parkingEntryExitButtonRow;
+    private JPanel brand;
 
     private JPanel parkingSlotsPanel;
     private JTable parkingSlotsTable;
@@ -53,7 +58,7 @@ public class MainMenuView extends JFrame {
         mainPanel.setLayout(null);
         mainPanel.setBackground(new Color(245, 247, 250));
 
-        JPanel brand = new JPanel();
+        brand = new JPanel();
         brand.setLayout(null);
         brand.setBackground(new Color(33, 99, 168));
         brand.setBounds(0, 0, 360, 620);
@@ -115,13 +120,13 @@ public class MainMenuView extends JFrame {
         visGroup.add(styleButton(statusButton, "Display current parking status"));
         navPanel.add(visGroup);
 
-        accountGroup = createGroupPanel("Account", 270, 0);
-        accountGroup.add(styleButton(logoutButton, "Log out"));
+        accountGroup = createBrandGroupPanel("Account", 40, 430);
+        accountGroup.add(styleBrandButton(logoutButton, "Log out"));
         accountGroup.add(Box.createRigidArea(new Dimension(0, 10)));
-        styleButton(deleteAccountButton, "Delete Account");
-        deleteAccountButton.setForeground(new Color(180, 30, 30));
+        styleBrandButton(deleteAccountButton, "Delete Account");
+        deleteAccountButton.setForeground(new Color(200, 60, 60));
         accountGroup.add(deleteAccountButton);
-        navPanel.add(accountGroup);
+        brand.add(accountGroup);
 
         setContentPane(mainPanel);
         setSize(930, 650);
@@ -192,6 +197,40 @@ public class MainMenuView extends JFrame {
         panel.add(label);
         panel.add(Box.createRigidArea(new Dimension(0, 15)));
         return panel;
+    }
+
+    private JPanel createBrandGroupPanel(String title, int x, int y) {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(new Color(33, 99, 168));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(255, 255, 255, 90), 1, true),
+                BorderFactory.createEmptyBorder(15, 15, 15, 15)));
+        panel.setBounds(x, y, 280, 150);
+
+        JLabel label = new JLabel(title);
+        label.setFont(new Font("SansSerif", Font.BOLD, 14));
+        label.setForeground(Color.WHITE);
+        label.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(label);
+        panel.add(Box.createRigidArea(new Dimension(0, 12)));
+        return panel;
+    }
+
+    private JButton styleBrandButton(JButton btn, String text) {
+        btn.setText(text);
+        btn.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btn.setMaximumSize(new Dimension(260, 40));
+        btn.setBackground(Color.WHITE);
+        btn.setForeground(new Color(33, 99, 168));
+        btn.setFont(new Font("SansSerif", Font.BOLD, 13));
+        btn.setFocusPainted(false);
+        btn.setOpaque(true);
+        btn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.WHITE, 1, true),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
     }
 
     private JButton styleButton(JButton btn, String text) {
@@ -287,7 +326,6 @@ public class MainMenuView extends JFrame {
                 "Floor",
                 "Status",
                 "Reservation",
-                "License plate",
                 "My Parked Vehicle"
         };
 
@@ -307,7 +345,7 @@ public class MainMenuView extends JFrame {
         parkingSlotsTable.getTableHeader().setBackground(new Color(33, 99, 168));
         parkingSlotsTable.getTableHeader().setForeground(Color.WHITE);
         parkingSlotsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        parkingSlotsTable.removeColumn(parkingSlotsTable.getColumnModel().getColumn(5));
+        parkingSlotsTable.removeColumn(parkingSlotsTable.getColumnModel().getColumn(4));
 
         for (MouseListener listener : parkingSlotsTableMouseListeners) {
             parkingSlotsTable.addMouseListener(listener);
@@ -380,20 +418,36 @@ public class MainMenuView extends JFrame {
     }
 
     private Object[] buildParkingSpaceRow(ParkingSpace space, boolean myParkedVehicle) {
-        String licensePlate = "";
+        String occupiedPlate = space.getParkedVehicle() != null
+                ? space.getParkedVehicle().getLicensePlate()
+                : null;
+        String reservedPlate = (space.getReservation() != null && space.getReservation().getVehicle() != null)
+                ? space.getReservation().getVehicle().getLicensePlate()
+                : null;
 
-        if (space.getParkedVehicle() != null) {
-            licensePlate = space.getParkedVehicle().getLicensePlate();
-        } else if (space.getReservation() != null && space.getReservation().getVehicle() != null) {
-            licensePlate = space.getReservation().getVehicle().getLicensePlate();
+        String statusCell;
+        if (space.isOccupied() && occupiedPlate != null && !occupiedPlate.isEmpty()) {
+            statusCell = "Occupied (" + occupiedPlate + ")";
+        } else if (space.isOccupied()) {
+            statusCell = "Occupied";
+        } else {
+            statusCell = "Vacant";
+        }
+
+        String reservationCell;
+        if (space.isReserved() && reservedPlate != null && !reservedPlate.isEmpty()) {
+            reservationCell = "Reserved (" + reservedPlate + ")";
+        } else if (space.isReserved()) {
+            reservationCell = "Reserved";
+        } else {
+            reservationCell = "Available";
         }
 
         return new Object[] {
                 space.getId(),
                 space.getFloor(),
-                space.isOccupied() ? "Occupied" : "Vacant",
-                space.isReserved() ? "Reserved" : "Available",
-                licensePlate,
+                statusCell,
+                reservationCell,
                 myParkedVehicle
         };
     }
@@ -433,14 +487,14 @@ public class MainMenuView extends JFrame {
             if (!isSelected) {
                 int modelRow = table.convertRowIndexToModel(row);
                 int modelColumn = table.convertColumnIndexToModel(column);
-                boolean myParkedVehicle = Boolean.TRUE.equals(table.getModel().getValueAt(modelRow, 5));
+                boolean myParkedVehicle = Boolean.TRUE.equals(table.getModel().getValueAt(modelRow, 4));
                 String status = String.valueOf(table.getModel().getValueAt(modelRow, 2));
 
                 if (myParkedVehicle) {
                     cell.setBackground(MY_PARKED_COLOR);
-                } else if (modelColumn == 2 && "Vacant".equals(status)) {
+                } else if (modelColumn == 2 && status.startsWith("Vacant")) {
                     cell.setBackground(VACANT_COLOR);
-                } else if (modelColumn == 2 && "Occupied".equals(status)) {
+                } else if (modelColumn == 2 && status.startsWith("Occupied")) {
                     cell.setBackground(OCCUPIED_COLOR);
                 } else {
                     cell.setBackground(Color.WHITE);

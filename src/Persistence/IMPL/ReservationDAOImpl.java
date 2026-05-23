@@ -17,6 +17,10 @@ import Business.Entities.VehicleType;
 import Persistence.DatabaseManager;
 import Persistence.ReservationDAO;
 
+/**
+ * MySQL/JDBC implementation of {@link Persistence.ReservationDAO}.
+ * Maps the {@code reservations} table to {@link Business.Entities.Reservation} objects.
+ */
 public class ReservationDAOImpl implements ReservationDAO {
     private final DatabaseManager db;
 
@@ -27,17 +31,18 @@ public class ReservationDAOImpl implements ReservationDAO {
     @Override
     public void save(Reservation reservation) {
         String sql = """
-                INSERT INTO reservation (spaceId, licensePlate, reservationDate, cancelledByAdmin, notified, isActive)
-                VALUES ((SELECT spaceId FROM parking_space WHERE code = ?), ?, ?, ?, ?, ?)
+                INSERT INTO reservation (spaceId, licensePlate, reservationDate, cancelledByAdmin, notified, isActive, previousSpaceCode)
+                VALUES ((SELECT spaceId FROM parking_space WHERE code = ?), ?, ?, ?, ?, ?, ?)
                 """;
 
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, reservation.getParkingSpace().getId());
+            ps.setString(1, reservation.getParkingSpace() != null ? reservation.getParkingSpace().getId() : null);
             ps.setString(2, reservation.getVehicle().getLicensePlate());
             ps.setTimestamp(3, Timestamp.valueOf(reservation.getReservationDate()));
             ps.setBoolean(4, reservation.isCancelledByAdmin());
             ps.setBoolean(5, reservation.isNotified());
             ps.setBoolean(6, reservation.isActive());
+            ps.setString(7, reservation.getPreviousSpaceCode());
             ps.executeUpdate();
 
             try (ResultSet keys = ps.getGeneratedKeys()) {
@@ -135,18 +140,20 @@ public class ReservationDAOImpl implements ReservationDAO {
                     reservationDate = ?,
                     cancelledByAdmin = ?,
                     notified = ?,
-                    isActive = ?
+                    isActive = ?,
+                    previousSpaceCode = ?
                 WHERE reservationId = ?
                 """;
 
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
-            ps.setString(1, reservation.getParkingSpace().getId());
+            ps.setString(1, reservation.getParkingSpace() != null ? reservation.getParkingSpace().getId() : null);
             ps.setString(2, reservation.getVehicle().getLicensePlate());
             ps.setTimestamp(3, Timestamp.valueOf(reservation.getReservationDate()));
             ps.setBoolean(4, reservation.isCancelledByAdmin());
             ps.setBoolean(5, reservation.isNotified());
             ps.setBoolean(6, reservation.isActive());
-            ps.setInt(7, reservation.getId());
+            ps.setString(7, reservation.getPreviousSpaceCode());
+            ps.setInt(8, reservation.getId());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to update reservation: " + e.getMessage(), e);
@@ -156,36 +163,41 @@ public class ReservationDAOImpl implements ReservationDAO {
     private String baseReservationQuery() {
         return """
                 SELECT r.reservationId, r.licensePlate, r.reservationDate,
-                       r.cancelledByAdmin, r.notified, r.isActive,
+                       r.cancelledByAdmin, r.notified, r.isActive, r.previousSpaceCode,
                        p.code, p.floor, p.vehicleType AS spaceVehicleType,
                        p.isOccupied, p.occupiedByPlate,
                        v.vehicleType AS vehicleType,
                        u.userId, u.username, u.email
                 FROM reservation r
-                JOIN parking_space p ON p.spaceId = r.spaceId
+                LEFT JOIN parking_space p ON p.spaceId = r.spaceId
                 JOIN vehicle v ON v.licensePlate = r.licensePlate
                 JOIN user u ON u.userId = v.userId
                 """;
     }
 
     private Reservation mapRow(ResultSet rs) throws SQLException {
-        VehicleType spaceType = VehicleType.valueOf(rs.getString("spaceVehicleType"));
         VehicleType vehicleType = VehicleType.valueOf(rs.getString("vehicleType"));
-        String parkedPlate = rs.getString("occupiedByPlate");
+        String spaceCode = rs.getString("code");
 
-        Vehicle parkedVehicle = null;
-        if (parkedPlate != null && !parkedPlate.isEmpty()) {
-            parkedVehicle = new Vehicle(parkedPlate, spaceType, null, true);
+        ParkingSpace space = null;
+        if (spaceCode != null) {
+            VehicleType spaceType = VehicleType.valueOf(rs.getString("spaceVehicleType"));
+            String parkedPlate = rs.getString("occupiedByPlate");
+
+            Vehicle parkedVehicle = null;
+            if (parkedPlate != null && !parkedPlate.isEmpty()) {
+                parkedVehicle = new Vehicle(parkedPlate, spaceType, null, true);
+            }
+
+            space = new ParkingSpace(
+                    spaceCode,
+                    rs.getInt("floor"),
+                    spaceType,
+                    rs.getBoolean("isOccupied"),
+                    false,
+                    parkedVehicle,
+                    null);
         }
-
-        ParkingSpace space = new ParkingSpace(
-                rs.getString("code"),
-                rs.getInt("floor"),
-                spaceType,
-                rs.getBoolean("isOccupied"),
-                false,
-                parkedVehicle,
-                null);
 
         Client user = new Client(
                 String.valueOf(rs.getInt("userId")),
@@ -206,8 +218,9 @@ public class ReservationDAOImpl implements ReservationDAO {
         reservation.setCancelledByAdmin(rs.getBoolean("cancelledByAdmin"));
         reservation.setNotified(rs.getBoolean("notified"));
         reservation.setActive(rs.getBoolean("isActive"));
+        reservation.setPreviousSpaceCode(rs.getString("previousSpaceCode"));
 
-        if (reservation.isActive()) {
+        if (reservation.isActive() && space != null) {
             space.reserve(reservation);
         }
 

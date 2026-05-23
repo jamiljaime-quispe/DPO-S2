@@ -14,6 +14,11 @@ import Persistence.ParkingSpaceDAO;
 
 import java.time.LocalDateTime;
 
+/**
+ * MySQL/JDBC implementation of {@link Persistence.ParkingSpaceDAO}.
+ * Maps the {@code parking_space} table to {@link Business.Entities.ParkingSpace} objects,
+ * including any active reservation and currently parked vehicle.
+ */
 public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
     private final DatabaseManager db;
 

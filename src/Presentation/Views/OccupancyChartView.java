@@ -5,13 +5,20 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Panel that displays a bar chart of parking occupancy over the last hour.
+ * Each bar represents the number of occupied spaces recorded at one-minute intervals.
+ * Updated in real-time via {@link #updateChart(List)}.
+ */
 public class OccupancyChartView extends JPanel {
+    private static final int REFRESH_INTERVAL_SECONDS = 60;
+
     private List<Integer> data = new ArrayList<>();
     private ChartPanel chartPanel;
     private JButton backButton;
     private JLabel countdownLabel;
     private Timer countdownTimer;
-    private int secondsLeft = 5;
+    private int secondsLeft = REFRESH_INTERVAL_SECONDS;
 
     public OccupancyChartView() {
     }
@@ -37,7 +44,7 @@ public class OccupancyChartView extends JPanel {
         title.setForeground(new Color(40, 40, 50));
         header.add(title, BorderLayout.CENTER);
 
-        countdownLabel = new JLabel("Next update in 5s", SwingConstants.RIGHT);
+        countdownLabel = new JLabel("Next update in " + REFRESH_INTERVAL_SECONDS + "s", SwingConstants.RIGHT);
         countdownLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
         countdownLabel.setForeground(new Color(140, 140, 150));
         JPanel countdownCorner = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
@@ -83,9 +90,9 @@ public class OccupancyChartView extends JPanel {
         this.data = (data != null) ? data : new ArrayList<>();
         if (chartPanel != null)
             chartPanel.repaint();
-        secondsLeft = 5;
+        secondsLeft = REFRESH_INTERVAL_SECONDS;
         if (countdownLabel != null)
-            countdownLabel.setText("Next update in 5s");
+            countdownLabel.setText("Next update in " + REFRESH_INTERVAL_SECONDS + "s");
     }
 
     public void startAutoRefresh() {
@@ -131,15 +138,17 @@ public class OccupancyChartView extends JPanel {
                 return;
             }
 
+            int n = data.size();
+
             int maxVal = 1;
             for (Integer value : data) {
-                if (value > maxVal) {
-                    maxVal = value;
-                }
+                if (value > maxVal) maxVal = value;
             }
             int yScale = Math.max(((maxVal / 5) + 1) * 5, 5);
 
+            // Y-axis gridlines and labels
             g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
+            FontMetrics fmY = g2.getFontMetrics();
             int gridLines = 5;
             for (int i = 0; i <= gridLines; i++) {
                 int yVal = yScale * i / gridLines;
@@ -151,35 +160,28 @@ public class OccupancyChartView extends JPanel {
 
                 g2.setColor(Color.DARK_GRAY);
                 String label = String.valueOf(yVal);
-                FontMetrics fm = g2.getFontMetrics();
-                g2.drawString(label, PAD_LEFT - fm.stringWidth(label) - 5, y + fm.getAscent() / 2);
+                g2.drawString(label, PAD_LEFT - fmY.stringWidth(label) - 5, y + fmY.getAscent() / 2);
             }
 
+            // Axes
             g2.setColor(Color.DARK_GRAY);
             g2.setStroke(new BasicStroke(1.5f));
             g2.drawLine(PAD_LEFT, PAD_TOP, PAD_LEFT, PAD_TOP + chartH);
             g2.drawLine(PAD_LEFT, PAD_TOP + chartH, PAD_LEFT + chartW, PAD_TOP + chartH);
 
+            // Y-axis title: "Number of vehicles"
             g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
             g2.setColor(Color.GRAY);
-            int n = data.size();
-            String oldestLabel = n > 0 ? ((n - 1) * 5) + " sec ago" : "older";
-            String newest = "now";
-            FontMetrics fmX = g2.getFontMetrics();
-            g2.drawString(oldestLabel, PAD_LEFT + 4, PAD_TOP + chartH + 28);
-            g2.drawString(newest, PAD_LEFT + chartW - fmX.stringWidth(newest), PAD_TOP + chartH + 28);
-
             g2.rotate(-Math.PI / 2);
-            g2.setColor(Color.GRAY);
-            g2.drawString("Occupied spaces", -(PAD_TOP + chartH / 2 + 40), 12);
+            String yTitle = "Number of vehicles";
+            FontMetrics fmYT = g2.getFontMetrics();
+            g2.drawString(yTitle, -(PAD_TOP + chartH / 2 + fmYT.stringWidth(yTitle) / 2), 13);
             g2.rotate(Math.PI / 2);
 
+            // Bars
             int slotW = Math.max(1, chartW / Math.max(n, 1));
             int gap = Math.max(1, slotW / 6);
             int barW = Math.max(1, slotW - gap);
-
-            g2.setFont(new Font("SansSerif", Font.PLAIN, 10));
-            FontMetrics fmBar = g2.getFontMetrics();
 
             for (int i = 0; i < n; i++) {
                 int value = data.get(i);
@@ -188,20 +190,35 @@ public class OccupancyChartView extends JPanel {
                 int y = PAD_TOP + chartH - barH;
                 boolean isLatest = (i == n - 1);
 
-                g2.setColor(isLatest ? new Color(33, 99, 168) : new Color(33, 99, 168, 170));
+                g2.setColor(isLatest ? new Color(70, 130, 200) : new Color(70, 130, 200, 180));
                 g2.fillRect(x, y, barW, barH);
-                g2.setColor(new Color(20, 60, 110));
-                g2.drawRect(x, y, barW, barH);
+            }
 
-                if (value > 0) {
-                    String label = String.valueOf(value);
-                    int labelX = x + (barW - fmBar.stringWidth(label)) / 2;
-                    int labelY = y - 2;
-                    if (labelY < PAD_TOP + 10) labelY = PAD_TOP + 10;
-                    g2.setColor(new Color(40, 40, 50));
-                    g2.drawString(label, labelX, labelY);
+            // X-axis labels: show time index (n-1-i) at evenly spaced positions
+            g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
+            FontMetrics fmX = g2.getFontMetrics();
+            g2.setColor(Color.DARK_GRAY);
+
+            int desiredLabels = Math.min(n, 10);
+            int stride = Math.max(1, n / desiredLabels);
+            int lastXLabelRight = -1;
+
+            for (int i = 0; i < n; i += stride) {
+                int timeIndex = n - 1 - i;
+                String label = String.valueOf(timeIndex);
+                int x = PAD_LEFT + i * slotW + slotW / 2;
+                int labelX = x - fmX.stringWidth(label) / 2;
+                if (labelX > lastXLabelRight + 2) {
+                    g2.drawString(label, labelX, PAD_TOP + chartH + fmX.getAscent() + 4);
+                    lastXLabelRight = labelX + fmX.stringWidth(label);
                 }
             }
+
+            // X-axis title: "Time"
+            g2.setColor(Color.GRAY);
+            String xTitle = "Time";
+            g2.drawString(xTitle, PAD_LEFT + (chartW - fmX.stringWidth(xTitle)) / 2,
+                    PAD_TOP + chartH + fmX.getAscent() + 20);
 
             g2.dispose();
         }

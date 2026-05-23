@@ -14,6 +14,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * Controller for user authentication (login, signup, logout, account deletion).
+ * Runs credential verification in a background thread to keep the EDT responsive.
+ */
 public class AuthController {
     private LoginView loginView;
     private SignupView signupView;
@@ -59,6 +63,7 @@ public class AuthController {
                 if (result == 1 && configService != null) {
                     String adminPass = configService.getAdminPassword();
                     if (adminPass != null && !password.equals(adminPass)) {
+                        userService.clearSession();
                         return 0;
                     }
                 }
@@ -81,11 +86,8 @@ public class AuthController {
                     if (success == 1 || success == 2) {
                         loginProcedure(success);
                         for (Reservation r : pendingNotifications) {
-                            String spaceCode = r.getParkingSpace() != null
-                                    ? r.getParkingSpace().getId() : "unknown";
                             JOptionPane.showMessageDialog(mainMenuView,
-                                    "Your reservation for space \"" + spaceCode
-                                            + "\" was cancelled by an admin.",
+                                    buildAdminCancellationMessage(r),
                                     "Reservation Cancelled",
                                     JOptionPane.WARNING_MESSAGE);
                             reservationService.markNotified(r);
@@ -136,7 +138,10 @@ public class AuthController {
     public void logout() {
         System.out.println("Logging out...");
 
-        // 1. Reset and hide the Main Menu
+        // 1. Clear session state from memory
+        userService.clearSession();
+
+        // 2. Reset and hide the Main Menu
         mainMenuView.resetDisplayedContent();
         mainMenuView.setVisible(false);
 
@@ -192,6 +197,30 @@ public class AuthController {
 
     public void setReservationService(ReservationService reservationService) {
         this.reservationService = reservationService;
+    }
+
+    private String buildAdminCancellationMessage(Reservation reservation) {
+        String originalSpace = reservation.getPreviousSpaceCode();
+        if (originalSpace == null || originalSpace.isBlank()) {
+            originalSpace = reservation.getParkingSpace() != null
+                    ? reservation.getParkingSpace().getId()
+                    : "unknown";
+        }
+
+        StringBuilder message = new StringBuilder()
+                .append("Your reservation for space \"")
+                .append(originalSpace)
+                .append("\" was cancelled by an administrator.");
+
+        if (reservation.isActive() && reservation.getParkingSpace() != null) {
+            message.append("\n\nA substitute reservation has been assigned to space \"")
+                    .append(reservation.getParkingSpace().getId())
+                    .append("\".");
+        } else {
+            message.append("\n\nNo equivalent space was available, so the reservation has been removed.");
+        }
+
+        return message.toString();
     }
 
     public void handleBackToLogin() {

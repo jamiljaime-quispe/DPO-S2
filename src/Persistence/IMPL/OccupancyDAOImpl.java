@@ -8,6 +8,10 @@ import java.util.List;
 import Persistence.DatabaseManager;
 import Persistence.OccupancyDAO;
 
+/**
+ * MySQL/JDBC implementation of {@link Persistence.OccupancyDAO}.
+ * Reads and writes to the {@code occupancy_log} table.
+ */
 public class OccupancyDAOImpl implements OccupancyDAO {
     private final DatabaseManager db;
 
@@ -31,7 +35,7 @@ public class OccupancyDAOImpl implements OccupancyDAO {
     public List<Integer> getLastHourData() {
         String sql = "SELECT occupiedCount FROM "
                 + "(SELECT occupiedCount, timestamp FROM occupancy_log "
-                + " ORDER BY timestamp DESC LIMIT 20) recent "
+                + " ORDER BY timestamp DESC LIMIT 60) recent "
                 + "ORDER BY timestamp ASC";
         List<Integer> data = new ArrayList<>();
 

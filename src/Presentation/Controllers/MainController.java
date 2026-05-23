@@ -6,6 +6,10 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 // WARNING: BE CAREFUL IN NOT BREAKING LAYER ARCHITECTURE
 
+/**
+ * Root controller for the main menu.
+ * Routes button clicks to the appropriate sub-controllers (admin, parking, booking, statistics).
+ */
 public class MainController {
     private MainMenuView view;
     private AuthController authController;

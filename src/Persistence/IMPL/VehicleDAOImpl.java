@@ -10,6 +10,10 @@ import Business.Entities.*;
 import Persistence.DatabaseManager;
 import Persistence.VehicleDAO;
 
+/**
+ * MySQL/JDBC implementation of {@link Persistence.VehicleDAO}.
+ * Maps the {@code vehicles} table to {@link Business.Entities.Vehicle} objects.
+ */
 public class VehicleDAOImpl implements VehicleDAO {
     private final DatabaseManager db;
 

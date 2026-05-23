@@ -30,11 +30,15 @@ import java.util.LinkedList;
 import java.util.Random;
 
 public class Main {
+    private static final int OCCUPANCY_TRACKER_CAPACITY = 60;
+    private static final int OCCUPANCY_RECORD_INTERVAL_MS = 60_000;
+
     public static void main(String[] args) {
         // Load config before entering the EDT (reads config.json from project root)
         ConfigService configService = new ConfigService(new Config());
 
         javax.swing.SwingUtilities.invokeLater(() -> {
+            try {
 
             // 1. Database
             DatabaseManager db = new DatabaseManager(
@@ -56,7 +60,7 @@ public class Main {
             ParkingService parkingService = new ParkingService(parkingSpaceDAO, vehicleDAO, reservationDAO);
             ReservationService reservationService = new ReservationService(reservationDAO, parkingSpaceDAO, vehicleDAO);
             AdminService adminService = new AdminService(parkingService, reservationDAO);
-            OccupancyTracker tracker = new OccupancyTracker(new LinkedList<>(), 60);
+            OccupancyTracker tracker = new OccupancyTracker(new LinkedList<>(), OCCUPANCY_TRACKER_CAPACITY);
             StatisticsService statsService = new StatisticsService(tracker, parkingSpaceDAO, occupancyDAO);
             // The bot needs ParkingService to change parking status, Config to know the
             // delay,
@@ -92,12 +96,12 @@ public class Main {
             StatisticsController statsCtrl = new StatisticsController(mainMenuView.getOccupancyChartView(),
                     statsService);
             mainController.setStatisticsController(statsCtrl);
-            javax.swing.Timer occupancyRecorder = new javax.swing.Timer(5_000, e -> statsService.recordOccupancy());
+            javax.swing.Timer occupancyRecorder = new javax.swing.Timer(OCCUPANCY_RECORD_INTERVAL_MS, e -> statsService.recordOccupancy());
             occupancyRecorder.setInitialDelay(0);
             occupancyRecorder.start();
 
             // 9. Parking
-            ParkingController parkingController = new ParkingController(null, null, parkingService);
+            ParkingController parkingController = new ParkingController(parkingService);
             parkingController.setMainMenuView(mainMenuView);
             parkingController.setUserService(userService);
             parkingController.setAdminService(adminService);
@@ -131,6 +135,14 @@ public class Main {
                     simService.stopSimulation();
                 }
             });
+
+            } catch (Exception e) {
+                javax.swing.JOptionPane.showMessageDialog(null,
+                        "Failed to start the application:\n" + e.getMessage(),
+                        "Startup Error",
+                        javax.swing.JOptionPane.ERROR_MESSAGE);
+                System.exit(1);
+            }
         });
     }
 }

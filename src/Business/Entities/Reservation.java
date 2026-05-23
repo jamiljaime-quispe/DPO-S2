@@ -15,6 +15,7 @@ public class Reservation {
 	private boolean cancelledByAdmin;
 	private boolean notified;
 	private boolean isActive;
+	private String previousSpaceCode;
 
 	/**
 	 * Constructs a new Reservation.
@@ -35,6 +36,7 @@ public class Reservation {
 		this.cancelledByAdmin = false;
 		this.notified = false;
 		this.isActive = true;
+		this.previousSpaceCode = null;
 	}
 
 	/**
@@ -134,6 +136,23 @@ public class Reservation {
 	 * @param active the new active status
 	 */
 	public void setActive(boolean active) { this.isActive = active; }
+
+	/**
+	 * Returns the code of the space this reservation was originally on,
+	 * captured by the admin when the original space was deleted or the
+	 * reservation was cancelled. Used to notify the user at next login.
+	 *
+	 * @return the previous space code, or null if not applicable
+	 */
+	public String getPreviousSpaceCode() { return previousSpaceCode; }
+
+	/**
+	 * Records the code of the space this reservation was originally on
+	 * before being reassigned or cancelled by an admin.
+	 *
+	 * @param previousSpaceCode the original space code, or null to clear
+	 */
+	public void setPreviousSpaceCode(String previousSpaceCode) { this.previousSpaceCode = previousSpaceCode; }
 
 	/**
 	 * Marks this reservation as active.

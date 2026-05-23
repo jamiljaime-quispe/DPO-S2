@@ -1,6 +1,7 @@
 package Presentation.Views;
 
 import Business.Entities.ParkingSpace;
+import Business.Entities.Reservation;
 import Business.Entities.VehicleType;
 import Presentation.Controllers.AdminSlotBookingController;
 
@@ -11,6 +12,11 @@ import java.awt.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+/**
+ * Modal dialog for slot booking management.
+ * Used by both admins (manage all bookings) and regular users (manage their own bookings).
+ * Shows all parking spaces with colour-coded rows and provides Add, Edit, and Cancel booking controls.
+ */
 public class AdminSlotBookingManagementView extends JDialog {
     private static final int ADMIN_MODE = 1;
     private static final int USER_MODE = 2;
@@ -21,7 +27,7 @@ public class AdminSlotBookingManagementView extends JDialog {
     private DefaultTableModel tableModel;
     private JTabbedPane tabbedPane;
     private JTable reservationsTable;
-    public DefaultTableModel reservationsTableModel;
+    private DefaultTableModel reservationsTableModel;
     private JPanel reservationsPanel;
     private JButton addButton;
     private JButton editButton;
@@ -158,7 +164,7 @@ public class AdminSlotBookingManagementView extends JDialog {
             return;
         }
 
-        JDialog dialog = createBookingDialog(currentMode == USER_MODE ? "Book Selected Slot" : "Add Slot Booking");
+        JDialog dialog = createBookingDialog("Book Selected Slot");
 
         JTextField plateField = new JTextField();
         JTextField spaceCodeField = new JTextField(currentCode);
@@ -559,6 +565,29 @@ public class AdminSlotBookingManagementView extends JDialog {
 
     public void showInfo(String message) {
         JOptionPane.showMessageDialog(this, message, "Info", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    public void updateReservationsTable(List<Reservation> reservations) {
+        if (reservationsTableModel == null) return;
+        reservationsTableModel.setRowCount(0);
+        for (Reservation reservation : reservations) {
+            ParkingSpace space = reservation.getParkingSpace();
+            String code = space != null ? space.getId() : "";
+            Object floor = space != null ? space.getFloor() : "";
+            String type = space != null ? space.getVehicleType().name() : "";
+            String plate = reservation.getVehicle() != null ? reservation.getVehicle().getLicensePlate() : "";
+            String date = reservation.getReservationDate() != null
+                    ? reservation.getReservationDate().format(DATE_FORMAT) : "";
+            String status;
+            if (reservation.isActive()) {
+                status = "Active";
+            } else if (reservation.isCancelledByAdmin()) {
+                status = "Cancelled by admin";
+            } else {
+                status = "Cancelled";
+            }
+            reservationsTableModel.addRow(new Object[]{code, floor, type, plate, date, status});
+        }
     }
 
     public void setMode(int mode) {

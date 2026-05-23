@@ -5,6 +5,10 @@ import Presentation.Controllers.AuthController;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * Registration screen for new users.
+ * Collects username, email, password, and confirmation; delegates validation and account creation to {@link Presentation.Controllers.AuthController}.
+ */
 public class SignupView extends JFrame {
     private JTextField usernameField;
     private JTextField emailField;
