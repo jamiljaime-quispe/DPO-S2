@@ -17,11 +17,13 @@ import Persistence.VehicleDAO;
 public class VehicleDAOImpl implements VehicleDAO {
     private final DatabaseManager db;
 
+    /** Creates the DAO with the shared database manager. */
     public VehicleDAOImpl(DatabaseManager db) {
         this.db = db;
     }
 
     @Override
+    /** Saves a vehicle. */
     public void save(Vehicle vehicle) {
         String sql = """
                 INSERT INTO vehicle (licensePlate, userId, vehicleType)
@@ -40,6 +42,7 @@ public class VehicleDAOImpl implements VehicleDAO {
     }
 
     @Override
+    /** Finds a vehicle by license plate. */
     public Vehicle findByPlate(String plate) {
         String sql = """
                 SELECT v.licensePlate, v.vehicleType, u.username
@@ -63,6 +66,7 @@ public class VehicleDAOImpl implements VehicleDAO {
     }
 
     @Override
+    /** Loads vehicles owned by a user. */
     public List<Vehicle> findByUser(int userId) {
         String sql = """
                 SELECT v.licensePlate, v.vehicleType, u.username
@@ -88,6 +92,7 @@ public class VehicleDAOImpl implements VehicleDAO {
     }
 
     @Override
+    /** Deletes a vehicle by license plate. */
     public void delete(String plate) {
         String sql = "DELETE FROM vehicle WHERE licensePlate = ?";
 
@@ -99,6 +104,7 @@ public class VehicleDAOImpl implements VehicleDAO {
         }
     }
 
+    /** Converts a database row into a Vehicle object. */
     private Vehicle mapRow(ResultSet rs) throws SQLException {
         return new Vehicle(
                 rs.getString("licensePlate"),
@@ -107,6 +113,7 @@ public class VehicleDAOImpl implements VehicleDAO {
                 false);
     }
 
+    /** Resolves the owner value into a database user ID. */
     private int resolveOwnerUserId(String owner) throws SQLException {
         if (owner == null || owner.isBlank()) {
             throw new SQLException("Vehicle owner is required.");

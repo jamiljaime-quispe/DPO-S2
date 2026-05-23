@@ -16,11 +16,13 @@ import java.util.ArrayList;
 public class UserDAOImpl implements UserDAO {
     private final DatabaseManager db;
 
+    /** Creates the DAO with the shared database manager. */
     public UserDAOImpl(DatabaseManager db) {
         this.db = db;
     }
 
     @Override
+    /** Saves a new user. */
     public void save(User user) {
         String sql = "INSERT INTO user (username, email, password, isAdmin) VALUES (?, ?, ?, ?)";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -40,6 +42,7 @@ public class UserDAOImpl implements UserDAO {
     }
 
     @Override
+    /** Finds a user by ID. */
     public User findById(int id) {
         String sql = "SELECT * FROM user WHERE userId = ?";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
@@ -55,6 +58,7 @@ public class UserDAOImpl implements UserDAO {
     }
 
     @Override
+    /** Finds a user by username. */
     public User findByUsername(String username) {
         String sql = "SELECT * FROM user WHERE username = ?";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
@@ -70,6 +74,7 @@ public class UserDAOImpl implements UserDAO {
     }
 
     @Override
+    /** Finds a user by email address. */
     public User findByEmail(String email) {
         String sql = "SELECT * FROM user WHERE email = ?";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
@@ -85,6 +90,7 @@ public class UserDAOImpl implements UserDAO {
     }
 
     @Override
+    /** Deletes a user by ID. */
     public void delete(int id) {
         String sql = "DELETE FROM user WHERE userId = ?";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
@@ -96,6 +102,7 @@ public class UserDAOImpl implements UserDAO {
     }
 
     @Override
+    /** Updates an existing user. */
     public void update(User user) {
         String sql = "UPDATE user SET username = ?, email = ?, password = ?, isAdmin = ? WHERE userId = ?";
         try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
@@ -110,6 +117,7 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
+    /** Converts a database row into a User object. */
     private User mapRow(ResultSet rs) throws SQLException {
         String id = String.valueOf(rs.getInt("userId"));
         String username = rs.getString("username");

@@ -6,6 +6,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseListener;
 
 import Business.Entities.ParkingSpace;
+import Business.Entities.VehicleType;
 import Presentation.Controllers.MainController;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
@@ -45,14 +46,17 @@ public class MainMenuView extends JFrame {
     private JButton parkingSlotsBackButton;
     private java.util.List<ActionListener> parkingSlotsBackListeners = new java.util.ArrayList<>();
 
+    /** Creates the main menu window. */
     public MainMenuView() {
         setTitle("Main screen");
     }
 
+    /** Sets the controller used by the main menu. */
     public void setController(MainController controller) {
         this.controller = controller;
     }
 
+    /** Builds the main menu components. */
     public void initComponents() {
         mainPanel = new JPanel();
         mainPanel.setLayout(null);
@@ -144,6 +148,7 @@ public class MainMenuView extends JFrame {
         mainPanel.add(occupancyChartPanel);
     }
 
+    /** Applies the admin or user mode after login. */
     public void setMode(int mode, String username) {
         resetDisplayedContent();
 
@@ -181,6 +186,7 @@ public class MainMenuView extends JFrame {
         repaint();
     }
 
+    /** Creates a white navigation group. */
     private JPanel createGroupPanel(String title, int x, int y) {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
@@ -199,6 +205,7 @@ public class MainMenuView extends JFrame {
         return panel;
     }
 
+    /** Creates a navigation group inside the blue brand panel. */
     private JPanel createBrandGroupPanel(String title, int x, int y) {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
@@ -217,6 +224,7 @@ public class MainMenuView extends JFrame {
         return panel;
     }
 
+    /** Applies the brand-panel button style. */
     private JButton styleBrandButton(JButton btn, String text) {
         btn.setText(text);
         btn.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -233,6 +241,7 @@ public class MainMenuView extends JFrame {
         return btn;
     }
 
+    /** Applies the standard menu button style. */
     private JButton styleButton(JButton btn, String text) {
         btn.setText(text);
         btn.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -248,6 +257,7 @@ public class MainMenuView extends JFrame {
         return btn;
     }
 
+    /** Creates the row with user entry and exit buttons. */
     private JPanel createEntryExitButtonRow() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
@@ -264,6 +274,7 @@ public class MainMenuView extends JFrame {
         return panel;
     }
 
+    /** Creates the compact back button for table panels. */
     private JButton createBackBoxButton() {
         JButton b = new JButton("<-");
         b.setPreferredSize(new Dimension(42, 34));
@@ -279,6 +290,7 @@ public class MainMenuView extends JFrame {
         return b;
     }
 
+    /** Applies the compact entry/exit button style. */
     private JButton styleSmallButton(JButton btn, String text) {
         btn.setText(text);
         btn.setMaximumSize(new Dimension(105, 40));
@@ -294,6 +306,7 @@ public class MainMenuView extends JFrame {
         return btn;
     }
 
+    /** Creates the current parking status panel. */
     private JPanel createParkingSlotsPanel() {
         JPanel panel = new JPanel(new BorderLayout(0, 10));
         panel.setBackground(Color.WHITE);
@@ -332,6 +345,7 @@ public class MainMenuView extends JFrame {
         Object[][] rows = {};
 
         DefaultTableModel model = new DefaultTableModel(rows, columns) {
+            /** Keeps the parking status table read-only. */
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -364,15 +378,18 @@ public class MainMenuView extends JFrame {
         return panel;
     }
 
+    /** Shows the main navigation controls. */
     private void showNavigation() {
         navPanel.setVisible(true);
         titleLabel.setVisible(true);
     }
 
+    /** Hides the main navigation controls. */
     private void hideNavigation() {
         navPanel.setVisible(false);
     }
 
+    /** Shows the current parking status table. */
     public void showParkingSlotsTable() {
         hideNavigation();
         occupancyChartPanel.setVisible(false);
@@ -381,10 +398,12 @@ public class MainMenuView extends JFrame {
         parkingSlotsPanel.repaint();
     }
 
+    /** Checks whether the parking status table is currently visible. */
     public boolean isParkingSlotsTableVisible() {
         return parkingSlotsPanel != null && parkingSlotsPanel.isVisible();
     }
 
+    /** Adds a listener for the parking status back button. */
     public void addParkingSlotsBackListener(ActionListener listener) {
         parkingSlotsBackListeners.add(listener);
         if (parkingSlotsBackButton != null) {
@@ -392,10 +411,12 @@ public class MainMenuView extends JFrame {
         }
     }
 
+    /** Adds or updates one parking space row. */
     public void addParkingSpaceToTable(ParkingSpace space) {
         addParkingSpaceToTable(space, false);
     }
 
+    /** Adds or updates one parking space row and marks user-owned parked vehicles. */
     public void addParkingSpaceToTable(ParkingSpace space, boolean myParkedVehicle) {
         DefaultTableModel model = (DefaultTableModel) parkingSlotsTable.getModel();
         Object[] rowData = buildParkingSpaceRow(space, myParkedVehicle);
@@ -417,6 +438,7 @@ public class MainMenuView extends JFrame {
         }
     }
 
+    /** Builds a table row for a parking space. */
     private Object[] buildParkingSpaceRow(ParkingSpace space, boolean myParkedVehicle) {
         String occupiedPlate = space.getParkedVehicle() != null
                 ? space.getParkedVehicle().getLicensePlate()
@@ -452,6 +474,7 @@ public class MainMenuView extends JFrame {
         };
     }
 
+    /** Finds the parking status table row for a space code. */
     private int findParkingSpaceRow(String code) {
         DefaultTableModel model = (DefaultTableModel) parkingSlotsTable.getModel();
         for (int row = 0; row < model.getRowCount(); row++) {
@@ -464,6 +487,7 @@ public class MainMenuView extends JFrame {
         return -1;
     }
 
+    /** Removes parking status rows that are no longer present. */
     public void removeParkingSpacesNotIn(java.util.Set<String> visibleCodes) {
         DefaultTableModel model = (DefaultTableModel) parkingSlotsTable.getModel();
         for (int row = model.getRowCount() - 1; row >= 0; row--) {
@@ -505,43 +529,53 @@ public class MainMenuView extends JFrame {
         }
     }
 
+    /** Gets the current parking status button. */
     public JButton getStatusButton() {
         return statusButton;
     }
 
+    /** Gets the booking management button. */
     public JButton getReservationButton() {
         return reservationButton;
     }
 
+    /** Gets the admin parking management button. */
     public JButton getEntryExitButton() {
         return entryExitButton;
     }
 
+    /** Gets the user parking entry button. */
     public JButton getParkingEntryButton() {
         return parkingEntryButton;
     }
 
+    /** Gets the user parking exit button. */
     public JButton getParkingExitButton() {
         return parkingExitButton;
     }
 
+    /** Gets the occupancy chart button. */
     public JButton getOccupancyChartButton() {
         return occupancyChartButton;
     }
 
+    /** Gets the logout button. */
     public JButton getLogoutButton() {
         return logoutButton;
     }
 
+    /** Gets the delete-account button. */
     public JButton getDeleteAccountButton() {
         return deleteAccountButton;
     }
 
+    /** Clears the parking status table. */
     public void clearParkingSlotsTable() {
         DefaultTableModel model = (DefaultTableModel) parkingSlotsTable.getModel();
         model.setRowCount(0);
     }
 
+    /** Recreates the parking status panel and its listeners. */
     public void rebuildParkingSlotsPanel() {
         Container contentPane = getContentPane();
         if (parkingSlotsPanel != null) {
@@ -555,6 +589,7 @@ public class MainMenuView extends JFrame {
         repaint();
     }
 
+    /** Adds a mouse listener to the parking status table. */
     public void addParkingSlotsTableMouseListener(MouseListener listener) {
         parkingSlotsTableMouseListeners.add(listener);
         if (parkingSlotsTable != null) {
@@ -562,6 +597,7 @@ public class MainMenuView extends JFrame {
         }
     }
 
+    /** Gets the parking space code at a clicked table point. */
     public String getParkingSpaceCodeAtPoint(Point point) {
         int row = parkingSlotsTable.rowAtPoint(point);
         if (row < 0) return null;
@@ -571,6 +607,7 @@ public class MainMenuView extends JFrame {
         return String.valueOf(model.getValueAt(modelRow, 0));
     }
 
+    /** Returns the menu to its default navigation view. */
     public void resetDisplayedContent() {
         clearParkingSlotsTable();
         parkingSlotsPanel.setVisible(false);
@@ -580,6 +617,7 @@ public class MainMenuView extends JFrame {
         repaint();
     }
 
+    /** Shows the occupancy chart panel. */
     public void showOccupancyChart() {
         hideNavigation();
         parkingSlotsPanel.setVisible(false);
@@ -588,11 +626,187 @@ public class MainMenuView extends JFrame {
         occupancyChartPanel.repaint();
     }
 
+    /** Gets the chart back button. */
     public JButton getBackToMenuButton() {
         return occupancyChartPanel.getBackButton();
     }
 
+    /** Gets the occupancy chart panel. */
     public OccupancyChartView getOccupancyChartView() {
         return occupancyChartPanel;
+    }
+
+    /**
+     * Shows an error message owned by the main menu window.
+     *
+     * @param title   dialog title
+     * @param message message to show
+     */
+    public void showError(String title, String message) {
+        JOptionPane.showMessageDialog(this, message, title, JOptionPane.ERROR_MESSAGE);
+    }
+
+    /**
+     * Shows an information message owned by the main menu window.
+     *
+     * @param title   dialog title
+     * @param message message to show
+     */
+    public void showInfo(String title, String message) {
+        JOptionPane.showMessageDialog(this, message, title, JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    /**
+     * Shows a warning message owned by the main menu window.
+     *
+     * @param title   dialog title
+     * @param message message to show
+     */
+    public void showWarning(String title, String message) {
+        JOptionPane.showMessageDialog(this, message, title, JOptionPane.WARNING_MESSAGE);
+    }
+
+    /** Asks the user to confirm logout. */
+    public boolean confirmLogout() {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to log out?",
+                "Log out",
+                JOptionPane.YES_NO_OPTION);
+        return confirm == JOptionPane.YES_OPTION;
+    }
+
+    /** Asks the user to confirm account deletion. */
+    public boolean confirmDeleteAccount() {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to delete your account?\nThis action cannot be undone.",
+                "Delete Account",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        return confirm == JOptionPane.YES_OPTION;
+    }
+
+    /**
+     * Prompts for a license plate.
+     *
+     * @param title dialog title
+     * @return normalized plate, or null if cancelled
+     */
+    public String promptLicensePlate(String title) {
+        while (true) {
+            JTextField plateField = new JTextField(18);
+            JPanel panel = new JPanel(new GridLayout(0, 1, 0, 6));
+            panel.add(new JLabel("License plate"));
+            panel.add(plateField);
+
+            int result = JOptionPane.showConfirmDialog(this,
+                    panel,
+                    title,
+                    JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.PLAIN_MESSAGE);
+
+            if (result != JOptionPane.OK_OPTION) {
+                return null;
+            }
+
+            String plate = plateField.getText().trim().toUpperCase();
+            if (!plate.isEmpty()) {
+                return plate;
+            }
+
+            showError(title, "License plate cannot be empty.");
+        }
+    }
+
+    /**
+     * Prompts for the vehicle type when no active reservation exists.
+     *
+     * @param plate license plate entered by the user
+     * @return selected type, or null if cancelled
+     */
+    public VehicleType promptVehicleTypeForEntry(String plate) {
+        JComboBox<VehicleType> typeCombo = new JComboBox<>(VehicleType.values());
+        JPanel panel = new JPanel(new GridLayout(0, 1, 0, 6));
+        panel.add(new JLabel("No active reservation was found for " + plate + "."));
+        panel.add(new JLabel("Select the vehicle type:"));
+        panel.add(typeCombo);
+
+        int result = JOptionPane.showConfirmDialog(this,
+                panel,
+                "Parking entry",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE);
+
+        if (result != JOptionPane.OK_OPTION) {
+            return null;
+        }
+
+        return (VehicleType) typeCombo.getSelectedItem();
+    }
+
+    /**
+     * Prompts the user to choose one of their parked vehicles for exit.
+     *
+     * @param parkedSpaces spaces currently occupied by the user's vehicles
+     * @return selected parking space, or null if cancelled
+     */
+    public ParkingSpace promptExitVehicle(java.util.List<ParkingSpace> parkedSpaces) {
+        JComboBox<ExitSpaceOption> vehicleCombo = new JComboBox<>();
+        for (ParkingSpace space : parkedSpaces) {
+            vehicleCombo.addItem(new ExitSpaceOption(space));
+        }
+
+        JPanel panel = new JPanel(new GridLayout(0, 1, 0, 6));
+        panel.add(new JLabel("Choose the vehicle that is leaving:"));
+        panel.add(vehicleCombo);
+
+        int result = JOptionPane.showConfirmDialog(this,
+                panel,
+                "Parking exit",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE);
+
+        if (result != JOptionPane.OK_OPTION) {
+            return null;
+        }
+
+        ExitSpaceOption selected = (ExitSpaceOption) vehicleCombo.getSelectedItem();
+        return selected != null ? selected.getSpace() : null;
+    }
+
+    /**
+     * Shows the assigned parking space after entry.
+     *
+     * @param message message prefix
+     * @param space   assigned space
+     */
+    public void showAssignedParkingEntry(String message, ParkingSpace space) {
+        showInfo("Parking entry",
+                message
+                        + "\nAssigned space: " + space.getId()
+                        + "\nFloor: " + space.getFloor()
+                        + "\nVehicle type: " + space.getVehicleType().name());
+    }
+
+    private static class ExitSpaceOption {
+        private ParkingSpace space;
+
+        /** Stores one selectable parked vehicle. */
+        private ExitSpaceOption(ParkingSpace space) {
+            this.space = space;
+        }
+
+        /** Gets the parking space behind this option. */
+        private ParkingSpace getSpace() {
+            return space;
+        }
+
+        @Override
+        /** Formats the option shown in the exit combo box. */
+        public String toString() {
+            String plate = space.getParkedVehicle() != null
+                    ? space.getParkedVehicle().getLicensePlate()
+                    : "";
+            return "Plate " + plate + " - Space " + space.getId() + " - Floor " + space.getFloor();
+        }
     }
 }

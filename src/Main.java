@@ -1,4 +1,3 @@
-import Business.Entities.Config;
 import Business.Entities.OccupancyTracker;
 import Business.Services.AdminService;
 import Business.Services.ConfigService;
@@ -13,6 +12,7 @@ import Persistence.IMPL.ParkingSpaceDAOImpl;
 import Persistence.IMPL.ReservationDAOImpl;
 import Persistence.IMPL.UserDAOImpl;
 import Persistence.IMPL.VehicleDAOImpl;
+import Persistence.IMPL.ConfigDAOImpl;
 import Presentation.Controllers.AdminController;
 import Presentation.Controllers.AdminSlotBookingController;
 import Presentation.Controllers.AuthController;
@@ -28,14 +28,26 @@ import Presentation.Views.SignupView;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+/**
+ * Starts the parking application and wires the views, controllers, services, and DAOs.
+ */
 public class Main {
+    private static final Logger LOGGER = Logger.getLogger(Main.class.getName());
     private static final int OCCUPANCY_TRACKER_CAPACITY = 60;
     private static final int OCCUPANCY_RECORD_INTERVAL_MS = 60_000;
 
+    /**
+     * Application entry point.
+     *
+     * @param args command-line arguments, not used
+     */
     public static void main(String[] args) {
-        // Load config before entering the EDT (reads config.json from project root)
-        ConfigService configService = new ConfigService(new Config());
+        // Business asks Persistence for config before Swing starts.
+        ConfigService configService = new ConfigService(new ConfigDAOImpl());
 
         javax.swing.SwingUtilities.invokeLater(() -> {
             try {
@@ -56,10 +68,11 @@ public class Main {
             OccupancyDAOImpl occupancyDAO = new OccupancyDAOImpl(db);
 
             // 3. Services
-            UserService userService = new UserService(userDAO, vehicleDAO);
-            ParkingService parkingService = new ParkingService(parkingSpaceDAO, vehicleDAO, reservationDAO);
-            ReservationService reservationService = new ReservationService(reservationDAO, parkingSpaceDAO, vehicleDAO);
-            AdminService adminService = new AdminService(parkingService, reservationDAO);
+            UserService userService = new UserService(userDAO, vehicleDAO, parkingSpaceDAO, db);
+            ParkingService parkingService = new ParkingService(parkingSpaceDAO, vehicleDAO, reservationDAO, db);
+            ReservationService reservationService = new ReservationService(reservationDAO, parkingSpaceDAO,
+                    vehicleDAO, db);
+            AdminService adminService = new AdminService(parkingService, reservationDAO, db);
             OccupancyTracker tracker = new OccupancyTracker(new LinkedList<>(), OCCUPANCY_TRACKER_CAPACITY);
             StatisticsService statsService = new StatisticsService(tracker, parkingSpaceDAO, occupancyDAO);
             // The bot needs ParkingService to change parking status, Config to know the
@@ -96,7 +109,31 @@ public class Main {
             StatisticsController statsCtrl = new StatisticsController(mainMenuView.getOccupancyChartView(),
                     statsService);
             mainController.setStatisticsController(statsCtrl);
-            javax.swing.Timer occupancyRecorder = new javax.swing.Timer(OCCUPANCY_RECORD_INTERVAL_MS, e -> statsService.recordOccupancy());
+            javax.swing.Timer occupancyRecorder = new javax.swing.Timer(OCCUPANCY_RECORD_INTERVAL_MS,
+                    new java.awt.event.ActionListener() {
+                        /** Records one occupancy snapshot when the timer fires. */
+                        @Override
+                        public void actionPerformed(java.awt.event.ActionEvent event) {
+                            new javax.swing.SwingWorker<Void, Void>() {
+                                /** Saves the occupancy snapshot outside the EDT. */
+                                @Override
+                                protected Void doInBackground() {
+                                    statsService.recordOccupancy();
+                                    return null;
+                                }
+
+                                /** Reports snapshot errors after the worker finishes. */
+                                @Override
+                                protected void done() {
+                                    try {
+                                        get();
+                                    } catch (InterruptedException | ExecutionException e) {
+                                        LOGGER.log(Level.WARNING, "Failed to record occupancy snapshot.", e);
+                                    }
+                                }
+                            }.execute();
+                        }
+                    });
             occupancyRecorder.setInitialDelay(0);
             occupancyRecorder.start();
 
@@ -122,12 +159,13 @@ public class Main {
             parkingController.setSlotBookingController(bookingController);
             mainController.setSlotBookingController(bookingController);
 
-            // 12. Simulation — startSimulation() sets running=true and stores thread ref
+            // 12. Simulation - startSimulation() sets running=true and stores thread ref
             // for clean interrupt
             // This starts the independent background thread that repeatedly runs
             // SimulationService.run().
             simService.startSimulation();
             mainMenuView.addWindowListener(new java.awt.event.WindowAdapter() {
+                /** Stops the simulation when the main window closes. */
                 @Override
                 public void windowClosing(java.awt.event.WindowEvent e) {
                     // This asks the background simulation thread to stop when the main window
@@ -137,10 +175,7 @@ public class Main {
             });
 
             } catch (Exception e) {
-                javax.swing.JOptionPane.showMessageDialog(null,
-                        "Failed to start the application:\n" + e.getMessage(),
-                        "Startup Error",
-                        javax.swing.JOptionPane.ERROR_MESSAGE);
+                LoginView.showStartupError("Failed to start the application:\n" + e.getMessage());
                 System.exit(1);
             }
         });

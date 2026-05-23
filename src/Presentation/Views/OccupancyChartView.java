@@ -20,9 +20,11 @@ public class OccupancyChartView extends JPanel {
     private Timer countdownTimer;
     private int secondsLeft = REFRESH_INTERVAL_SECONDS;
 
+    /** Creates the occupancy chart panel. */
     public OccupancyChartView() {
     }
 
+    /** Builds the chart panel. */
     public void initComponents() {
         setLayout(new BorderLayout(0, 8));
         setBackground(Color.WHITE);
@@ -39,7 +41,7 @@ public class OccupancyChartView extends JPanel {
         backCorner.add(backButton);
         header.add(backCorner, BorderLayout.WEST);
 
-        JLabel title = new JLabel("Parking Occupancy — Last Hour", SwingConstants.CENTER);
+        JLabel title = new JLabel("Parking Occupancy - Last Hour", SwingConstants.CENTER);
         title.setFont(new Font("SansSerif", Font.BOLD, 16));
         title.setForeground(new Color(40, 40, 50));
         header.add(title, BorderLayout.CENTER);
@@ -67,10 +69,12 @@ public class OccupancyChartView extends JPanel {
         countdownTimer.start();
     }
 
+    /** Gets the button that returns to the main menu. */
     public JButton getBackButton() {
         return backButton;
     }
 
+    /** Creates the compact back button for the chart panel. */
     private JButton createBackBoxButton() {
         JButton b = new JButton("<-");
         b.setPreferredSize(new Dimension(42, 34));
@@ -86,6 +90,7 @@ public class OccupancyChartView extends JPanel {
         return b;
     }
 
+    /** Updates the chart values. */
     public void updateChart(List<Integer> data) {
         this.data = (data != null) ? data : new ArrayList<>();
         if (chartPanel != null)
@@ -95,9 +100,11 @@ public class OccupancyChartView extends JPanel {
             countdownLabel.setText("Next update in " + REFRESH_INTERVAL_SECONDS + "s");
     }
 
+    /** Starts chart refresh mode. */
     public void startAutoRefresh() {
     }
 
+    /** Stops chart refresh mode. */
     public void stopAutoRefresh() {
     }
 
@@ -109,11 +116,13 @@ public class OccupancyChartView extends JPanel {
         private static final int PAD_BOTTOM = 40;
 
         @Override
+        /** Gives the chart a stable preferred size. */
         public Dimension getPreferredSize() {
             return new Dimension(600, 300);
         }
 
         @Override
+        /** Draws the bar chart. */
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2 = (Graphics2D) g.create();

@@ -7,4 +7,11 @@ package Business.Listeners;
 public interface ParkingStatusChangeListener {
     /** Called when any parking space changes state. */
     void parkingStatusChanged();
+
+    /**
+     * Called when any parking space changes state and a message should be handled by the presentation layer.
+     *
+     * @param message message describing the parking change
+     */
+    void parkingStatusChanged(String message);
 }

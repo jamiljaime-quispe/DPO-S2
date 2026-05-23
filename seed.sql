@@ -1,6 +1,6 @@
 -- ============================================================
 -- Seed data for parking_db
--- Run in order: user → vehicle → parking_space → reservation → occupancy_log
+-- Run in order: user, vehicle, parking_space, reservation, occupancy_log
 -- userIds: 8=admin (pw: admin), 9=ali (pw: ali123), 10=Manolo (pw: manolo), 11=Marti (pw: marti)
 -- ============================================================
 
@@ -34,7 +34,7 @@ INSERT INTO vehicle (licensePlate, userId, vehicleType) VALUES
 ('ABC019', 11, 'CAR'),
 ('ABC020', 11, 'CAR');
 
--- 2. PARKING_SPACE (20 rows — half occupied, referencing vehicles above)
+-- 2. PARKING_SPACE (20 rows, half occupied, referencing vehicles above)
 INSERT INTO parking_space (code, floor, vehicleType, isOccupied, occupiedByPlate) VALUES
 ('A-01', 1, 'CAR',           1, 'ABC001'),
 ('A-02', 1, 'CAR',           0,  NULL),
@@ -57,30 +57,30 @@ INSERT INTO parking_space (code, floor, vehicleType, isOccupied, occupiedByPlate
 ('B-09', 2, 'CAR',           1, 'ABC011'),
 ('B-10', 2, 'CAR',           0,  NULL);
 
--- 3. RESERVATION (20 rows — 10 active, 10 past/cancelled)
-INSERT INTO reservation (spaceId, licensePlate, reservationDate, cancelledByAdmin, notified, isActive) VALUES
-((SELECT spaceId FROM parking_space WHERE code='A-01'), 'ABC001', '2026-04-20 08:00:00', 0, 0, 1),
-((SELECT spaceId FROM parking_space WHERE code='A-03'), 'ABC003', '2026-04-21 09:15:00', 0, 0, 1),
-((SELECT spaceId FROM parking_space WHERE code='A-05'), 'ABC002', '2026-04-22 10:30:00', 0, 0, 1),
-((SELECT spaceId FROM parking_space WHERE code='A-07'), 'ABC004', '2026-04-23 11:00:00', 0, 0, 1),
-((SELECT spaceId FROM parking_space WHERE code='A-09'), 'ABC005', '2026-04-24 08:45:00', 0, 0, 1),
-((SELECT spaceId FROM parking_space WHERE code='B-01'), 'ABC006', '2026-04-25 07:30:00', 0, 0, 1),
-((SELECT spaceId FROM parking_space WHERE code='B-03'), 'ABC007', '2026-04-26 09:00:00', 0, 0, 1),
-((SELECT spaceId FROM parking_space WHERE code='B-05'), 'ABC008', '2026-04-27 10:00:00', 0, 0, 1),
-((SELECT spaceId FROM parking_space WHERE code='B-07'), 'ABC010', '2026-04-28 11:30:00', 0, 0, 1),
-((SELECT spaceId FROM parking_space WHERE code='B-09'), 'ABC011', '2026-04-29 13:00:00', 0, 0, 1),
-((SELECT spaceId FROM parking_space WHERE code='A-02'), 'ABC012', '2026-03-10 08:00:00', 0, 0, 0),
-((SELECT spaceId FROM parking_space WHERE code='A-04'), 'ABC013', '2026-03-12 09:00:00', 1, 1, 0),
-((SELECT spaceId FROM parking_space WHERE code='A-06'), 'ABC009', '2026-03-14 10:00:00', 0, 0, 0),
-((SELECT spaceId FROM parking_space WHERE code='A-08'), 'ABC014', '2026-03-16 11:00:00', 0, 0, 0),
-((SELECT spaceId FROM parking_space WHERE code='A-10'), 'ABC015', '2026-03-18 12:00:00', 1, 1, 0),
-((SELECT spaceId FROM parking_space WHERE code='B-02'), 'ABC016', '2026-03-20 08:00:00', 0, 0, 0),
-((SELECT spaceId FROM parking_space WHERE code='B-04'), 'ABC017', '2026-03-22 09:00:00', 0, 0, 0),
-((SELECT spaceId FROM parking_space WHERE code='B-06'), 'ABC018', '2026-03-24 10:00:00', 1, 1, 0),
-((SELECT spaceId FROM parking_space WHERE code='B-08'), 'ABC019', '2026-03-26 11:00:00', 0, 0, 0),
-((SELECT spaceId FROM parking_space WHERE code='B-10'), 'ABC020', '2026-03-28 12:00:00', 0, 0, 0);
+-- 3. RESERVATION (20 rows, 10 active, 10 past/cancelled)
+INSERT INTO reservation (spaceId, licensePlate, reservationDate, cancelledByAdmin, notified, isActive, previousSpaceCode) VALUES
+((SELECT spaceId FROM parking_space WHERE code='A-01'), 'ABC001', '2026-04-20 08:00:00', 0, 0, 1, NULL),
+((SELECT spaceId FROM parking_space WHERE code='A-03'), 'ABC003', '2026-04-21 09:15:00', 0, 0, 1, NULL),
+((SELECT spaceId FROM parking_space WHERE code='A-05'), 'ABC002', '2026-04-22 10:30:00', 0, 0, 1, NULL),
+((SELECT spaceId FROM parking_space WHERE code='A-07'), 'ABC004', '2026-04-23 11:00:00', 0, 0, 1, NULL),
+((SELECT spaceId FROM parking_space WHERE code='A-09'), 'ABC005', '2026-04-24 08:45:00', 0, 0, 1, NULL),
+((SELECT spaceId FROM parking_space WHERE code='B-01'), 'ABC006', '2026-04-25 07:30:00', 0, 0, 1, NULL),
+((SELECT spaceId FROM parking_space WHERE code='B-03'), 'ABC007', '2026-04-26 09:00:00', 0, 0, 1, NULL),
+((SELECT spaceId FROM parking_space WHERE code='B-05'), 'ABC008', '2026-04-27 10:00:00', 0, 0, 1, NULL),
+((SELECT spaceId FROM parking_space WHERE code='B-07'), 'ABC010', '2026-04-28 11:30:00', 0, 0, 1, NULL),
+((SELECT spaceId FROM parking_space WHERE code='B-09'), 'ABC011', '2026-04-29 13:00:00', 0, 0, 1, NULL),
+((SELECT spaceId FROM parking_space WHERE code='A-02'), 'ABC012', '2026-03-10 08:00:00', 0, 0, 0, NULL),
+((SELECT spaceId FROM parking_space WHERE code='A-04'), 'ABC013', '2026-03-12 09:00:00', 1, 1, 0, NULL),
+((SELECT spaceId FROM parking_space WHERE code='A-06'), 'ABC009', '2026-03-14 10:00:00', 0, 0, 0, NULL),
+((SELECT spaceId FROM parking_space WHERE code='A-08'), 'ABC014', '2026-03-16 11:00:00', 0, 0, 0, NULL),
+((SELECT spaceId FROM parking_space WHERE code='A-10'), 'ABC015', '2026-03-18 12:00:00', 1, 1, 0, NULL),
+((SELECT spaceId FROM parking_space WHERE code='B-02'), 'ABC016', '2026-03-20 08:00:00', 0, 0, 0, NULL),
+((SELECT spaceId FROM parking_space WHERE code='B-04'), 'ABC017', '2026-03-22 09:00:00', 0, 0, 0, NULL),
+((SELECT spaceId FROM parking_space WHERE code='B-06'), 'ABC018', '2026-03-24 10:00:00', 1, 1, 0, NULL),
+((SELECT spaceId FROM parking_space WHERE code='B-08'), 'ABC019', '2026-03-26 11:00:00', 0, 0, 0, NULL),
+((SELECT spaceId FROM parking_space WHERE code='B-10'), 'ABC020', '2026-03-28 12:00:00', 0, 0, 0, NULL);
 
--- 4. OCCUPANCY_LOG (20 rows — one per day, last 20 days)
+-- 4. OCCUPANCY_LOG (20 rows, one per day, last 20 days)
 INSERT INTO occupancy_log (timestamp, occupiedCount) VALUES
 ('2026-04-17 08:00:00',  3),
 ('2026-04-18 08:00:00',  5),

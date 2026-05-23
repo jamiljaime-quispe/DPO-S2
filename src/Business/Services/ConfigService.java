@@ -1,11 +1,8 @@
 package Business.Services;
 
 import Business.Entities.Config;
+import Persistence.ConfigDAO;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,46 +14,19 @@ public class ConfigService {
 
 	/**
 	 * Constructs a new ConfigService.
-	 * Reads config.json from the project root and populates the Config object.
+	 * Gets configuration values through the persistence layer.
 	 *
-	 * @param config the Config object to populate
+	 * @param configDAO the configuration DAO
 	 */
-	public ConfigService(Config config) {
-		this.config = config;
-		loadConfig();
+	public ConfigService(ConfigDAO configDAO) {
+		if (configDAO == null) {
+			throw new IllegalArgumentException("ConfigDAO is required.");
+		}
+		this.config = configDAO.loadConfig();
+		validateConfig();
 	}
 
-	/**
-	 * Reads config.json and populates the Config object.
-	 */
-	private void loadConfig() {
-		File configFile = new File("config.json");
-		if (!configFile.exists()) {
-			throw new IllegalStateException("Missing config.json in the project root.");
-		}
-
-		try (BufferedReader reader = new BufferedReader(new FileReader(configFile))) {
-			StringBuilder sb = new StringBuilder();
-			String line;
-			while ((line = reader.readLine()) != null) {
-				sb.append(line.trim());
-			}
-			String json = sb.toString();
-
-			config.setDbPort(parseIntValue(json, "dbPort"));
-			config.setDbIP(parseStringValue(json, "dbIP"));
-			config.setDbName(parseStringValue(json, "dbName"));
-			config.setDbUser(parseStringValue(json, "dbUser"));
-			config.setDbPassword(parseStringValue(json, "dbPassword"));
-			config.setAdminPassword(parseStringValue(json, "adminPassword"));
-			config.setSimulatedVehicleDelay(parseIntValue(json, "simulatedVehicleDelay"));
-
-			validateConfig();
-		} catch (IOException e) {
-			throw new IllegalStateException("Could not read config.json: " + e.getMessage(), e);
-		}
-	}
-
+	/** Checks that all required configuration values are present. */
 	private void validateConfig() {
 		if (isBlank(config.getDbIP())) {
 			throw new IllegalStateException("config.json is missing dbIP.");
@@ -81,48 +51,9 @@ public class ConfigService {
 		}
 	}
 
+	/** Checks whether a text value is null or empty after trimming. */
 	private boolean isBlank(String value) {
 		return value == null || value.trim().isEmpty();
-	}
-
-	/**
-	 * Extracts a String value for the given key from a flat JSON string.
-	 *
-	 * @param json raw JSON text
-	 * @param key field name to look up
-	 * @return extracted string value, or null if not found
-	 */
-	private String parseStringValue(String json, String key) {
-		int keyIdx = json.indexOf("\"" + key + "\"");
-		if (keyIdx == -1) return null;
-		int colonIdx = json.indexOf(':', keyIdx);
-		if (colonIdx == -1) return null;
-		String rest = json.substring(colonIdx + 1).trim();
-		if (!rest.startsWith("\"")) return null;
-		int start = 1;
-		int end = rest.indexOf('"', start);
-		return end == -1 ? null : rest.substring(start, end);
-	}
-
-	/**
-	 * Extracts an int value for the given key from a flat JSON string.
-	 *
-	 * @param json raw JSON text
-	 * @param key field name to look up
-	 * @return extracted int value, or 0 if not found
-	 */
-	private int parseIntValue(String json, String key) {
-		int keyIdx = json.indexOf("\"" + key + "\"");
-		if (keyIdx == -1) return 0;
-		int colonIdx = json.indexOf(':', keyIdx);
-		if (colonIdx == -1) return 0;
-		String rest = json.substring(colonIdx + 1).trim();
-		StringBuilder digits = new StringBuilder();
-		for (char c : rest.toCharArray()) {
-			if (Character.isDigit(c)) digits.append(c);
-			else if (digits.length() > 0) break;
-		}
-		return digits.length() > 0 ? Integer.parseInt(digits.toString()) : 0;
 	}
 
 	/**

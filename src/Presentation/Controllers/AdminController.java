@@ -59,6 +59,7 @@ public class AdminController {
             loadSpaces();
         } else {
             SwingUtilities.invokeLater(new Runnable() {
+                /** Reloads the admin view on the EDT. */
                 @Override
                 public void run() {
                     loadSpaces();
@@ -77,6 +78,7 @@ public class AdminController {
     public void createSpace(int floor, VehicleType type) {
         adminView.setLoading(true);
         new SwingWorker<Void, Void>() {
+            /** Creates the space away from the EDT. */
             @Override
             protected Void doInBackground() throws Exception {
                 ParkingSpace space = new ParkingSpace(null, floor, type, false, false, null, null);
@@ -84,6 +86,7 @@ public class AdminController {
                 return null;
             }
 
+            /** Refreshes the view after the create operation finishes. */
             @Override
             protected void done() {
                 try {
@@ -108,6 +111,7 @@ public class AdminController {
     public void editSpace(String code, int floor, VehicleType type) {
         adminView.setLoading(true);
         new SwingWorker<Void, Void>() {
+            /** Saves the edited space away from the EDT. */
             @Override
             protected Void doInBackground() throws Exception {
                 ParkingSpace space = parkingService.findByCode(code);
@@ -120,6 +124,7 @@ public class AdminController {
                 return null;
             }
 
+            /** Refreshes the view after the edit operation finishes. */
             @Override
             protected void done() {
                 try {
@@ -137,31 +142,25 @@ public class AdminController {
     /**
      * Deletes a parking space by code.
      * Occupied spaces cannot be deleted.
-     * Any active reservation is reassigned or cancelled before deletion.
+     * Any active reservation is reassigned or cancelled by the admin service
+     * before deletion.
      *
      * @param code the space code to delete
      */
     public void deleteSpace(String code) {
         adminView.setLoading(true);
         new SwingWorker<Void, Void>() {
+            /** Deletes the space away from the EDT. */
             @Override
             protected Void doInBackground() throws Exception {
-                ParkingSpace space = parkingService.findByCode(code);
-                if (space == null) {
-                    throw new IllegalArgumentException("Space not found: " + code);
+                if (adminService == null) {
+                    throw new IllegalStateException("Admin service is not available.");
                 }
-                if (space.isOccupied()) {
-                    throw new IllegalStateException("Cannot delete space \"" + code + "\": it is currently occupied.");
-                }
-                if (adminService != null) {
-                    adminService.reassignOrDeleteReservation(code);
-                }
-                if (!parkingService.deleteParkingSpace(code)) {
-                    throw new IllegalStateException("Could not delete space \"" + code + "\".");
-                }
+                adminService.deleteParkingSpace(code);
                 return null;
             }
 
+            /** Refreshes the view after the delete operation finishes. */
             @Override
             protected void done() {
                 try {
@@ -187,6 +186,7 @@ public class AdminController {
         adminView.setLoading(true);
 
         new SwingWorker<Set<String>, ParkingSpace>() {
+            /** Loads spaces away from the EDT. */
             @Override
             protected Set<String> doInBackground() {
                 List<ParkingSpace> spaces = parkingService.getAllSpaces();
@@ -205,6 +205,7 @@ public class AdminController {
                 return loadedCodes;
             }
 
+            /** Adds loaded rows to the table on the EDT. */
             @Override
             protected void process(List<ParkingSpace> chunks) {
                 if (loadId != spacesLoadId)
@@ -215,6 +216,7 @@ public class AdminController {
                 }
             }
 
+            /** Finishes the table refresh after loading spaces. */
             @Override
             protected void done() {
                 if (loadId != spacesLoadId)

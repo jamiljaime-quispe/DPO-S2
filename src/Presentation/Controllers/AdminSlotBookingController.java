@@ -32,11 +32,14 @@ public class AdminSlotBookingController {
     private UserService userService;
     private int currentMode = ADMIN_MODE;
     private volatile int bookingsLoadId;
+    private String currentUserBookingPlate;
+    private VehicleType currentUserBookingType;
 
     private static class BookingRow {
         private ParkingSpace space;
         private boolean userBooking;
 
+        /** Stores one booking row loaded for the table. */
         private BookingRow(ParkingSpace space, boolean userBooking) {
             this.space = space;
             this.userBooking = userBooking;
@@ -69,8 +72,21 @@ public class AdminSlotBookingController {
      * @param mode ADMIN_MODE (1) or USER_MODE (2)
      */
     public void showView(int mode) {
+        String selectedPlate = null;
+        VehicleType selectedType = null;
+
+        if (mode == USER_MODE) {
+            AdminSlotBookingManagementView.BookingVehicleInput selection = bookingView.promptForBookingVehicle();
+            if (selection == null) return;
+            selectedPlate = selection.getPlate();
+            selectedType = selection.getType();
+        }
+
         currentMode = mode;
+        currentUserBookingPlate = selectedPlate;
+        currentUserBookingType = selectedType;
         bookingView.setMode(mode);
+        bookingView.setUserBookingVehicle(currentUserBookingPlate, currentUserBookingType);
         bookingView.clearBookingsTable();
         loadBookings();
         bookingView.setVisible(true);
@@ -87,6 +103,7 @@ public class AdminSlotBookingController {
             loadBookings();
         } else {
             SwingUtilities.invokeLater(new Runnable() {
+                /** Reloads the booking view on the EDT. */
                 @Override
                 public void run() {
                     loadBookings();
@@ -107,11 +124,18 @@ public class AdminSlotBookingController {
 
         int modeForLoad = currentMode;
         int userId = userService.getLastLoggedInUserId();
+        VehicleType typeForLoad = currentUserBookingType;
 
         new SwingWorker<Set<String>, BookingRow>() {
+            /** Loads booking rows away from the EDT. */
             @Override
             protected Set<String> doInBackground() {
-                List<ParkingSpace> spaces = parkingService.getAllSpaces();
+                List<ParkingSpace> spaces;
+                if (modeForLoad == USER_MODE && typeForLoad != null) {
+                    spaces = reservationService.getAvailableSpaces(typeForLoad);
+                } else {
+                    spaces = parkingService.getAllSpaces();
+                }
                 Set<String> userBookingCodes = new HashSet<>();
                 List<ParkingSpace> orderedSpaces = new ArrayList<>();
                 Set<String> loadedCodes = new HashSet<>();
@@ -155,6 +179,7 @@ public class AdminSlotBookingController {
                 return loadedCodes;
             }
 
+            /** Adds loaded booking rows to the table on the EDT. */
             @Override
             protected void process(List<BookingRow> chunks) {
                 if (loadId != bookingsLoadId) return;
@@ -164,6 +189,7 @@ public class AdminSlotBookingController {
                 }
             }
 
+            /** Finishes refreshing the booking tables. */
             @Override
             protected void done() {
                 if (loadId != bookingsLoadId) return;
@@ -197,29 +223,40 @@ public class AdminSlotBookingController {
      * @param spaceCode target parking space code
      */
     public void createBooking(String plate, VehicleType type, String spaceCode) {
-        if (plate == null || plate.isBlank() || spaceCode == null || spaceCode.isBlank()) {
+        String bookingPlate = currentMode == USER_MODE && currentUserBookingPlate != null
+                ? currentUserBookingPlate
+                : normalizePlate(plate);
+        VehicleType bookingType = currentMode == USER_MODE && currentUserBookingType != null
+                ? currentUserBookingType
+                : type;
+
+        if (bookingPlate == null || bookingPlate.isBlank()
+                || bookingType == null
+                || spaceCode == null || spaceCode.isBlank()) {
             bookingView.showError("License plate and space code cannot be empty.");
             return;
         }
 
         bookingView.setLoading(true);
         new SwingWorker<Reservation, Void>() {
+            /** Creates the booking away from the EDT. */
             @Override
             protected Reservation doInBackground() throws Exception {
                 return reservationService.createReservation(
                         userService.getLastLoggedInUserId(),
-                        normalizePlate(plate),
-                        type,
+                        bookingPlate,
+                        bookingType,
                         spaceCode);
             }
 
+            /** Updates the booking view after creation finishes. */
             @Override
             protected void done() {
                 try {
                     Reservation reservation = get();
                     if (reservation != null) {
                         bookingView.showInfo("Booking created for space \"" + spaceCode
-                                + "\" and plate \"" + normalizePlate(plate) + "\".");
+                                + "\" and plate \"" + bookingPlate + "\".");
                         loadBookings();
                     } else {
                         bookingView.setLoading(false);
@@ -234,6 +271,7 @@ public class AdminSlotBookingController {
         }.execute();
     }
 
+    /** Finds a parking space inside a loaded list by code. */
     private ParkingSpace findSpaceByCode(List<ParkingSpace> spaces, String code) {
         for (ParkingSpace space : spaces) {
             if (space.getId().equals(code)) {
@@ -259,11 +297,13 @@ public class AdminSlotBookingController {
 
         bookingView.setLoading(true);
         new SwingWorker<Reservation, Void>() {
+            /** Reassigns the booking away from the EDT. */
             @Override
             protected Reservation doInBackground() throws Exception {
                 return reservationService.reassignReservation(normalizePlate(plate), spaceCode);
             }
 
+            /** Updates the booking view after reassignment finishes. */
             @Override
             protected void done() {
                 try {
@@ -300,6 +340,7 @@ public class AdminSlotBookingController {
 
         bookingView.setLoading(true);
         new SwingWorker<Boolean, Void>() {
+            /** Cancels the booking away from the EDT. */
             @Override
             protected Boolean doInBackground() throws Exception {
                 if (currentMode == USER_MODE) {
@@ -310,6 +351,7 @@ public class AdminSlotBookingController {
                 return adminService.cancelReservationByPlate(normalizePlate(plate));
             }
 
+            /** Updates the booking view after cancellation finishes. */
             @Override
             protected void done() {
                 try {
@@ -335,7 +377,9 @@ public class AdminSlotBookingController {
         }.execute();
     }
 
+    /** Normalizes a license plate entered by the user. */
     private String normalizePlate(String plate) {
+        if (plate == null) return "";
         return plate.trim().toUpperCase();
     }
 }

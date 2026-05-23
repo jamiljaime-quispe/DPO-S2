@@ -43,12 +43,40 @@ public class AdminSlotBookingManagementView extends JDialog {
     private String activeCancelBookingSpaceCode;
     private String activeCancelBookingPlate;
     private int activeCancelBookingMode;
+    private String userBookingPlate;
+    private VehicleType userBookingType;
 
+    /**
+     * Plate and type chosen before a regular user books a slot.
+     */
+    public static class BookingVehicleInput {
+        private String plate;
+        private VehicleType type;
+
+        /** Stores the vehicle chosen for a new booking. */
+        private BookingVehicleInput(String plate, VehicleType type) {
+            this.plate = plate;
+            this.type = type;
+        }
+
+        /** Gets the selected license plate. */
+        public String getPlate() {
+            return plate;
+        }
+
+        /** Gets the selected vehicle type. */
+        public VehicleType getType() {
+            return type;
+        }
+    }
+
+    /** Creates the booking management dialog. */
     public AdminSlotBookingManagementView(Frame parent) {
         super(parent, "Manage Slot Bookings", true);
         initComponents();
     }
 
+    /** Builds the booking management components. */
     private void initComponents() {
         setLayout(new BorderLayout(10, 10));
         getContentPane().setBackground(new Color(245, 247, 250));
@@ -58,6 +86,7 @@ public class AdminSlotBookingManagementView extends JDialog {
 
         String[] columns = {"Code", "Floor", "Type", "Parking Status", "Booking", "Booked Plate", "Booked At", "My Booking"};
         tableModel = new DefaultTableModel(columns, 0) {
+            /** Keeps the slot booking table read-only. */
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -83,6 +112,7 @@ public class AdminSlotBookingManagementView extends JDialog {
 
         String[] reservationColumns = {"Space Code", "Floor", "Type", "License Plate", "Booked At", "Status"};
         reservationsTableModel = new DefaultTableModel(reservationColumns, 0) {
+            /** Keeps the user's reservation table read-only. */
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -143,6 +173,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         });
     }
 
+    /** Opens the dialog used to book the selected slot. */
     private void showAddBookingDialog() {
         if (currentMode != USER_MODE) return;
 
@@ -155,6 +186,10 @@ public class AdminSlotBookingManagementView extends JDialog {
         String currentStatus = String.valueOf(tableModel.getValueAt(modelRow, 3));
         String currentReservation = String.valueOf(tableModel.getValueAt(modelRow, 4));
 
+        if (userBookingPlate == null || userBookingPlate.isBlank() || userBookingType == null) {
+            showError("Choose a license plate and vehicle type before booking.");
+            return;
+        }
         if ("Occupied".equals(currentStatus)) {
             showError("Space \"" + currentCode + "\" cannot be booked because a vehicle is parked there.");
             return;
@@ -163,10 +198,15 @@ public class AdminSlotBookingManagementView extends JDialog {
             showError("Space \"" + currentCode + "\" is already booked.");
             return;
         }
+        if (VehicleType.valueOf(currentType) != userBookingType) {
+            showError("Space \"" + currentCode + "\" does not accept " + userBookingType.name() + " vehicles.");
+            return;
+        }
 
         JDialog dialog = createBookingDialog("Book Selected Slot");
 
-        JTextField plateField = new JTextField();
+        JTextField plateField = new JTextField(userBookingPlate);
+        plateField.setEditable(false);
         JTextField spaceCodeField = new JTextField(currentCode);
         spaceCodeField.setEditable(false);
 
@@ -180,16 +220,14 @@ public class AdminSlotBookingManagementView extends JDialog {
         dialog.add(cancelBtn);
 
         confirmBtn.addActionListener(e -> {
-            String plate = plateField.getText().trim();
             String spaceCode = spaceCodeField.getText().trim();
-            VehicleType type = VehicleType.valueOf(currentType);
 
-            if (plate.isEmpty() || spaceCode.isEmpty()) {
+            if (spaceCode.isEmpty()) {
                 showError("License plate and space code cannot be empty.");
                 return;
             }
 
-            if (controller != null) controller.createBooking(plate, type, spaceCode);
+            if (controller != null) controller.createBooking(userBookingPlate, userBookingType, spaceCode);
             dialog.dispose();
         });
         cancelBtn.addActionListener(e -> dialog.dispose());
@@ -197,6 +235,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         dialog.setVisible(true);
     }
 
+    /** Opens the dialog used by admins to reassign a booking. */
     private void showEditBookingDialog() {
         if (currentMode != ADMIN_MODE) return;
 
@@ -240,6 +279,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         dialog.setVisible(true);
     }
 
+    /** Applies the main button style. */
     private void stylePrimaryButton(JButton b) {
         b.setForeground(Color.WHITE);
         b.setBackground(new Color(33, 99, 168));
@@ -250,6 +290,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
+    /** Opens the correct cancellation confirmation for the selected booking. */
     private void showDeleteConfirmation() {
         String spaceCode;
         String plate;
@@ -278,6 +319,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         }
     }
 
+    /** Opens the user confirmation dialog for cancelling a booking. */
     private void showUserCancelBookingDialog(String spaceCode, String plate) {
         JDialog dialog = createCancelDialog("Confirm Cancellation");
         trackActiveCancelBookingDialog(dialog, spaceCode, plate);
@@ -314,6 +356,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         dialog.setVisible(true);
     }
 
+    /** Opens the admin confirmation dialog for cancelling a booking. */
     private void showAdminCancelBookingDialog(String spaceCode, String plate) {
         JDialog dialog = createCancelDialog("Confirm Cancel");
         trackActiveCancelBookingDialog(dialog, spaceCode, plate);
@@ -342,6 +385,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         dialog.setVisible(true);
     }
 
+    /** Creates a small confirmation dialog. */
     private JDialog createCancelDialog(String title) {
         JDialog dialog = new JDialog(this, title, true);
         dialog.setLayout(new GridLayout(2, 2, 10, 10));
@@ -352,6 +396,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         return dialog;
     }
 
+    /** Stores the currently open cancellation dialog. */
     private void trackActiveCancelBookingDialog(JDialog dialog, String spaceCode, String plate) {
         activeCancelBookingDialog = dialog;
         activeCancelBookingSpaceCode = spaceCode;
@@ -359,6 +404,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         activeCancelBookingMode = currentMode;
 
         dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            /** Clears tracked cancellation state when the dialog closes. */
             @Override
             public void windowClosed(java.awt.event.WindowEvent e) {
                 if (activeCancelBookingDialog == dialog) {
@@ -368,12 +414,14 @@ public class AdminSlotBookingManagementView extends JDialog {
         });
     }
 
+    /** Clears the tracked cancellation dialog state. */
     private void clearActiveCancelBookingDialog() {
         activeCancelBookingDialog = null;
         activeCancelBookingSpaceCode = null;
         activeCancelBookingPlate = null;
     }
 
+    /** Creates the dialog used for booking or reassignment. */
     private JDialog createBookingDialog(String title) {
         JDialog dialog = new JDialog(this, title, true);
         dialog.setLayout(new GridLayout(3, 2, 10, 10));
@@ -384,12 +432,14 @@ public class AdminSlotBookingManagementView extends JDialog {
         return dialog;
     }
 
+    /** Stores the currently open booking dialog. */
     private void trackActiveBookingDialog(JDialog dialog, JTextField spaceCodeField) {
         activeBookingDialog = dialog;
         activeBookingSpaceCodeField = spaceCodeField;
         activeBookingDialogMode = currentMode;
 
         dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            /** Clears tracked booking state when the dialog closes. */
             @Override
             public void windowClosed(java.awt.event.WindowEvent e) {
                 if (activeBookingDialog == dialog) {
@@ -399,11 +449,13 @@ public class AdminSlotBookingManagementView extends JDialog {
         });
     }
 
+    /** Clears the tracked booking dialog state. */
     private void clearActiveBookingDialog() {
         activeBookingDialog = null;
         activeBookingSpaceCodeField = null;
     }
 
+    /** Adds the common booking fields to a dialog. */
     private void addBookingFields(JDialog dialog, JTextField plateField, JTextField spaceCodeField) {
         dialog.add(new JLabel("License Plate:"));
         dialog.add(plateField);
@@ -412,6 +464,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         dialog.add(spaceCodeField);
     }
 
+    /** Replaces the booking table with the given spaces. */
     public void updateBookings(List<ParkingSpace> spaces) {
         clearBookingsTable();
         for (ParkingSpace space : spaces) {
@@ -419,6 +472,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         }
     }
 
+    /** Clears both booking tables. */
     public void clearBookingsTable() {
         tableModel.setRowCount(0);
         if (reservationsTableModel != null) {
@@ -426,10 +480,12 @@ public class AdminSlotBookingManagementView extends JDialog {
         }
     }
 
+    /** Adds or updates one booking row. */
     public void addBookingToTable(ParkingSpace space) {
         addBookingToTable(space, false);
     }
 
+    /** Adds or updates one booking row and marks the current user's bookings. */
     public void addBookingToTable(ParkingSpace space, boolean myBooking) {
         Object[] rowData = buildBookingRow(space, myBooking);
         int existingRow = findBookingRow(space.getId());
@@ -453,6 +509,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         updateActionButtons();
     }
 
+    /** Builds a table row for a parking space booking state. */
     private Object[] buildBookingRow(ParkingSpace space, boolean myBooking) {
         return new Object[]{
                 space.getId(),
@@ -466,6 +523,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         };
     }
 
+    /** Finds the booking table row for a parking space code. */
     private int findBookingRow(String code) {
         for (int row = 0; row < tableModel.getRowCount(); row++) {
             String currentCode = String.valueOf(tableModel.getValueAt(row, 0));
@@ -477,6 +535,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         return -1;
     }
 
+    /** Removes booking rows that are no longer visible. */
     public void removeBookingSpacesNotIn(java.util.Set<String> visibleCodes) {
         for (int row = tableModel.getRowCount() - 1; row >= 0; row--) {
             String currentCode = String.valueOf(tableModel.getValueAt(row, 0));
@@ -488,6 +547,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         updateActionButtons();
     }
 
+    /** Closes an open booking dialog if the selected space changed. */
     public void closeActiveBookingDialogIfTargetUnavailable() {
         if (activeBookingDialog == null
                 || !activeBookingDialog.isVisible()
@@ -523,6 +583,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         }
     }
 
+    /** Closes an open cancellation dialog if the booking changed. */
     public void closeActiveCancelDialogIfTargetUnavailable() {
         if (activeCancelBookingDialog == null
                 || !activeCancelBookingDialog.isVisible()
@@ -559,14 +620,17 @@ public class AdminSlotBookingManagementView extends JDialog {
         }
     }
 
+    /** Shows an error message owned by this dialog. */
     public void showError(String message) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
+    /** Shows an information message owned by this dialog. */
     public void showInfo(String message) {
         JOptionPane.showMessageDialog(this, message, "Info", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    /** Replaces the current user's reservation list. */
     public void updateReservationsTable(List<Reservation> reservations) {
         if (reservationsTableModel == null) return;
         reservationsTableModel.setRowCount(0);
@@ -590,6 +654,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         }
     }
 
+    /** Sets the dialog mode: admin or regular user. */
     public void setMode(int mode) {
         currentMode = mode;
 
@@ -618,6 +683,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         updateActionButtons();
     }
 
+    /** Enables or disables controls while work is running. */
     public void setLoading(boolean loading) {
         this.loading = loading;
         setCursor(Cursor.getPredefinedCursor(loading ? Cursor.WAIT_CURSOR : Cursor.DEFAULT_CURSOR));
@@ -628,10 +694,54 @@ public class AdminSlotBookingManagementView extends JDialog {
         updateActionButtons();
     }
 
+    /** Sets the controller used by this dialog. */
     public void setController(AdminSlotBookingController controller) {
         this.controller = controller;
     }
 
+    /** Stores the vehicle chosen by the user for a new booking. */
+    public void setUserBookingVehicle(String plate, VehicleType type) {
+        userBookingPlate = plate;
+        userBookingType = type;
+    }
+
+    /**
+     * Asks a regular user which vehicle they want to reserve for.
+     *
+     * @return selected plate and type, or null if cancelled
+     */
+    public BookingVehicleInput promptForBookingVehicle() {
+        while (true) {
+            JTextField plateField = new JTextField(18);
+            JComboBox<VehicleType> typeCombo = new JComboBox<>(VehicleType.values());
+            JPanel panel = new JPanel(new GridLayout(0, 1, 0, 6));
+            panel.add(new JLabel("License plate"));
+            panel.add(plateField);
+            panel.add(new JLabel("Vehicle type"));
+            panel.add(typeCombo);
+
+            int result = JOptionPane.showConfirmDialog(
+                    this,
+                    panel,
+                    "Choose vehicle",
+                    JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.PLAIN_MESSAGE);
+
+            if (result != JOptionPane.OK_OPTION) {
+                return null;
+            }
+
+            String plate = plateField.getText().trim().toUpperCase();
+            VehicleType type = (VehicleType) typeCombo.getSelectedItem();
+            if (!plate.isEmpty() && type != null) {
+                return new BookingVehicleInput(plate, type);
+            }
+
+            showError("License plate and vehicle type are required.");
+        }
+    }
+
+    /** Enables or disables booking buttons based on the selection. */
     private void updateActionButtons() {
         boolean admin = currentMode == ADMIN_MODE;
         boolean user = currentMode == USER_MODE;
@@ -662,6 +772,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         refreshButton.setEnabled(!loading);
     }
 
+    /** Checks whether a selected slot can be booked by a user. */
     private boolean isSelectedSlotAvailableForBooking(int selectedRow) {
         int modelRow = bookingsTable.convertRowIndexToModel(selectedRow);
         String status = String.valueOf(tableModel.getValueAt(modelRow, 3));
@@ -669,17 +780,20 @@ public class AdminSlotBookingManagementView extends JDialog {
         return "Vacant".equals(status) && "Available".equals(reservation);
     }
 
+    /** Checks whether a selected slot is reserved. */
     private boolean isSelectedSlotReserved(int selectedRow) {
         int modelRow = bookingsTable.convertRowIndexToModel(selectedRow);
         String reservation = String.valueOf(tableModel.getValueAt(modelRow, 4));
         return "Reserved".equals(reservation);
     }
 
+    /** Checks whether a selected slot belongs to the current user's bookings. */
     private boolean isSelectedUserBooking(int selectedRow) {
         int modelRow = bookingsTable.convertRowIndexToModel(selectedRow);
         return Boolean.TRUE.equals(tableModel.getValueAt(modelRow, MY_BOOKING_COLUMN));
     }
 
+    /** Gets the plate shown for a parking space. */
     private String getLicensePlate(ParkingSpace space) {
         if (space.getParkedVehicle() != null) {
             return space.getParkedVehicle().getLicensePlate();
@@ -689,6 +803,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         return "";
     }
 
+    /** Gets the reservation date shown for a parking space. */
     private String getReservationDate(ParkingSpace space) {
         if (space.getReservation() != null && space.getReservation().getReservationDate() != null) {
             return space.getReservation().getReservationDate().format(DATE_FORMAT);

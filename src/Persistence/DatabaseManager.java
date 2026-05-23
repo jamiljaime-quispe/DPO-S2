@@ -7,14 +7,14 @@ import java.sql.SQLException;
  * Manages the JDBC connection to the MySQL database.
  * Provides a single lazily-initialised connection reused across all DAO calls.
  */
-public class DatabaseManager {
+public class DatabaseManager implements TransactionManager {
 	static {
 		try {
 			Class.forName("com.mysql.cj.jdbc.Driver");
 		} catch (ClassNotFoundException e) {
 			throw new ExceptionInInitializerError(
 					new ClassNotFoundException(
-							"MySQL JDBC driver not on classpath. Add mysql-connector-j under lib/ (see pom.xml).",
+							"MySQL JDBC driver not on classpath. Add mysql-connector-j under lib/.",
 							e));
 		}
 	}
@@ -63,7 +63,7 @@ public class DatabaseManager {
 				connection.close();
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			throw new RuntimeException("Failed to close database connection: " + e.getMessage(), e);
 		}
 	}
 
