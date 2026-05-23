@@ -5,6 +5,10 @@ import Presentation.Controllers.AuthController;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * Login screen shown at application startup.
+ * Displays a form with username/email and password fields and routes events to {@link Presentation.Controllers.AuthController}.
+ */
 public class LoginView extends JFrame {
     private JTextField userField;
     private JPasswordField passwordField;

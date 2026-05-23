@@ -10,6 +10,10 @@ import Presentation.Controllers.MainController;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
+/**
+ * Main application window shown after a successful login.
+ * Adapts its navigation options depending on whether the logged-in user is an admin or a regular client.
+ */
 public class MainMenuView extends JFrame {
     private MainController controller;
 

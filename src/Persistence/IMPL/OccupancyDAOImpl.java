@@ -8,6 +8,10 @@ import java.util.List;
 import Persistence.DatabaseManager;
 import Persistence.OccupancyDAO;
 
+/**
+ * MySQL/JDBC implementation of {@link Persistence.OccupancyDAO}.
+ * Reads and writes to the {@code occupancy_log} table.
+ */
 public class OccupancyDAOImpl implements OccupancyDAO {
     private final DatabaseManager db;
 

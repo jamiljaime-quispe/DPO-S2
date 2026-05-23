@@ -17,6 +17,10 @@ import Business.Entities.VehicleType;
 import Persistence.DatabaseManager;
 import Persistence.ReservationDAO;
 
+/**
+ * MySQL/JDBC implementation of {@link Persistence.ReservationDAO}.
+ * Maps the {@code reservations} table to {@link Business.Entities.Reservation} objects.
+ */
 public class ReservationDAOImpl implements ReservationDAO {
     private final DatabaseManager db;
 

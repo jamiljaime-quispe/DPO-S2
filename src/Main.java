@@ -101,7 +101,7 @@ public class Main {
             occupancyRecorder.start();
 
             // 9. Parking
-            ParkingController parkingController = new ParkingController(null, null, parkingService);
+            ParkingController parkingController = new ParkingController(parkingService);
             parkingController.setMainMenuView(mainMenuView);
             parkingController.setUserService(userService);
             parkingController.setAdminService(adminService);

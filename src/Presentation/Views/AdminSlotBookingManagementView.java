@@ -12,6 +12,11 @@ import java.awt.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+/**
+ * Modal dialog for slot booking management.
+ * Used by both admins (manage all bookings) and regular users (manage their own bookings).
+ * Shows all parking spaces with colour-coded rows and provides Add, Edit, and Cancel booking controls.
+ */
 public class AdminSlotBookingManagementView extends JDialog {
     private static final int ADMIN_MODE = 1;
     private static final int USER_MODE = 2;

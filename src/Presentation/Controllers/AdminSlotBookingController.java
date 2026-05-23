@@ -174,8 +174,11 @@ public class AdminSlotBookingController {
                     bookingView.closeActiveBookingDialogIfTargetUnavailable();
                     bookingView.closeActiveCancelDialogIfTargetUnavailable();
                     if (modeForLoad == USER_MODE && userId > 0) {
-                        bookingView.updateReservationsTable(
-                                reservationService.getReservationsByUser(userId));
+                        List<Reservation> active = new ArrayList<>();
+                        for (Reservation r : reservationService.getReservationsByUser(userId)) {
+                            if (r.isActive()) active.add(r);
+                        }
+                        bookingView.updateReservationsTable(active);
                     }
                 } catch (InterruptedException | ExecutionException e) {
                     bookingView.showError("Failed to load slot bookings: " + e.getMessage());

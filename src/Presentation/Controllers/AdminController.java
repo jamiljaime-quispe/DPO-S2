@@ -194,7 +194,6 @@ public class AdminController {
 
                 for (ParkingSpace space : spaces) {
                     loadedCodes.add(space.getId());
-                    delayRowLoad();
                     if (Thread.currentThread().isInterrupted()) {
                         break;
                     }
@@ -235,12 +234,4 @@ public class AdminController {
         }.execute();
     }
 
-    private void delayRowLoad() {
-        // Row-by-row display delay disabled because automatic refreshes should be fast.
-        // try {
-        // Thread.sleep(ROW_LOAD_DELAY_MS);
-        // } catch (InterruptedException e) {
-        // Thread.currentThread().interrupt();
-        // }
-    }
 }

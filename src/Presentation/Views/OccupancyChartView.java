@@ -5,6 +5,11 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Panel that displays a bar chart of parking occupancy over the last hour.
+ * Each bar represents the number of occupied spaces recorded at one-minute intervals.
+ * Updated in real-time via {@link #updateChart(List)}.
+ */
 public class OccupancyChartView extends JPanel {
     private List<Integer> data = new ArrayList<>();
     private ChartPanel chartPanel;
@@ -195,11 +200,14 @@ public class OccupancyChartView extends JPanel {
 
                 if (value > 0) {
                     String label = String.valueOf(value);
-                    int labelX = x + (barW - fmBar.stringWidth(label)) / 2;
-                    int labelY = y - 2;
-                    if (labelY < PAD_TOP + 10) labelY = PAD_TOP + 10;
-                    g2.setColor(new Color(40, 40, 50));
-                    g2.drawString(label, labelX, labelY);
+                    int labelWidth = fmBar.stringWidth(label);
+                    if (barW >= labelWidth + 2) {
+                        int labelX = x + (barW - labelWidth) / 2;
+                        int labelY = y - 2;
+                        if (labelY < PAD_TOP + 10) labelY = PAD_TOP + 10;
+                        g2.setColor(new Color(40, 40, 50));
+                        g2.drawString(label, labelX, labelY);
+                    }
                 }
             }
 

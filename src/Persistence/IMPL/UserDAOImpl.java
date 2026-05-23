@@ -9,6 +9,10 @@ import Persistence.UserDAO;
 import java.sql.*;
 import java.util.ArrayList;
 
+/**
+ * MySQL/JDBC implementation of {@link Persistence.UserDAO}.
+ * Maps the {@code users} table to {@link Business.Entities.User} objects.
+ */
 public class UserDAOImpl implements UserDAO {
     private final DatabaseManager db;
 

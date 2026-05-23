@@ -7,8 +7,6 @@ import Business.Services.AdminService;
 import Business.Services.ParkingService;
 import Business.Services.UserService;
 import Presentation.Views.MainMenuView;
-import Presentation.Views.ParkingStatusView;
-import Presentation.Views.EntryExitView;
 import Presentation.Views.ParkingSpaceDetailsView;
 import Business.Entities.VehicleType;
 
@@ -26,8 +24,6 @@ import java.util.concurrent.ExecutionException;
  */
 public class ParkingController implements ParkingStatusChangeListener {
 
-	private ParkingStatusView parkingStatusView;
-	private EntryExitView entryExitView;
 	private ParkingService parkingService;
 	private ParkingSpaceDetailsView parkingSpaceDetailsView;
 	private MainMenuView mainMenuView;
@@ -133,14 +129,9 @@ public class ParkingController implements ParkingStatusChangeListener {
 	/**
 	 * Constructs the controller.
 	 *
-	 * @param parkingStatusView the parking status view (may be null)
-	 * @param entryExitView     the entry/exit view (may be null)
-	 * @param parkingService    the parking service
+	 * @param parkingService the parking service
 	 */
-	public ParkingController(ParkingStatusView parkingStatusView, EntryExitView entryExitView,
-			ParkingService parkingService) {
-		this.parkingStatusView = parkingStatusView;
-		this.entryExitView = entryExitView;
+	public ParkingController(ParkingService parkingService) {
 		this.parkingService = parkingService;
 	}
 
@@ -643,9 +634,6 @@ public class ParkingController implements ParkingStatusChangeListener {
 				JOptionPane.ERROR_MESSAGE);
 	}
 
-	public void vehicleEntry(String plate, VehicleType type) {
-
-	}
 
 	private void cancelReservationFromDetails() {
 		if (parkingSpaceDetailsView == null || adminService == null) return;
@@ -700,9 +688,6 @@ public class ParkingController implements ParkingStatusChangeListener {
 		}.execute();
 	}
 
-	public void vehicleExit(String plate) {
-
-	}
 
 	/** Sets the main menu view and initialises the space details view. */
 	public void setMainMenuView(MainMenuView mainMenuView) {
