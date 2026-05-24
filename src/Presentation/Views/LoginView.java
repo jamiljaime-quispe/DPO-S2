@@ -1,9 +1,8 @@
 package Presentation.Views;
 
-import Presentation.Controllers.AuthController;
-
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionListener;
 
 /**
  * Login screen shown at application startup.
@@ -14,7 +13,6 @@ public class LoginView extends JFrame {
     private JPasswordField passwordField;
     private JButton loginButton;
     private JButton signupButton;
-    private AuthController controller;
 
     /** Creates the login window. */
     public LoginView() {
@@ -26,67 +24,121 @@ public class LoginView extends JFrame {
 
     /** Builds the login window components. */
     public void initComponents() {
+        JPanel mainPanel = createMainPanel();
+        mainPanel.add(createBrandPanel());
+        mainPanel.add(createLoginCard());
+        setContentPane(mainPanel);
+        setVisible(true);
+    }
 
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(null);
-        mainPanel.setBackground(new Color(245, 247, 250));
+    /** Creates the base panel for the login window. */
+    private JPanel createMainPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(null);
+        panel.setBackground(new Color(245, 247, 250));
+        return panel;
+    }
 
+    /** Creates the blue brand section shown on the left. */
+    private JPanel createBrandPanel() {
         JPanel brand = new JPanel();
         brand.setLayout(null);
         brand.setBackground(new Color(33, 99, 168));
         brand.setBounds(0, 0, 360, 620);
+        brand.add(createBrandLogo());
+        brand.add(createBrandTitle());
+        brand.add(createBrandSubtitle());
+        return brand;
+    }
 
+    /** Creates the square logo label used by the brand panel. */
+    private JLabel createBrandLogo() {
         JLabel logo = new JLabel("P", SwingConstants.CENTER);
         logo.setFont(new Font("SansSerif", Font.BOLD, 64));
         logo.setForeground(Color.WHITE);
         logo.setBorder(BorderFactory.createLineBorder(new Color(255, 255, 255, 90), 3, true));
         logo.setBounds(120, 170, 120, 110);
-        brand.add(logo);
+        return logo;
+    }
 
+    /** Creates the main brand title. */
+    private JLabel createBrandTitle() {
         JLabel brandTitle = new JLabel("Parking System", SwingConstants.CENTER);
         brandTitle.setFont(new Font("SansSerif", Font.BOLD, 28));
         brandTitle.setForeground(Color.WHITE);
         brandTitle.setBounds(20, 305, 320, 40);
-        brand.add(brandTitle);
+        return brandTitle;
+    }
 
+    /** Creates the brand subtitle. */
+    private JLabel createBrandSubtitle() {
         JLabel brandSub = new JLabel("Welcome back", SwingConstants.CENTER);
         brandSub.setFont(new Font("SansSerif", Font.PLAIN, 16));
         brandSub.setForeground(new Color(220, 230, 245));
         brandSub.setBounds(20, 350, 320, 30);
-        brand.add(brandSub);
+        return brandSub;
+    }
 
-        mainPanel.add(brand);
+    /** Creates the white card containing the login form. */
+    private JPanel createLoginCard() {
+        JPanel card = createFormCard(435, 70, 420, 480, 40);
+        addLoginHeader(card);
+        createLoginFields();
+        addLoginFields(card);
+        addLoginButtons(card);
+        return card;
+    }
 
+    /** Creates a form card with consistent visual styling. */
+    private JPanel createFormCard(int x, int y, int width, int height, int verticalPadding) {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(230, 234, 240), 1, true),
-                BorderFactory.createEmptyBorder(40, 50, 40, 50)));
-        card.setBounds(435, 70, 420, 480);
+                BorderFactory.createEmptyBorder(verticalPadding, 50, verticalPadding, 50)));
+        card.setBounds(x, y, width, height);
+        return card;
+    }
 
-        JLabel heading = new JLabel("Sign in");
-        heading.setFont(new Font("SansSerif", Font.BOLD, 26));
-        heading.setForeground(new Color(40, 40, 50));
-        heading.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        JLabel subHeading = new JLabel("Please enter your credentials");
-        subHeading.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        subHeading.setForeground(new Color(120, 125, 135));
-        subHeading.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        userField = new JTextField();
-        passwordField = new JPasswordField();
-        styleField(userField);
-        styleField(passwordField);
-
-        loginButton = primaryButton("Login");
-        signupButton = linkButton("Don't have an account?  Sign up");
-
+    /** Adds the title and subtitle to the login card. */
+    private void addLoginHeader(JPanel card) {
+        JLabel heading = createCardHeading("Sign in");
+        JLabel subHeading = createCardSubheading("Please enter your credentials");
         card.add(heading);
         card.add(Box.createRigidArea(new Dimension(0, 6)));
         card.add(subHeading);
         card.add(Box.createRigidArea(new Dimension(0, 30)));
+    }
+
+    /** Creates the heading shown at the top of the card. */
+    private JLabel createCardHeading(String text) {
+        JLabel heading = new JLabel(text);
+        heading.setFont(new Font("SansSerif", Font.BOLD, 26));
+        heading.setForeground(new Color(40, 40, 50));
+        heading.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return heading;
+    }
+
+    /** Creates the smaller subtitle shown below the heading. */
+    private JLabel createCardSubheading(String text) {
+        JLabel subHeading = new JLabel(text);
+        subHeading.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        subHeading.setForeground(new Color(120, 125, 135));
+        subHeading.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return subHeading;
+    }
+
+    /** Creates and styles the login form fields. */
+    private void createLoginFields() {
+        userField = new JTextField();
+        passwordField = new JPasswordField();
+        styleField(userField);
+        styleField(passwordField);
+    }
+
+    /** Adds the login form fields to the card. */
+    private void addLoginFields(JPanel card) {
         card.add(fieldLabel("Username or Email"));
         card.add(Box.createRigidArea(new Dimension(0, 6)));
         card.add(userField);
@@ -95,18 +147,15 @@ public class LoginView extends JFrame {
         card.add(Box.createRigidArea(new Dimension(0, 6)));
         card.add(passwordField);
         card.add(Box.createRigidArea(new Dimension(0, 28)));
+    }
+
+    /** Creates and adds the login buttons to the card. */
+    private void addLoginButtons(JPanel card) {
+        loginButton = primaryButton("Login");
+        signupButton = linkButton("Don't have an account?  Sign up");
         card.add(loginButton);
         card.add(Box.createRigidArea(new Dimension(0, 14)));
         card.add(signupButton);
-
-        mainPanel.add(card);
-
-        loginButton.addActionListener(e -> controller.handleLogin());
-        passwordField.addActionListener(e -> controller.handleLogin());
-        signupButton.addActionListener(e -> controller.handleSignup());
-
-        setContentPane(mainPanel);
-        setVisible(true);
     }
 
     /** Creates a label for a form field. */
@@ -184,9 +233,23 @@ public class LoginView extends JFrame {
         }
     }
 
-    /** Sets the authentication controller used by this view. */
-    public void authenControllerSetter(AuthController controller) {
-        this.controller = controller;
+    /**
+     * Adds a listener to the login action.
+     *
+     * @param listener action to run when the user submits login credentials
+     */
+    public void addLoginListener(ActionListener listener) {
+        loginButton.addActionListener(listener);
+        passwordField.addActionListener(listener);
+    }
+
+    /**
+     * Adds a listener to the signup navigation action.
+     *
+     * @param listener action to run when the user clicks the signup link
+     */
+    public void addSignupNavigationListener(ActionListener listener) {
+        signupButton.addActionListener(listener);
     }
 
     /** Clears the login fields. */

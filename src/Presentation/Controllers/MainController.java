@@ -1,9 +1,9 @@
 package Presentation.Controllers;
 
 import Presentation.Views.MainMenuView;
-import java.awt.event.MouseAdapter;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
-// WARNING: BE CAREFUL IN NOT BREAKING LAYER ARCHITECTURE
+import java.awt.event.MouseListener;
 
 /**
  * Root controller for the main menu.
@@ -31,68 +31,62 @@ public class MainController {
     /** Wires the main menu buttons to their controllers. */
     private void initListeners() {
         // 1. Manage Slots (admin only)
-        getEntryExitButton().addActionListener(e -> openAdminParkingManagement());
+        addEntryExitListener(e -> openAdminParkingManagement());
 
         // 2. Manage Bookings
-        getReservationButton().addActionListener(e -> openBookingManagement());
+        addReservationListener(e -> openBookingManagement());
 
-        getParkingEntryButton().addActionListener(e -> {
+        addParkingEntryListener(e -> {
             if (currentMode == 2) {
                 handleParkingEntry();
             }
         });
 
-        getParkingExitButton().addActionListener(e -> {
+        addParkingExitListener(e -> {
             if (currentMode == 2) {
                 handleParkingExit();
             }
         });
 
         // 3. Occupancy Chart
-        getOccupancyChartButton().addActionListener(e -> openOccupancyChart());
+        addOccupancyChartListener(e -> openOccupancyChart());
 
         // 4. Current Status
-        getStatusButton().addActionListener(e -> openCurrentParkingStatus());
+        addStatusListener(e -> openCurrentParkingStatus());
 
-        addParkingSlotsTableMouseListener(new MouseAdapter() {
-            /** Opens admin details when an admin clicks a parking row. */
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                openSpaceDetailsIfAdminClicked(e);
-            }
-        });
+        addParkingSlotsTableMouseListener(new ParkingSlotsClickListener(this));
 
         java.awt.event.ActionListener backToMain = e -> {
             returnToMainMenu();
         };
-        getBackToMenuButton().addActionListener(backToMain);
+        addOccupancyChartBackListener(backToMain);
         addParkingSlotsBackListener(backToMain);
 
         // 5. Logout
-        getLogoutButton().addActionListener(e -> logoutIfConfirmed());
+        addLogoutListener(e -> logoutIfConfirmed());
 
         // 6. Delete Account
-        getDeleteAccountButton().addActionListener(e -> deleteAccountIfPossible());
+        addDeleteAccountListener(e -> deleteAccountIfPossible());
     }
 
     /** Opens the regular-user parking entry flow. */
     private void handleParkingEntry() {
-        if (parkingController != null) {
+        if (hasParkingController()) {
             showVehicleEntryDialog();
         }
     }
 
     /** Opens the regular-user parking exit flow. */
     private void handleParkingExit() {
-        if (parkingController != null) {
+        if (hasParkingController()) {
             showVehicleExitDialog();
         }
     }
 
     /** Sets the active menu mode: admin or regular user. */
     public void setMode(int mode) {
-        this.currentMode = mode;
-        if (currentMode == 2 && parkingController != null) {
+        setCurrentMode(mode);
+        if (isRegularUserMode() && hasParkingController()) {
             refreshExitButtonState();
         }
     }
@@ -105,7 +99,7 @@ public class MainController {
     /** Sets the parking controller used by parking buttons. */
     public void setParkingController(ParkingController parkingController) {
         this.parkingController = parkingController;
-        if (currentMode == 2 && parkingController != null) {
+        if (isRegularUserMode() && hasParkingController()) {
             refreshExitButtonState();
         }
     }
@@ -125,121 +119,245 @@ public class MainController {
         this.slotBookingController = slotBookingController;
     }
 
-    /** Gets the manage-slots button from the view. */
-    private javax.swing.JButton getEntryExitButton() {
-        return view.getEntryExitButton();
+    /** Clears every controller and view that may still hold data from the logged-out user. */
+    public void clearSessionState() {
+        clearCurrentMode();
+        clearStatisticsSessionState();
+        clearParkingSessionState();
+        clearAdminSessionState();
+        clearBookingSessionState();
+        clearMainViewSessionState();
     }
 
-    /** Gets the booking-management button from the view. */
-    private javax.swing.JButton getReservationButton() {
-        return view.getReservationButton();
+    /** Adds a listener to the admin parking management action. */
+    private void addEntryExitListener(ActionListener listener) {
+        view.addEntryExitListener(listener);
     }
 
-    /** Gets the parking-entry button from the view. */
-    private javax.swing.JButton getParkingEntryButton() {
-        return view.getParkingEntryButton();
+    /** Adds a listener to the booking management action. */
+    private void addReservationListener(ActionListener listener) {
+        view.addReservationListener(listener);
     }
 
-    /** Gets the parking-exit button from the view. */
-    private javax.swing.JButton getParkingExitButton() {
-        return view.getParkingExitButton();
+    /** Adds a listener to the parking entry action. */
+    private void addParkingEntryListener(ActionListener listener) {
+        view.addParkingEntryListener(listener);
     }
 
-    /** Gets the occupancy-chart button from the view. */
-    private javax.swing.JButton getOccupancyChartButton() {
-        return view.getOccupancyChartButton();
+    /** Adds a listener to the parking exit action. */
+    private void addParkingExitListener(ActionListener listener) {
+        view.addParkingExitListener(listener);
     }
 
-    /** Gets the current-status button from the view. */
-    private javax.swing.JButton getStatusButton() {
-        return view.getStatusButton();
+    /** Adds a listener to the occupancy chart action. */
+    private void addOccupancyChartListener(ActionListener listener) {
+        view.addOccupancyChartListener(listener);
     }
 
-    /** Gets the back-to-menu button from the view. */
-    private javax.swing.JButton getBackToMenuButton() {
-        return view.getBackToMenuButton();
+    /** Adds a listener to the current parking status action. */
+    private void addStatusListener(ActionListener listener) {
+        view.addStatusListener(listener);
     }
 
-    /** Gets the logout button from the view. */
-    private javax.swing.JButton getLogoutButton() {
-        return view.getLogoutButton();
+    /** Adds a listener to the occupancy chart back action. */
+    private void addOccupancyChartBackListener(ActionListener listener) {
+        view.addOccupancyChartBackListener(listener);
     }
 
-    /** Gets the delete-account button from the view. */
-    private javax.swing.JButton getDeleteAccountButton() {
-        return view.getDeleteAccountButton();
+    /** Adds a listener to the logout action. */
+    private void addLogoutListener(ActionListener listener) {
+        view.addLogoutListener(listener);
+    }
+
+    /** Adds a listener to the delete-account action. */
+    private void addDeleteAccountListener(ActionListener listener) {
+        view.addDeleteAccountListener(listener);
     }
 
     /** Adds a mouse listener to the parking slots table. */
-    private void addParkingSlotsTableMouseListener(MouseAdapter listener) {
+    private void addParkingSlotsTableMouseListener(MouseListener listener) {
         view.addParkingSlotsTableMouseListener(listener);
     }
 
     /** Adds a listener to the parking slots back action. */
-    private void addParkingSlotsBackListener(java.awt.event.ActionListener listener) {
+    private void addParkingSlotsBackListener(ActionListener listener) {
         view.addParkingSlotsBackListener(listener);
     }
 
     /** Opens admin parking management when the current mode is admin. */
     private void openAdminParkingManagement() {
-        if (currentMode == 1 && adminController != null) {
-            adminController.showView();
+        if (isAdminMode() && hasAdminController()) {
+            showAdminParkingManagementView();
         }
     }
 
     /** Opens booking management for the current mode. */
     private void openBookingManagement() {
-        if (slotBookingController != null) {
-            slotBookingController.showView(currentMode);
+        if (hasSlotBookingController()) {
+            showSlotBookingView();
         }
     }
 
     /** Opens the occupancy chart and starts tracking. */
     private void openOccupancyChart() {
-        view.showOccupancyChart();
-        if (statisticsController != null) {
-            statisticsController.startTracking();
+        showOccupancyChartView();
+        if (hasStatisticsController()) {
+            startStatisticsTracking();
         }
     }
 
     /** Opens the current parking status table. */
     private void openCurrentParkingStatus() {
-        if (parkingController != null) {
-            view.rebuildParkingSlotsPanel();
-            parkingController.loadParkingStatus();
+        if (hasParkingController()) {
+            rebuildParkingSlotsPanel();
+            loadParkingStatus();
         }
     }
 
     /** Opens details for a clicked space when the current mode is admin. */
     private void openSpaceDetailsIfAdminClicked(MouseEvent e) {
-        if (currentMode != 1 || parkingController == null) return;
+        if (!isAdminMode() || !hasParkingController()) return;
 
-        String code = view.getParkingSpaceCodeAtPoint(e.getPoint());
+        String code = getParkingSpaceCodeAtPoint(e);
         if (code != null) {
-            parkingController.showSpaceDetails(code);
+            showSpaceDetails(code);
         }
+    }
+
+    /**
+     * Handles a click on the parking status table.
+     *
+     * @param event mouse click event
+     */
+    void handleParkingSlotsTableClick(MouseEvent event) {
+        openSpaceDetailsIfAdminClicked(event);
     }
 
     /** Restores the main menu and stops chart tracking. */
     private void returnToMainMenu() {
-        view.resetDisplayedContent();
-        if (statisticsController != null) {
-            statisticsController.stopTracking();
+        resetDisplayedContent();
+        if (hasStatisticsController()) {
+            stopStatisticsTracking();
         }
     }
 
     /** Logs the user out when they confirm. */
     private void logoutIfConfirmed() {
-        if (view.confirmLogout() && authController != null) {
-            authController.logout();
+        if (isLogoutConfirmed() && hasAuthController()) {
+            logout();
         }
     }
 
     /** Starts account deletion when the auth controller exists. */
     private void deleteAccountIfPossible() {
-        if (authController != null) {
-            authController.handleDeleteAccount();
+        if (hasAuthController()) {
+            handleDeleteAccount();
         }
+    }
+
+    /** Saves the current mode in memory. */
+    private void setCurrentMode(int mode) {
+        currentMode = mode;
+    }
+
+    /** Checks whether the menu is in regular-user mode. */
+    private boolean isRegularUserMode() {
+        return currentMode == 2;
+    }
+
+    /** Checks whether the menu is in admin mode. */
+    private boolean isAdminMode() {
+        return currentMode == 1;
+    }
+
+    /** Checks whether the parking controller exists. */
+    private boolean hasParkingController() {
+        return parkingController != null;
+    }
+
+    /** Checks whether the admin controller exists. */
+    private boolean hasAdminController() {
+        return adminController != null;
+    }
+
+    /** Checks whether the slot booking controller exists. */
+    private boolean hasSlotBookingController() {
+        return slotBookingController != null;
+    }
+
+    /** Checks whether the statistics controller exists. */
+    private boolean hasStatisticsController() {
+        return statisticsController != null;
+    }
+
+    /** Checks whether the authentication controller exists. */
+    private boolean hasAuthController() {
+        return authController != null;
+    }
+
+    /** Shows the admin parking management view. */
+    private void showAdminParkingManagementView() {
+        adminController.showView();
+    }
+
+    /** Shows the slot booking view with the current mode. */
+    private void showSlotBookingView() {
+        slotBookingController.showView(currentMode);
+    }
+
+    /** Shows the occupancy chart view. */
+    private void showOccupancyChartView() {
+        view.showOccupancyChart();
+    }
+
+    /** Starts chart tracking through the statistics controller. */
+    private void startStatisticsTracking() {
+        statisticsController.startTracking();
+    }
+
+    /** Rebuilds the current parking status panel. */
+    private void rebuildParkingSlotsPanel() {
+        view.rebuildParkingSlotsPanel();
+    }
+
+    /** Loads parking status through the parking controller. */
+    private void loadParkingStatus() {
+        parkingController.loadParkingStatus();
+    }
+
+    /** Gets the parking space code at the clicked point. */
+    private String getParkingSpaceCodeAtPoint(MouseEvent e) {
+        return view.getParkingSpaceCodeAtPoint(e.getPoint());
+    }
+
+    /** Shows parking-space details through the parking controller. */
+    private void showSpaceDetails(String code) {
+        parkingController.showSpaceDetails(code);
+    }
+
+    /** Resets the main menu content. */
+    private void resetDisplayedContent() {
+        view.resetDisplayedContent();
+    }
+
+    /** Stops chart tracking through the statistics controller. */
+    private void stopStatisticsTracking() {
+        statisticsController.stopTracking();
+    }
+
+    /** Checks whether logout was confirmed in the view. */
+    private boolean isLogoutConfirmed() {
+        return view.confirmLogout();
+    }
+
+    /** Logs out through the authentication controller. */
+    private void logout() {
+        authController.logout();
+    }
+
+    /** Starts account deletion through the authentication controller. */
+    private void handleDeleteAccount() {
+        authController.handleDeleteAccount();
     }
 
     /** Opens the parking entry dialog through the parking controller. */
@@ -255,5 +373,43 @@ public class MainController {
     /** Refreshes the exit button through the parking controller. */
     private void refreshExitButtonState() {
         parkingController.refreshExitButtonState();
+    }
+
+    /** Clears chart timers and chart-related session state. */
+    private void clearStatisticsSessionState() {
+        if (statisticsController != null) {
+            statisticsController.clearSessionState();
+        }
+    }
+
+    /** Clears parking status, exit-button state, and details dialogs. */
+    private void clearParkingSessionState() {
+        if (parkingController != null) {
+            parkingController.clearSessionState();
+        }
+    }
+
+    /** Clears admin parking management tables and dialogs. */
+    private void clearAdminSessionState() {
+        if (adminController != null) {
+            adminController.clearSessionState();
+        }
+    }
+
+    /** Clears booking tables, selected plates, and booking dialogs. */
+    private void clearBookingSessionState() {
+        if (slotBookingController != null) {
+            slotBookingController.clearSessionState();
+        }
+    }
+
+    /** Clears the main menu text and table state. */
+    private void clearMainViewSessionState() {
+        view.clearSessionViewState();
+    }
+
+    /** Resets the menu mode so the controller keeps no role from the previous session. */
+    private void clearCurrentMode() {
+        currentMode = 0;
     }
 }

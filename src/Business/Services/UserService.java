@@ -4,9 +4,11 @@ import Persistence.UserDAO;
 import Persistence.VehicleDAO;
 import Business.Entities.Client;
 import Business.Entities.ParkingSpace;
+import Business.Entities.Reservation;
 import Business.Entities.User;
 import Business.Entities.Vehicle;
 import Persistence.ParkingSpaceDAO;
+import Persistence.ReservationDAO;
 import Persistence.TransactionManager;
 
 import java.util.ArrayList;
@@ -22,6 +24,7 @@ public class UserService {
 	private UserDAO userDAO;
 	private VehicleDAO vehicleDAO;
 	private ParkingSpaceDAO parkingSpaceDAO;
+	private ReservationDAO reservationDAO;
 	private TransactionManager transactionManager;
 
 	private String lastLoggedInUsername;
@@ -33,13 +36,16 @@ public class UserService {
 	 * @param userDAO    the data access object for users
 	 * @param vehicleDAO the data access object for vehicles
 	 * @param parkingSpaceDAO the data access object for parking spaces
+	 * @param reservationDAO the data access object for reservations
 	 * @param transactionManager object that controls database transactions
 	 */
 	public UserService(UserDAO userDAO, VehicleDAO vehicleDAO, ParkingSpaceDAO parkingSpaceDAO,
+			ReservationDAO reservationDAO,
 			TransactionManager transactionManager) {
 		this.userDAO = userDAO;
 		this.vehicleDAO = vehicleDAO;
 		this.parkingSpaceDAO = parkingSpaceDAO;
+		this.reservationDAO = reservationDAO;
 		this.transactionManager = transactionManager;
 	}
 
@@ -166,8 +172,15 @@ public class UserService {
 		synchronized (transactionLock()) {
 			try {
 				beginTransaction();
-				clearParkedVehiclesForUser(userId);
+
+				// Load the user's vehicles once so the same list is used for every cleanup step.
+				List<Vehicle> userVehicles = findVehiclesByUser(userId);
+				clearParkedVehiclesForUser(userVehicles);
+				deleteReservationsForUser(userId);
+				deleteVehiclesForUser(userVehicles);
 				deleteUserRecord(userId);
+				clearSessionIfItBelongsTo(userId);
+
 				commitTransaction();
 			} catch (RuntimeException e) {
 				rollbackTransaction();
@@ -177,10 +190,9 @@ public class UserService {
 	}
 
 	/** Frees spaces occupied by vehicles owned by the user being deleted. */
-	private void clearParkedVehiclesForUser(int userId) {
-		if (parkingSpaceDAO == null || userId <= 0) return;
+	private void clearParkedVehiclesForUser(List<Vehicle> vehicles) {
+		if (parkingSpaceDAO == null || vehicles == null || vehicles.isEmpty()) return;
 
-		List<Vehicle> vehicles = findVehiclesByUser(userId);
 		Set<String> plates = new HashSet<>();
 		for (Vehicle vehicle : vehicles) {
 			plates.add(vehicle.getLicensePlate());
@@ -196,6 +208,32 @@ public class UserService {
 				space.freeSpace();
 				updateParkingSpaceRecord(space);
 			}
+		}
+	}
+
+	/** Deletes all reservations associated with the user being deleted. */
+	private void deleteReservationsForUser(int userId) {
+		if (reservationDAO == null || userId <= 0) return;
+
+		List<Reservation> reservations = findReservationsByUser(userId);
+		for (Reservation reservation : reservations) {
+			deleteReservationRecord(reservation.getId());
+		}
+	}
+
+	/** Deletes all vehicle records owned by the user being deleted. */
+	private void deleteVehiclesForUser(List<Vehicle> vehicles) {
+		if (vehicles == null || vehicles.isEmpty()) return;
+
+		for (Vehicle vehicle : vehicles) {
+			deleteVehicleRecord(vehicle.getLicensePlate());
+		}
+	}
+
+	/** Clears the current session if it belongs to the deleted user. */
+	private void clearSessionIfItBelongsTo(int userId) {
+		if (lastLoggedInUserId == userId) {
+			clearSession();
 		}
 	}
 
@@ -337,6 +375,16 @@ public class UserService {
 	/** Deletes a user through persistence. */
 	private void deleteUserRecord(int userId) {
 		userDAO.delete(userId);
+	}
+
+	/** Finds reservations belonging to a user through persistence. */
+	private List<Reservation> findReservationsByUser(int userId) {
+		return reservationDAO.findByUser(userId);
+	}
+
+	/** Deletes a reservation through persistence. */
+	private void deleteReservationRecord(int reservationId) {
+		reservationDAO.delete(reservationId);
 	}
 
 	/** Finds vehicles belonging to a user through persistence. */

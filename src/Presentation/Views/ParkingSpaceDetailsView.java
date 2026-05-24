@@ -26,6 +26,7 @@ public class ParkingSpaceDetailsView extends JDialog {
     private JLabel reservedEmailValue;
     private JLabel reservationDateValue;
     private JButton cancelReservationButton;
+    private JButton logoutButton;
     private JButton closeButton;
     private ParkingSpace displayedSpace;
 
@@ -73,6 +74,9 @@ public class ParkingSpaceDetailsView extends JDialog {
         cancelReservationButton.setForeground(new Color(180, 30, 30));
         cancelReservationButton.setVisible(false);
 
+        logoutButton = new JButton("Log out");
+        stylePrimaryButton(logoutButton);
+
         closeButton = new JButton("Close");
         stylePrimaryButton(closeButton);
         closeButton.addActionListener(e -> dispose());
@@ -80,6 +84,7 @@ public class ParkingSpaceDetailsView extends JDialog {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttonPanel.setOpaque(false);
         buttonPanel.add(cancelReservationButton);
+        buttonPanel.add(logoutButton);
         buttonPanel.add(closeButton);
 
         add(content, BorderLayout.CENTER);
@@ -151,6 +156,23 @@ public class ParkingSpaceDetailsView extends JDialog {
         return displayedSpace.getId();
     }
 
+    /** Clears the displayed space so the dialog keeps no user data after logout. */
+    public void clearSessionViewState() {
+        displayedSpace = null;
+        codeValue.setText("");
+        floorValue.setText("");
+        typeValue.setText("");
+        statusValue.setText("");
+        reservationValue.setText("");
+        licensePlateValue.setText("");
+        reservedUserValue.setText("");
+        reservedEmailValue.setText("");
+        reservationDateValue.setText("");
+        cancelReservationButton.setVisible(false);
+        setLoading(false);
+        setVisible(false);
+    }
+
     /** Gets the license plate of the active reservation being displayed. */
     public String getDisplayedReservationPlate() {
         if (displayedSpace == null
@@ -166,10 +188,16 @@ public class ParkingSpaceDetailsView extends JDialog {
         cancelReservationButton.addActionListener(listener);
     }
 
+    /** Sets the listener for the logout button. */
+    public void setLogoutListener(ActionListener listener) {
+        logoutButton.addActionListener(listener);
+    }
+
     /** Enables or disables the dialog while work is running. */
     public void setLoading(boolean loading) {
         setCursor(Cursor.getPredefinedCursor(loading ? Cursor.WAIT_CURSOR : Cursor.DEFAULT_CURSOR));
         cancelReservationButton.setEnabled(!loading);
+        logoutButton.setEnabled(!loading);
         closeButton.setEnabled(!loading);
     }
 
@@ -194,6 +222,15 @@ public class ParkingSpaceDetailsView extends JDialog {
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Cancel the reservation for plate \"" + plate + "\" in space \"" + spaceCode + "\"?",
                 "Cancel Reservation",
+                JOptionPane.YES_NO_OPTION);
+        return confirm == JOptionPane.YES_OPTION;
+    }
+
+    /** Asks the admin to confirm logout from the details dialog. */
+    public boolean confirmLogout() {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to log out?",
+                "Log out",
                 JOptionPane.YES_NO_OPTION);
         return confirm == JOptionPane.YES_OPTION;
     }

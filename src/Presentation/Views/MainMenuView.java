@@ -7,8 +7,6 @@ import java.awt.event.MouseListener;
 
 import Business.Entities.ParkingSpace;
 import Business.Entities.VehicleType;
-import Presentation.Controllers.MainController;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -16,8 +14,6 @@ import javax.swing.table.DefaultTableModel;
  * Adapts its navigation options depending on whether the logged-in user is an admin or a regular client.
  */
 public class MainMenuView extends JFrame {
-    private MainController controller;
-
     private JLabel titleLabel;
     private JLabel brandSubtitleLabel;
 
@@ -40,6 +36,7 @@ public class MainMenuView extends JFrame {
 
     private JPanel parkingSlotsPanel;
     private JTable parkingSlotsTable;
+    private JLabel parkingSlotsCountLabel;
     private java.util.List<MouseListener> parkingSlotsTableMouseListeners = new java.util.ArrayList<>();
 
     private OccupancyChartView occupancyChartPanel;
@@ -48,58 +45,101 @@ public class MainMenuView extends JFrame {
 
     /** Creates the main menu window. */
     public MainMenuView() {
-        setTitle("Main screen");
+        this(new OccupancyChartView());
     }
 
-    /** Sets the controller used by the main menu. */
-    public void setController(MainController controller) {
-        this.controller = controller;
+    /**
+     * Creates the main menu window with the chart panel it should display.
+     *
+     * @param occupancyChartPanel chart panel owned by the main menu
+     */
+    public MainMenuView(OccupancyChartView occupancyChartPanel) {
+        this.occupancyChartPanel = occupancyChartPanel;
+        setTitle("Main screen");
     }
 
     /** Builds the main menu components. */
     public void initComponents() {
+        configureMainPanel();
+        addBrandPanel();
+        addTitleLabel();
+        addNavigationPanel();
+        createMenuButtons();
+        addManagementGroup();
+        addVisualizationGroup();
+        addAccountGroup();
+        configureMainWindow();
+        addParkingSlotsPanel();
+        addOccupancyChartPanel();
+    }
+
+    /** Creates the main content panel. */
+    private void configureMainPanel() {
         mainPanel = new JPanel();
         mainPanel.setLayout(null);
         mainPanel.setBackground(new Color(245, 247, 250));
+    }
 
+    /** Creates and adds the left brand panel. */
+    private void addBrandPanel() {
         brand = new JPanel();
         brand.setLayout(null);
         brand.setBackground(new Color(33, 99, 168));
         brand.setBounds(0, 0, 360, 620);
+        brand.add(createBrandLogo());
+        brand.add(createBrandTitle());
+        brand.add(createBrandSubtitle());
+        mainPanel.add(brand);
+    }
 
+    /** Creates the logo shown in the brand panel. */
+    private JLabel createBrandLogo() {
         JLabel logo = new JLabel("P", SwingConstants.CENTER);
         logo.setFont(new Font("SansSerif", Font.BOLD, 64));
         logo.setForeground(Color.WHITE);
         logo.setBorder(BorderFactory.createLineBorder(new Color(255, 255, 255, 90), 3, true));
         logo.setBounds(120, 120, 120, 110);
-        brand.add(logo);
+        return logo;
+    }
 
+    /** Creates the title shown in the brand panel. */
+    private JLabel createBrandTitle() {
         JLabel brandTitle = new JLabel("Parking System", SwingConstants.CENTER);
         brandTitle.setFont(new Font("SansSerif", Font.BOLD, 28));
         brandTitle.setForeground(Color.WHITE);
         brandTitle.setBounds(20, 255, 320, 40);
-        brand.add(brandTitle);
+        return brandTitle;
+    }
 
+    /** Creates the subtitle updated by the current user mode. */
+    private JLabel createBrandSubtitle() {
         brandSubtitleLabel = new JLabel("Your dashboard", SwingConstants.CENTER);
         brandSubtitleLabel.setFont(new Font("SansSerif", Font.PLAIN, 16));
         brandSubtitleLabel.setForeground(new Color(220, 230, 245));
         brandSubtitleLabel.setBounds(20, 300, 320, 30);
-        brand.add(brandSubtitleLabel);
+        return brandSubtitleLabel;
+    }
 
-        mainPanel.add(brand);
-
+    /** Adds the welcome label above the navigation panel. */
+    private void addTitleLabel() {
         titleLabel = new JLabel("Welcome");
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 26));
         titleLabel.setForeground(new Color(40, 40, 50));
         titleLabel.setBounds(390, 35, 500, 40);
         mainPanel.add(titleLabel);
+    }
 
+    /** Adds the panel that contains the main navigation groups. */
+    private void addNavigationPanel() {
         navPanel = new JPanel();
         navPanel.setLayout(null);
         navPanel.setOpaque(false);
         navPanel.setBounds(390, 90, 510, 540);
         mainPanel.add(navPanel);
+    }
 
+    /** Creates all main menu buttons before placing them in groups. */
+    private void createMenuButtons() {
         statusButton = new JButton();
         reservationButton = new JButton();
         entryExitButton = new JButton();
@@ -108,7 +148,10 @@ public class MainMenuView extends JFrame {
         occupancyChartButton = new JButton();
         logoutButton = new JButton();
         deleteAccountButton = new JButton();
+    }
 
+    /** Adds the parking management group. */
+    private void addManagementGroup() {
         mgmtGroup = createGroupPanel("Parking management", 0, 0);
         mgmtGroup.add(styleButton(entryExitButton, "Manage parking slots"));
         mgmtGroup.add(Box.createRigidArea(new Dimension(0, 10)));
@@ -117,13 +160,19 @@ public class MainMenuView extends JFrame {
         parkingEntryExitButtonRow = createEntryExitButtonRow();
         mgmtGroup.add(parkingEntryExitButtonRow);
         navPanel.add(mgmtGroup);
+    }
 
+    /** Adds the parking visualization group. */
+    private void addVisualizationGroup() {
         visGroup = createGroupPanel("Parking visualization", 0, 200);
         visGroup.add(styleButton(occupancyChartButton, "Display last hour occupancy"));
         visGroup.add(Box.createRigidArea(new Dimension(0, 10)));
         visGroup.add(styleButton(statusButton, "Display current parking status"));
         navPanel.add(visGroup);
+    }
 
+    /** Adds the account group inside the brand panel. */
+    private void addAccountGroup() {
         accountGroup = createBrandGroupPanel("Account", 40, 430);
         accountGroup.add(styleBrandButton(logoutButton, "Log out"));
         accountGroup.add(Box.createRigidArea(new Dimension(0, 10)));
@@ -131,17 +180,25 @@ public class MainMenuView extends JFrame {
         deleteAccountButton.setForeground(new Color(200, 60, 60));
         accountGroup.add(deleteAccountButton);
         brand.add(accountGroup);
+    }
 
+    /** Applies the main window settings. */
+    private void configureMainWindow() {
         setContentPane(mainPanel);
         setSize(930, 650);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    }
 
+    /** Creates and adds the parking status panel. */
+    private void addParkingSlotsPanel() {
         parkingSlotsPanel = createParkingSlotsPanel();
         parkingSlotsPanel.setVisible(false);
         mainPanel.add(parkingSlotsPanel);
+    }
 
-        occupancyChartPanel = new OccupancyChartView();
+    /** Creates and adds the occupancy chart panel. */
+    private void addOccupancyChartPanel() {
         occupancyChartPanel.initComponents();
         occupancyChartPanel.setBounds(390, 90, 510, 540);
         occupancyChartPanel.setVisible(false);
@@ -170,6 +227,7 @@ public class MainMenuView extends JFrame {
             entryExitButton.setVisible(false);
             reservationButton.setVisible(true);
             parkingEntryButton.setVisible(true);
+            parkingEntryButton.setEnabled(true);
             parkingExitButton.setVisible(true);
             parkingExitButton.setEnabled(false);
             parkingEntryExitButtonRow.setVisible(true);
@@ -178,9 +236,6 @@ public class MainMenuView extends JFrame {
         }
 
         showNavigation();
-
-        if (controller != null)
-            controller.setMode(mode);
 
         revalidate();
         repaint();
@@ -328,6 +383,12 @@ public class MainMenuView extends JFrame {
         title.setFont(new Font("SansSerif", Font.BOLD, 16));
         title.setForeground(new Color(40, 40, 50));
         header.add(title, BorderLayout.CENTER);
+
+        parkingSlotsCountLabel = new JLabel("Total slots: 0", SwingConstants.RIGHT);
+        parkingSlotsCountLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        parkingSlotsCountLabel.setForeground(new Color(80, 90, 105));
+        header.add(parkingSlotsCountLabel, BorderLayout.EAST);
+
         panel.add(header, BorderLayout.NORTH);
 
         for (ActionListener listener : parkingSlotsBackListeners) {
@@ -344,13 +405,7 @@ public class MainMenuView extends JFrame {
 
         Object[][] rows = {};
 
-        DefaultTableModel model = new DefaultTableModel(rows, columns) {
-            /** Keeps the parking status table read-only. */
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
+        DefaultTableModel model = new NonEditableTableModel(rows, columns);
 
         parkingSlotsTable = new JTable(model);
         parkingSlotsTable.setRowHeight(23);
@@ -424,6 +479,7 @@ public class MainMenuView extends JFrame {
 
         if (existingRow == -1) {
             model.addRow(rowData);
+            updateParkingSlotsCount();
             return;
         }
 
@@ -436,6 +492,7 @@ public class MainMenuView extends JFrame {
                 model.setValueAt(newValue, existingRow, column);
             }
         }
+        updateParkingSlotsCount();
     }
 
     /** Builds a table row for a parking space. */
@@ -496,84 +553,72 @@ public class MainMenuView extends JFrame {
                 model.removeRow(row);
             }
         }
+        updateParkingSlotsCount();
     }
 
-    private class ParkingStatusCellRenderer extends DefaultTableCellRenderer {
-        private static final Color VACANT_COLOR = new Color(232, 248, 238);
-        private static final Color OCCUPIED_COLOR = new Color(253, 235, 235);
-        private static final Color MY_PARKED_COLOR = new Color(225, 240, 255);
+    /** Updates the total slot count shown above the parking status table. */
+    private void updateParkingSlotsCount() {
+        if (parkingSlotsCountLabel == null || parkingSlotsTable == null) return;
 
-        /** Colors parking status rows according to status and ownership. */
-        @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
-                                                       boolean hasFocus, int row, int column) {
-            Component cell = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-
-            if (!isSelected) {
-                int modelRow = table.convertRowIndexToModel(row);
-                int modelColumn = table.convertColumnIndexToModel(column);
-                boolean myParkedVehicle = Boolean.TRUE.equals(table.getModel().getValueAt(modelRow, 4));
-                String status = String.valueOf(table.getModel().getValueAt(modelRow, 2));
-
-                if (myParkedVehicle) {
-                    cell.setBackground(MY_PARKED_COLOR);
-                } else if (modelColumn == 2 && status.startsWith("Vacant")) {
-                    cell.setBackground(VACANT_COLOR);
-                } else if (modelColumn == 2 && status.startsWith("Occupied")) {
-                    cell.setBackground(OCCUPIED_COLOR);
-                } else {
-                    cell.setBackground(Color.WHITE);
-                }
-            }
-
-            return cell;
-        }
+        DefaultTableModel model = (DefaultTableModel) parkingSlotsTable.getModel();
+        parkingSlotsCountLabel.setText("Total slots: " + model.getRowCount());
     }
 
-    /** Gets the current parking status button. */
-    public JButton getStatusButton() {
-        return statusButton;
+    /** Adds a listener to the current parking status button. */
+    public void addStatusListener(ActionListener listener) {
+        statusButton.addActionListener(listener);
     }
 
-    /** Gets the booking management button. */
-    public JButton getReservationButton() {
-        return reservationButton;
+    /** Adds a listener to the booking management button. */
+    public void addReservationListener(ActionListener listener) {
+        reservationButton.addActionListener(listener);
     }
 
-    /** Gets the admin parking management button. */
-    public JButton getEntryExitButton() {
-        return entryExitButton;
+    /** Adds a listener to the admin parking management button. */
+    public void addEntryExitListener(ActionListener listener) {
+        entryExitButton.addActionListener(listener);
     }
 
-    /** Gets the user parking entry button. */
-    public JButton getParkingEntryButton() {
-        return parkingEntryButton;
+    /** Adds a listener to the user parking entry button. */
+    public void addParkingEntryListener(ActionListener listener) {
+        parkingEntryButton.addActionListener(listener);
     }
 
-    /** Gets the user parking exit button. */
-    public JButton getParkingExitButton() {
-        return parkingExitButton;
+    /** Adds a listener to the user parking exit button. */
+    public void addParkingExitListener(ActionListener listener) {
+        parkingExitButton.addActionListener(listener);
     }
 
-    /** Gets the occupancy chart button. */
-    public JButton getOccupancyChartButton() {
-        return occupancyChartButton;
+    /** Adds a listener to the occupancy chart button. */
+    public void addOccupancyChartListener(ActionListener listener) {
+        occupancyChartButton.addActionListener(listener);
     }
 
-    /** Gets the logout button. */
-    public JButton getLogoutButton() {
-        return logoutButton;
+    /** Adds a listener to the logout button. */
+    public void addLogoutListener(ActionListener listener) {
+        logoutButton.addActionListener(listener);
     }
 
-    /** Gets the delete-account button. */
-    public JButton getDeleteAccountButton() {
-        return deleteAccountButton;
+    /** Adds a listener to the delete-account button. */
+    public void addDeleteAccountListener(ActionListener listener) {
+        deleteAccountButton.addActionListener(listener);
+    }
+
+    /** Enables or disables the parking entry button. */
+    public void setParkingEntryButtonEnabled(boolean enabled) {
+        parkingEntryButton.setEnabled(enabled);
+    }
+
+    /** Enables or disables the parking exit button. */
+    public void setParkingExitButtonEnabled(boolean enabled) {
+        parkingExitButton.setEnabled(enabled);
     }
 
     /** Clears the parking status table. */
     public void clearParkingSlotsTable() {
         DefaultTableModel model = (DefaultTableModel) parkingSlotsTable.getModel();
         model.setRowCount(0);
+        updateParkingSlotsCount();
     }
 
     /** Recreates the parking status panel and its listeners. */
@@ -618,6 +663,17 @@ public class MainMenuView extends JFrame {
         repaint();
     }
 
+    /** Clears user-specific text and data from the main menu when a session ends. */
+    public void clearSessionViewState() {
+        resetDisplayedContent();
+        titleLabel.setText("Welcome");
+        brandSubtitleLabel.setText("Your dashboard");
+        parkingExitButton.setEnabled(false);
+        deleteAccountButton.setVisible(false);
+        revalidate();
+        repaint();
+    }
+
     /** Shows the occupancy chart panel. */
     public void showOccupancyChart() {
         hideNavigation();
@@ -627,14 +683,9 @@ public class MainMenuView extends JFrame {
         occupancyChartPanel.repaint();
     }
 
-    /** Gets the chart back button. */
-    public JButton getBackToMenuButton() {
-        return occupancyChartPanel.getBackButton();
-    }
-
-    /** Gets the occupancy chart panel. */
-    public OccupancyChartView getOccupancyChartView() {
-        return occupancyChartPanel;
+    /** Adds a listener to the occupancy chart back action. */
+    public void addOccupancyChartBackListener(ActionListener listener) {
+        occupancyChartPanel.addBackListener(listener);
     }
 
     /**
@@ -788,26 +839,4 @@ public class MainMenuView extends JFrame {
                         + "\nVehicle type: " + space.getVehicleType().name());
     }
 
-    private static class ExitSpaceOption {
-        private ParkingSpace space;
-
-        /** Stores one selectable parked vehicle. */
-        private ExitSpaceOption(ParkingSpace space) {
-            this.space = space;
-        }
-
-        /** Gets the parking space behind this option. */
-        private ParkingSpace getSpace() {
-            return space;
-        }
-
-        /** Formats the option shown in the exit combo box. */
-        @Override
-        public String toString() {
-            String plate = space.getParkedVehicle() != null
-                    ? space.getParkedVehicle().getLicensePlate()
-                    : "";
-            return "Plate " + plate + " - Space " + space.getId() + " - Floor " + space.getFloor();
-        }
-    }
 }

@@ -44,7 +44,7 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
                 """;
         List<ParkingSpace> list = new ArrayList<>();
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql);
+        try (PreparedStatement ps = getConnection().prepareStatement(sql);
                 ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 list.add(mapRow(rs));
@@ -71,7 +71,7 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
                 WHERE p.code = ?
                 """;
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, code);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next())
@@ -101,7 +101,7 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
                 """;
         List<ParkingSpace> list = new ArrayList<>();
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, type.name());
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -119,7 +119,7 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
     public void save(ParkingSpace space) {
         String sql = "INSERT INTO parking_space (code, floor, vehicleType, isOccupied, occupiedByPlate) VALUES (?, ?, ?, ?, ?)";
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, space.getId());
             ps.setInt(2, space.getFloor());
             ps.setString(3, space.getVehicleType().name());
@@ -136,7 +136,7 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
     public void update(ParkingSpace space) {
         String sql = "UPDATE parking_space SET isOccupied = ?, occupiedByPlate = ? WHERE code = ?";
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setBoolean(1, space.isOccupied());
             ps.setString(2, space.getParkedVehicle() != null ? space.getParkedVehicle().getLicensePlate() : null);
             ps.setString(3, space.getId());
@@ -150,7 +150,7 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
     @Override
     public void updateDetails(ParkingSpace space) {
         String sql = "UPDATE parking_space SET floor = ?, vehicleType = ? WHERE code = ?";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setInt(1, space.getFloor());
             ps.setString(2, space.getVehicleType().name());
             ps.setString(3, space.getId());
@@ -165,7 +165,7 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
     public void delete(String code) {
         String sql = "DELETE FROM parking_space WHERE code = ?";
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, code);
             ps.executeUpdate();
         } catch (SQLException e) {
@@ -219,5 +219,10 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         }
 
         return space;
+    }
+
+    /** Gets the database connection through this DAO's database manager. */
+    private java.sql.Connection getConnection() {
+        return db.getConnection();
     }
 }

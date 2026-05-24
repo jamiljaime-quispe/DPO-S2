@@ -3,12 +3,11 @@ package Presentation.Views;
 import Business.Entities.ParkingSpace;
 import Business.Entities.Reservation;
 import Business.Entities.VehicleType;
-import Presentation.Controllers.AdminSlotBookingController;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.ActionListener;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -33,7 +32,8 @@ public class AdminSlotBookingManagementView extends JDialog {
     private JButton editButton;
     private JButton deleteButton;
     private JButton refreshButton;
-    private AdminSlotBookingController controller;
+    private JButton logoutButton;
+    private SlotBookingActions actions;
     private int currentMode = ADMIN_MODE;
     private boolean loading;
     private JDialog activeBookingDialog;
@@ -46,30 +46,6 @@ public class AdminSlotBookingManagementView extends JDialog {
     private String userBookingPlate;
     private VehicleType userBookingType;
 
-    /**
-     * Plate and type chosen before a regular user books a slot.
-     */
-    public static class BookingVehicleInput {
-        private String plate;
-        private VehicleType type;
-
-        /** Stores the vehicle chosen for a new booking. */
-        private BookingVehicleInput(String plate, VehicleType type) {
-            this.plate = plate;
-            this.type = type;
-        }
-
-        /** Gets the selected license plate. */
-        public String getPlate() {
-            return plate;
-        }
-
-        /** Gets the selected vehicle type. */
-        public VehicleType getType() {
-            return type;
-        }
-    }
-
     /** Creates the booking management dialog. */
     public AdminSlotBookingManagementView(Frame parent) {
         super(parent, "Manage Slot Bookings", true);
@@ -78,20 +54,29 @@ public class AdminSlotBookingManagementView extends JDialog {
 
     /** Builds the booking management components. */
     private void initComponents() {
+        configureDialog();
+        JScrollPane bookingsScrollPane = createBookingsTable();
+        createReservationsPanel();
+        createTabbedPane(bookingsScrollPane);
+        createActionButtons();
+        wireSelectionListeners();
+        addActionButtonPanel();
+        wireButtonActions();
+    }
+
+    /** Applies the base dialog layout and size. */
+    private void configureDialog() {
         setLayout(new BorderLayout(10, 10));
         getContentPane().setBackground(new Color(245, 247, 250));
         setSize(900, 500);
         setLocationRelativeTo(getParent());
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+    }
 
+    /** Creates the main booking table and returns it inside a scroll pane. */
+    private JScrollPane createBookingsTable() {
         String[] columns = {"Code", "Floor", "Type", "Parking Status", "Booking", "Booked Plate", "Booked At", "My Booking"};
-        tableModel = new DefaultTableModel(columns, 0) {
-            /** Keeps the slot booking table read-only. */
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
+        tableModel = new NonEditableTableModel(columns, 0);
 
         bookingsTable = new JTable(tableModel);
         bookingsTable.setRowHeight(24);
@@ -109,15 +94,13 @@ public class AdminSlotBookingManagementView extends JDialog {
 
         JScrollPane scrollPane = new JScrollPane(bookingsTable);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
+        return scrollPane;
+    }
 
+    /** Creates the user's reservation panel. */
+    private void createReservationsPanel() {
         String[] reservationColumns = {"Space Code", "Floor", "Type", "License Plate", "Booked At", "Status"};
-        reservationsTableModel = new DefaultTableModel(reservationColumns, 0) {
-            /** Keeps the user's reservation table read-only. */
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
+        reservationsTableModel = new NonEditableTableModel(reservationColumns, 0);
         reservationsTable = new JTable(reservationsTableModel);
         reservationsTable.setRowHeight(24);
         reservationsTable.setFont(new Font("SansSerif", Font.PLAIN, 13));
@@ -131,45 +114,63 @@ public class AdminSlotBookingManagementView extends JDialog {
         reservationsPanel = new JPanel(new BorderLayout());
         reservationsPanel.setOpaque(false);
         reservationsPanel.add(reservationsScrollPane, BorderLayout.CENTER);
+    }
 
+    /** Creates the tabs used by the booking dialog. */
+    private void createTabbedPane(JScrollPane bookingsScrollPane) {
         tabbedPane = new JTabbedPane();
-        tabbedPane.addTab("Slot bookings", scrollPane);
+        tabbedPane.addTab("Slot bookings", bookingsScrollPane);
         tabbedPane.addChangeListener(e -> updateActionButtons());
         add(tabbedPane, BorderLayout.CENTER);
+    }
 
+    /** Creates and styles the action buttons. */
+    private void createActionButtons() {
         addButton = new JButton("Add Booking");
         editButton = new JButton("Edit Booking");
         deleteButton = new JButton("Delete Booking");
         refreshButton = new JButton("Refresh");
+        logoutButton = new JButton("Log out");
         stylePrimaryButton(addButton);
         stylePrimaryButton(editButton);
         stylePrimaryButton(refreshButton);
+        stylePrimaryButton(logoutButton);
         deleteButton.setForeground(new Color(180, 30, 30));
 
         addButton.setEnabled(false);
         editButton.setEnabled(false);
         deleteButton.setEnabled(false);
+    }
 
+    /** Wires table selection changes to button state updates. */
+    private void wireSelectionListeners() {
         bookingsTable.getSelectionModel().addListSelectionListener(e -> {
             updateActionButtons();
         });
         reservationsTable.getSelectionModel().addListSelectionListener(e -> {
             updateActionButtons();
         });
+    }
 
+    /** Adds the bottom action button panel. */
+    private void addActionButtonPanel() {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         buttonPanel.setOpaque(false);
         buttonPanel.add(addButton);
         buttonPanel.add(editButton);
         buttonPanel.add(deleteButton);
         buttonPanel.add(refreshButton);
+        buttonPanel.add(logoutButton);
         add(buttonPanel, BorderLayout.SOUTH);
+    }
 
+    /** Wires action buttons to their handlers. */
+    private void wireButtonActions() {
         addButton.addActionListener(e -> showAddBookingDialog());
         editButton.addActionListener(e -> showEditBookingDialog());
         deleteButton.addActionListener(e -> showDeleteConfirmation());
         refreshButton.addActionListener(e -> {
-            if (controller != null) controller.loadBookings();
+            if (actions != null) actions.loadBookings();
         });
     }
 
@@ -180,8 +181,8 @@ public class AdminSlotBookingManagementView extends JDialog {
         if (userBookingPlate == null || userBookingPlate.isBlank() || userBookingType == null) {
             BookingVehicleInput selection = promptForBookingVehicle();
             if (selection == null) return;
-            if (controller != null) {
-                controller.prepareUserBooking(selection.getPlate(), selection.getType());
+            if (actions != null) {
+                actions.prepareUserBooking(selection.getPlate(), selection.getType());
             }
             return;
         }
@@ -235,7 +236,7 @@ public class AdminSlotBookingManagementView extends JDialog {
                 return;
             }
 
-            if (controller != null) controller.createBooking(userBookingPlate, userBookingType, spaceCode);
+            if (actions != null) actions.createBooking(userBookingPlate, userBookingType, spaceCode);
             dialog.dispose();
         });
         cancelBtn.addActionListener(e -> dialog.dispose());
@@ -279,7 +280,7 @@ public class AdminSlotBookingManagementView extends JDialog {
                 return;
             }
 
-            if (controller != null) controller.editBooking(currentCode, plate, type, spaceCode);
+            if (actions != null) actions.editBooking(currentCode, plate, type, spaceCode);
             dialog.dispose();
         });
         cancelBtn.addActionListener(e -> dialog.dispose());
@@ -352,8 +353,8 @@ public class AdminSlotBookingManagementView extends JDialog {
 
             clearActiveCancelBookingDialog();
             dialog.dispose();
-            if (controller != null) {
-                controller.deleteBooking(spaceCode, plate);
+            if (actions != null) {
+                actions.deleteBooking(spaceCode, plate);
             }
         });
         closeBtn.addActionListener(e -> {
@@ -381,8 +382,8 @@ public class AdminSlotBookingManagementView extends JDialog {
         yesButton.addActionListener(e -> {
             clearActiveCancelBookingDialog();
             dialog.dispose();
-            if (controller != null) {
-                controller.deleteBooking(spaceCode, plate);
+            if (actions != null) {
+                actions.deleteBooking(spaceCode, plate);
             }
         });
         noButton.addActionListener(e -> {
@@ -411,15 +412,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         activeCancelBookingPlate = plate;
         activeCancelBookingMode = currentMode;
 
-        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
-            /** Clears tracked cancellation state when the dialog closes. */
-            @Override
-            public void windowClosed(java.awt.event.WindowEvent e) {
-                if (activeCancelBookingDialog == dialog) {
-                    clearActiveCancelBookingDialog();
-                }
-            }
-        });
+        dialog.addWindowListener(new WindowClosedAction(() -> clearActiveCancelBookingDialogIfMatches(dialog)));
     }
 
     /** Clears the tracked cancellation dialog state. */
@@ -427,6 +420,14 @@ public class AdminSlotBookingManagementView extends JDialog {
         activeCancelBookingDialog = null;
         activeCancelBookingSpaceCode = null;
         activeCancelBookingPlate = null;
+    }
+
+    /** Closes the tracked cancellation dialog if one is open. */
+    private void closeActiveCancelBookingDialog() {
+        if (activeCancelBookingDialog != null) {
+            activeCancelBookingDialog.dispose();
+        }
+        clearActiveCancelBookingDialog();
     }
 
     /** Creates the dialog used for booking or reassignment. */
@@ -446,21 +447,21 @@ public class AdminSlotBookingManagementView extends JDialog {
         activeBookingSpaceCodeField = spaceCodeField;
         activeBookingDialogMode = currentMode;
 
-        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
-            /** Clears tracked booking state when the dialog closes. */
-            @Override
-            public void windowClosed(java.awt.event.WindowEvent e) {
-                if (activeBookingDialog == dialog) {
-                    clearActiveBookingDialog();
-                }
-            }
-        });
+        dialog.addWindowListener(new WindowClosedAction(() -> clearActiveBookingDialogIfMatches(dialog)));
     }
 
     /** Clears the tracked booking dialog state. */
     private void clearActiveBookingDialog() {
         activeBookingDialog = null;
         activeBookingSpaceCodeField = null;
+    }
+
+    /** Closes the tracked booking dialog if one is open. */
+    private void closeActiveBookingDialog() {
+        if (activeBookingDialog != null) {
+            activeBookingDialog.dispose();
+        }
+        clearActiveBookingDialog();
     }
 
     /** Adds the common booking fields to a dialog. */
@@ -486,6 +487,17 @@ public class AdminSlotBookingManagementView extends JDialog {
         if (reservationsTableModel != null) {
             reservationsTableModel.setRowCount(0);
         }
+    }
+
+    /** Clears booking data and closes child dialogs when a user session ends. */
+    public void clearSessionViewState() {
+        closeActiveBookingDialog();
+        closeActiveCancelBookingDialog();
+        resetModeAfterSession();
+        setUserBookingVehicle(null, null);
+        clearBookingsTable();
+        setLoading(false);
+        setVisible(false);
     }
 
     /** Adds or updates one booking row. */
@@ -638,6 +650,24 @@ public class AdminSlotBookingManagementView extends JDialog {
         JOptionPane.showMessageDialog(this, message, "Info", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    /** Asks the user to confirm logout from this dialog. */
+    public boolean confirmLogout() {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to log out?",
+                "Log out",
+                JOptionPane.YES_NO_OPTION);
+        return confirm == JOptionPane.YES_OPTION;
+    }
+
+    /**
+     * Adds a listener to the logout button.
+     *
+     * @param listener action to run when logout is clicked
+     */
+    public void addLogoutListener(ActionListener listener) {
+        logoutButton.addActionListener(listener);
+    }
+
     /** Replaces the current user's reservation list. */
     public void updateReservationsTable(List<Reservation> reservations) {
         if (reservationsTableModel == null) return;
@@ -703,9 +733,13 @@ public class AdminSlotBookingManagementView extends JDialog {
         updateActionButtons();
     }
 
-    /** Sets the controller used by this dialog. */
-    public void setController(AdminSlotBookingController controller) {
-        this.controller = controller;
+    /**
+     * Sets the actions used by this dialog.
+     *
+     * @param actions controller-backed actions for this dialog
+     */
+    public void setActions(SlotBookingActions actions) {
+        this.actions = actions;
     }
 
     /** Stores the vehicle chosen by the user for a new booking. */
@@ -774,6 +808,7 @@ public class AdminSlotBookingManagementView extends JDialog {
             editButton.setEnabled(false);
             deleteButton.setEnabled(!loading && activeReservation);
             refreshButton.setEnabled(!loading);
+            logoutButton.setEnabled(!loading);
             return;
         }
 
@@ -794,6 +829,7 @@ public class AdminSlotBookingManagementView extends JDialog {
         editButton.setEnabled(!loading && admin && reservedSlot);
         deleteButton.setEnabled(!loading && ((admin && reservedSlot) || (user && userBooking)));
         refreshButton.setEnabled(!loading);
+        logoutButton.setEnabled(!loading);
     }
 
     /** Checks whether a selected slot can be booked by a user. */
@@ -835,37 +871,30 @@ public class AdminSlotBookingManagementView extends JDialog {
         return "";
     }
 
-    private class BookingCellRenderer extends DefaultTableCellRenderer {
-        private static final Color VACANT_COLOR = new Color(232, 248, 238);
-        private static final Color OCCUPIED_COLOR = new Color(253, 235, 235);
-        private static final Color MY_BOOKING_COLOR = new Color(225, 240, 255);
+    /** Resets the hidden dialog mode so it keeps no role from the previous session. */
+    private void resetModeAfterSession() {
+        currentMode = ADMIN_MODE;
+    }
 
-        /** Colors booking rows and status cells according to their current state. */
-        @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
-                                                       boolean hasFocus, int row, int column) {
-            Component cell = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+    /**
+     * Clears the booking dialog state if the closed dialog is still the tracked dialog.
+     *
+     * @param dialog dialog that has just closed
+     */
+    private void clearActiveBookingDialogIfMatches(JDialog dialog) {
+        if (activeBookingDialog == dialog) {
+            clearActiveBookingDialog();
+        }
+    }
 
-            if (!isSelected) {
-                int modelRow = table.convertRowIndexToModel(row);
-                int modelColumn = table.convertColumnIndexToModel(column);
-                boolean myBooking = Boolean.TRUE.equals(tableModel.getValueAt(modelRow, MY_BOOKING_COLUMN));
-                String status = String.valueOf(tableModel.getValueAt(modelRow, 3));
-
-                if (myBooking) {
-                    cell.setBackground(MY_BOOKING_COLOR);
-                } else {
-                    cell.setBackground(Color.WHITE);
-                }
-
-                if (modelColumn == 3 && "Vacant".equals(status)) {
-                    cell.setBackground(VACANT_COLOR);
-                } else if (modelColumn == 3 && "Occupied".equals(status)) {
-                    cell.setBackground(OCCUPIED_COLOR);
-                }
-            }
-
-            return cell;
+    /**
+     * Clears the cancellation dialog state if the closed dialog is still the tracked dialog.
+     *
+     * @param dialog dialog that has just closed
+     */
+    private void clearActiveCancelBookingDialogIfMatches(JDialog dialog) {
+        if (activeCancelBookingDialog == dialog) {
+            clearActiveCancelBookingDialog();
         }
     }
 }

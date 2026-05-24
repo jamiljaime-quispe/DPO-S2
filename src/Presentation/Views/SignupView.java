@@ -1,9 +1,8 @@
 package Presentation.Views;
 
-import Presentation.Controllers.AuthController;
-
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionListener;
 
 /**
  * Registration screen for new users.
@@ -16,7 +15,6 @@ public class SignupView extends JFrame {
     private JPasswordField confirmPasswordField;
     private JButton signupButton;
     private JButton backButton;
-    private AuthController controller;
 
     /** Creates the signup window. */
     public SignupView() {
@@ -28,37 +26,72 @@ public class SignupView extends JFrame {
 
     /** Builds the signup window components. */
     public void initComponents() {
+        JPanel mainPanel = createMainPanel();
+        mainPanel.add(createBrandPanel());
+        mainPanel.add(createSignupCard());
+        setContentPane(mainPanel);
+    }
 
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(null);
-        mainPanel.setBackground(new Color(245, 247, 250));
+    /** Creates the base panel for the signup window. */
+    private JPanel createMainPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(null);
+        panel.setBackground(new Color(245, 247, 250));
+        return panel;
+    }
 
+    /** Creates the blue brand section shown on the left. */
+    private JPanel createBrandPanel() {
         JPanel brand = new JPanel();
         brand.setLayout(null);
         brand.setBackground(new Color(33, 99, 168));
         brand.setBounds(0, 0, 360, 620);
+        brand.add(createBrandLogo());
+        brand.add(createBrandTitle());
+        brand.add(createBrandSubtitle());
+        return brand;
+    }
 
+    /** Creates the square logo label used by the brand panel. */
+    private JLabel createBrandLogo() {
         JLabel logo = new JLabel("P", SwingConstants.CENTER);
         logo.setFont(new Font("SansSerif", Font.BOLD, 64));
         logo.setForeground(Color.WHITE);
         logo.setBorder(BorderFactory.createLineBorder(new Color(255, 255, 255, 90), 3, true));
         logo.setBounds(120, 150, 120, 110);
-        brand.add(logo);
+        return logo;
+    }
 
+    /** Creates the main brand title. */
+    private JLabel createBrandTitle() {
         JLabel brandTitle = new JLabel("Create an account", SwingConstants.CENTER);
         brandTitle.setFont(new Font("SansSerif", Font.BOLD, 26));
         brandTitle.setForeground(Color.WHITE);
         brandTitle.setBounds(20, 285, 320, 40);
-        brand.add(brandTitle);
+        return brandTitle;
+    }
 
+    /** Creates the brand subtitle. */
+    private JLabel createBrandSubtitle() {
         JLabel brandSub = new JLabel("Join the Parking System", SwingConstants.CENTER);
         brandSub.setFont(new Font("SansSerif", Font.PLAIN, 15));
         brandSub.setForeground(new Color(220, 230, 245));
         brandSub.setBounds(20, 330, 320, 30);
-        brand.add(brandSub);
+        return brandSub;
+    }
 
-        mainPanel.add(brand);
+    /** Creates the white card containing the signup form. */
+    private JPanel createSignupCard() {
+        JPanel card = createFormCard();
+        addSignupHeader(card);
+        createSignupFields();
+        addSignupFields(card);
+        addSignupButtons(card);
+        return card;
+    }
 
+    /** Creates a form card with consistent visual styling. */
+    private JPanel createFormCard() {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(Color.WHITE);
@@ -66,17 +99,39 @@ public class SignupView extends JFrame {
                 BorderFactory.createLineBorder(new Color(230, 234, 240), 1, true),
                 BorderFactory.createEmptyBorder(32, 50, 32, 50)));
         card.setBounds(425, 30, 440, 560);
+        return card;
+    }
 
-        JLabel heading = new JLabel("Sign up");
+    /** Adds the title and subtitle to the signup card. */
+    private void addSignupHeader(JPanel card) {
+        JLabel heading = createCardHeading("Sign up");
+        JLabel subHeading = createCardSubheading("Fill in your details to register");
+        card.add(heading);
+        card.add(Box.createRigidArea(new Dimension(0, 6)));
+        card.add(subHeading);
+        card.add(Box.createRigidArea(new Dimension(0, 22)));
+    }
+
+    /** Creates the heading shown at the top of the card. */
+    private JLabel createCardHeading(String text) {
+        JLabel heading = new JLabel(text);
         heading.setFont(new Font("SansSerif", Font.BOLD, 26));
         heading.setForeground(new Color(40, 40, 50));
         heading.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return heading;
+    }
 
-        JLabel subHeading = new JLabel("Fill in your details to register");
+    /** Creates the smaller subtitle shown below the heading. */
+    private JLabel createCardSubheading(String text) {
+        JLabel subHeading = new JLabel(text);
         subHeading.setFont(new Font("SansSerif", Font.PLAIN, 13));
         subHeading.setForeground(new Color(120, 125, 135));
         subHeading.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return subHeading;
+    }
 
+    /** Creates and styles the signup form fields. */
+    private void createSignupFields() {
         usernameField = new JTextField();
         emailField = new JTextField();
         passwordField = new JPasswordField();
@@ -85,41 +140,31 @@ public class SignupView extends JFrame {
         styleField(emailField);
         styleField(passwordField);
         styleField(confirmPasswordField);
+    }
 
+    /** Adds the signup fields to the card. */
+    private void addSignupFields(JPanel card) {
+        addField(card, "Username", usernameField, 14);
+        addField(card, "Email", emailField, 14);
+        addField(card, "Password", passwordField, 14);
+        addField(card, "Confirm password", confirmPasswordField, 24);
+    }
+
+    /** Adds one labeled field to the signup card. */
+    private void addField(JPanel card, String label, JTextField field, int bottomGap) {
+        card.add(fieldLabel(label));
+        card.add(Box.createRigidArea(new Dimension(0, 6)));
+        card.add(field);
+        card.add(Box.createRigidArea(new Dimension(0, bottomGap)));
+    }
+
+    /** Creates and adds the signup buttons to the card. */
+    private void addSignupButtons(JPanel card) {
         signupButton = primaryButton("Create account");
         backButton = linkButton("<- Back to login");
-
-        card.add(heading);
-        card.add(Box.createRigidArea(new Dimension(0, 6)));
-        card.add(subHeading);
-        card.add(Box.createRigidArea(new Dimension(0, 22)));
-        card.add(fieldLabel("Username"));
-        card.add(Box.createRigidArea(new Dimension(0, 6)));
-        card.add(usernameField);
-        card.add(Box.createRigidArea(new Dimension(0, 14)));
-        card.add(fieldLabel("Email"));
-        card.add(Box.createRigidArea(new Dimension(0, 6)));
-        card.add(emailField);
-        card.add(Box.createRigidArea(new Dimension(0, 14)));
-        card.add(fieldLabel("Password"));
-        card.add(Box.createRigidArea(new Dimension(0, 6)));
-        card.add(passwordField);
-        card.add(Box.createRigidArea(new Dimension(0, 14)));
-        card.add(fieldLabel("Confirm password"));
-        card.add(Box.createRigidArea(new Dimension(0, 6)));
-        card.add(confirmPasswordField);
-        card.add(Box.createRigidArea(new Dimension(0, 24)));
         card.add(signupButton);
         card.add(Box.createRigidArea(new Dimension(0, 12)));
         card.add(backButton);
-
-        mainPanel.add(card);
-
-        signupButton.addActionListener(e -> controller.handleRegistrationSubmission());
-        confirmPasswordField.addActionListener(e -> controller.handleRegistrationSubmission());
-        backButton.addActionListener(e -> controller.handleBackToLogin());
-
-        setContentPane(mainPanel);
     }
 
     /** Creates a label for a form field. */
@@ -215,9 +260,23 @@ public class SignupView extends JFrame {
         }
     }
 
-    /** Sets the authentication controller used by this view. */
-    public void setController(AuthController controller) {
-        this.controller = controller;
+    /**
+     * Adds a listener to the account creation action.
+     *
+     * @param listener action to run when the user submits the signup form
+     */
+    public void addRegistrationListener(ActionListener listener) {
+        signupButton.addActionListener(listener);
+        confirmPasswordField.addActionListener(listener);
+    }
+
+    /**
+     * Adds a listener to the back-to-login action.
+     *
+     * @param listener action to run when the user returns to login
+     */
+    public void addBackToLoginListener(ActionListener listener) {
+        backButton.addActionListener(listener);
     }
 
     /**

@@ -37,7 +37,7 @@ public class ReservationDAOImpl implements ReservationDAO {
                 VALUES ((SELECT spaceId FROM parking_space WHERE code = ?), ?, ?, ?, ?, ?, ?)
                 """;
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, reservation.getParkingSpace() != null ? reservation.getParkingSpace().getId() : null);
             ps.setString(2, reservation.getVehicle().getLicensePlate());
             ps.setTimestamp(3, Timestamp.valueOf(reservation.getReservationDate()));
@@ -62,7 +62,7 @@ public class ReservationDAOImpl implements ReservationDAO {
     public void delete(int id) {
         String sql = "DELETE FROM reservation WHERE reservationId = ?";
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setInt(1, id);
             ps.executeUpdate();
         } catch (SQLException e) {
@@ -75,7 +75,7 @@ public class ReservationDAOImpl implements ReservationDAO {
     public Reservation findById(int id) {
         String sql = baseReservationQuery() + " WHERE r.reservationId = ?";
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return mapRow(rs);
@@ -92,7 +92,7 @@ public class ReservationDAOImpl implements ReservationDAO {
         String sql = baseReservationQuery() + " WHERE u.userId = ? ORDER BY r.reservationDate DESC";
         List<Reservation> reservations = new ArrayList<>();
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setInt(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -110,7 +110,7 @@ public class ReservationDAOImpl implements ReservationDAO {
     public Reservation findByPlate(String plate) {
         String sql = baseReservationQuery() + " WHERE r.licensePlate = ? AND r.isActive = TRUE";
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, plate);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return mapRow(rs);
@@ -127,7 +127,7 @@ public class ReservationDAOImpl implements ReservationDAO {
         String sql = baseReservationQuery() + " ORDER BY r.reservationDate DESC";
         List<Reservation> reservations = new ArrayList<>();
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql);
+        try (PreparedStatement ps = getConnection().prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 reservations.add(mapRow(rs));
@@ -153,7 +153,7 @@ public class ReservationDAOImpl implements ReservationDAO {
                 WHERE reservationId = ?
                 """;
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, reservation.getParkingSpace() != null ? reservation.getParkingSpace().getId() : null);
             ps.setString(2, reservation.getVehicle().getLicensePlate());
             ps.setTimestamp(3, Timestamp.valueOf(reservation.getReservationDate()));
@@ -235,5 +235,10 @@ public class ReservationDAOImpl implements ReservationDAO {
         }
 
         return reservation;
+    }
+
+    /** Gets the database connection through this DAO's database manager. */
+    private java.sql.Connection getConnection() {
+        return db.getConnection();
     }
 }

@@ -317,6 +317,13 @@ public class ReservationService {
 		}
 	}
 
+	/**
+	 * Checks that a space can receive a reassigned reservation.
+	 *
+	 * @param space            target parking space
+	 * @param spaceCode        target parking space code
+	 * @param currentSpaceCode space where the reservation is currently placed
+	 */
 	private void validateSpaceCanReceiveReassignedBooking(ParkingSpace space, String spaceCode,
 			String currentSpaceCode) {
 		if (space == null) {

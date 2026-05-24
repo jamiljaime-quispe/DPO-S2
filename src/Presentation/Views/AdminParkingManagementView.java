@@ -2,12 +2,11 @@ package Presentation.Views;
 
 import Business.Entities.ParkingSpace;
 import Business.Entities.VehicleType;
-import Presentation.Controllers.AdminController;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.ActionListener;
 import java.util.List;
 
 /**
@@ -21,7 +20,8 @@ public class AdminParkingManagementView extends JDialog {
     private JButton editButton;
     private JButton deleteButton;
     private JButton refreshButton;
-    private AdminController controller;
+    private JButton logoutButton;
+    private AdminParkingActions actions;
     private boolean loading;
     private JDialog activeDeleteDialog;
     private String activeDeleteSpaceCode;
@@ -44,11 +44,7 @@ public class AdminParkingManagementView extends JDialog {
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         String[] columns = {"Code", "Floor", "Type", "Status", "Reservation", "License Plate"};
-        tableModel = new DefaultTableModel(columns, 0) {
-            /** Keeps table cells read-only. */
-            @Override
-            public boolean isCellEditable(int row, int column) { return false; }
-        };
+        tableModel = new NonEditableTableModel(columns, 0);
 
         spacesTable = new JTable(tableModel);
         spacesTable.setRowHeight(24);
@@ -57,7 +53,7 @@ public class AdminParkingManagementView extends JDialog {
         spacesTable.getTableHeader().setBackground(new Color(33, 99, 168));
         spacesTable.getTableHeader().setForeground(Color.WHITE);
         spacesTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        spacesTable.getColumnModel().getColumn(3).setCellRenderer(new StatusCellRenderer());
+        spacesTable.getColumnModel().getColumn(3).setCellRenderer(new AdminStatusCellRenderer());
 
         JScrollPane scrollPane = new JScrollPane(spacesTable);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
@@ -67,9 +63,11 @@ public class AdminParkingManagementView extends JDialog {
         editButton = new JButton("Edit Space");
         deleteButton = new JButton("Delete Space");
         refreshButton = new JButton("Refresh");
+        logoutButton = new JButton("Log out");
         stylePrimaryButton(addButton);
         stylePrimaryButton(editButton);
         stylePrimaryButton(refreshButton);
+        stylePrimaryButton(logoutButton);
         deleteButton.setForeground(new Color(180, 30, 30));
 
         editButton.setEnabled(false);
@@ -85,12 +83,15 @@ public class AdminParkingManagementView extends JDialog {
         buttonPanel.add(editButton);
         buttonPanel.add(deleteButton);
         buttonPanel.add(refreshButton);
+        buttonPanel.add(logoutButton);
         add(buttonPanel, BorderLayout.SOUTH);
 
         addButton.addActionListener(e -> showAddDialog());
         editButton.addActionListener(e -> showEditDialog());
         deleteButton.addActionListener(e -> handleDelete());
-        refreshButton.addActionListener(e -> { if (controller != null) controller.loadSpaces(); });
+        refreshButton.addActionListener(e -> {
+            if (actions != null) actions.loadSpaces();
+        });
     }
 
     /** Applies the main button style. */
@@ -129,7 +130,7 @@ public class AdminParkingManagementView extends JDialog {
         confirmBtn.addActionListener(e -> {
             int floor = (int) floorSpinner.getValue();
             VehicleType type = (VehicleType) typeCombo.getSelectedItem();
-            if (controller != null) controller.createSpace(floor, type);
+            if (actions != null) actions.createSpace(floor, type);
             dialog.dispose();
         });
         cancelBtn.addActionListener(e -> dialog.dispose());
@@ -185,7 +186,7 @@ public class AdminParkingManagementView extends JDialog {
             int floor = (int) floorSpinner.getValue();
             VehicleType selectedType = (VehicleType) typeCombo.getSelectedItem();
             clearActiveEditDialog();
-            if (controller != null) controller.editSpace(code, floor, selectedType);
+            if (actions != null) actions.editSpace(code, floor, selectedType);
             dialog.dispose();
         });
         cancelBtn.addActionListener(e -> {
@@ -193,15 +194,7 @@ public class AdminParkingManagementView extends JDialog {
             dialog.dispose();
         });
 
-        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
-            /** Clears the tracked edit dialog when it closes. */
-            @Override
-            public void windowClosed(java.awt.event.WindowEvent e) {
-                if (activeEditDialog == dialog) {
-                    clearActiveEditDialog();
-                }
-            }
-        });
+        dialog.addWindowListener(new WindowClosedAction(() -> clearActiveEditDialogIfMatches(dialog)));
 
         dialog.setVisible(true);
     }
@@ -211,6 +204,14 @@ public class AdminParkingManagementView extends JDialog {
         activeEditDialog = null;
         activeEditSpaceCode = null;
         activeEditAllowsTypeChange = false;
+    }
+
+    /** Closes the tracked edit dialog if one is open. */
+    private void closeActiveEditDialog() {
+        if (activeEditDialog != null) {
+            activeEditDialog.dispose();
+        }
+        clearActiveEditDialog();
     }
 
     /** Starts the delete flow for the selected parking space. */
@@ -270,8 +271,8 @@ public class AdminParkingManagementView extends JDialog {
         yesButton.addActionListener(e -> {
             clearActiveDeleteDialog();
             dialog.dispose();
-            if (controller != null) {
-                controller.deleteSpace(code);
+            if (actions != null) {
+                actions.deleteSpace(code);
             }
         });
         noButton.addActionListener(e -> {
@@ -279,15 +280,7 @@ public class AdminParkingManagementView extends JDialog {
             dialog.dispose();
         });
 
-        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
-            /** Clears the tracked delete dialog when it closes. */
-            @Override
-            public void windowClosed(java.awt.event.WindowEvent e) {
-                if (activeDeleteDialog == dialog) {
-                    clearActiveDeleteDialog();
-                }
-            }
-        });
+        dialog.addWindowListener(new WindowClosedAction(() -> clearActiveDeleteDialogIfMatches(dialog)));
 
         dialog.pack();
         dialog.setSize(new Dimension(Math.max(dialog.getWidth(), 540), dialog.getHeight()));
@@ -301,6 +294,14 @@ public class AdminParkingManagementView extends JDialog {
         activeDeleteSpaceCode = null;
     }
 
+    /** Closes the tracked delete dialog if one is open. */
+    private void closeActiveDeleteDialog() {
+        if (activeDeleteDialog != null) {
+            activeDeleteDialog.dispose();
+        }
+        clearActiveDeleteDialog();
+    }
+
     /** Replaces the table with the given parking spaces. */
     public void updateSpaces(List<ParkingSpace> spaces) {
         clearSpacesTable();
@@ -312,6 +313,15 @@ public class AdminParkingManagementView extends JDialog {
     /** Clears the parking-space table. */
     public void clearSpacesTable() {
         tableModel.setRowCount(0);
+    }
+
+    /** Clears table data and closes child dialogs when a user session ends. */
+    public void clearSessionViewState() {
+        closeActiveDeleteDialog();
+        closeActiveEditDialog();
+        clearSpacesTable();
+        setLoading(false);
+        setVisible(false);
     }
 
     /** Adds or updates one parking-space row. */
@@ -449,6 +459,24 @@ public class AdminParkingManagementView extends JDialog {
         JOptionPane.showMessageDialog(this, message, "Info", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    /** Asks the admin to confirm logout from this dialog. */
+    public boolean confirmLogout() {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to log out?",
+                "Log out",
+                JOptionPane.YES_NO_OPTION);
+        return confirm == JOptionPane.YES_OPTION;
+    }
+
+    /**
+     * Adds a listener to the logout button.
+     *
+     * @param listener action to run when logout is clicked
+     */
+    public void addLogoutListener(ActionListener listener) {
+        logoutButton.addActionListener(listener);
+    }
+
     /** Enables or disables controls while work is running. */
     public void setLoading(boolean loading) {
         this.loading = loading;
@@ -457,9 +485,13 @@ public class AdminParkingManagementView extends JDialog {
         updateActionButtons();
     }
 
-    /** Sets the controller used by this dialog. */
-    public void setController(AdminController controller) {
-        this.controller = controller;
+    /**
+     * Sets the actions used by this dialog.
+     *
+     * @param actions controller-backed actions for this dialog
+     */
+    public void setActions(AdminParkingActions actions) {
+        this.actions = actions;
     }
 
     /** Enables or disables buttons based on the current selection. */
@@ -470,6 +502,7 @@ public class AdminParkingManagementView extends JDialog {
         editButton.setEnabled(!loading && selected);
         deleteButton.setEnabled(!loading && selected && !occupied);
         refreshButton.setEnabled(!loading);
+        logoutButton.setEnabled(!loading);
     }
 
     /** Checks whether the selected table row is occupied. */
@@ -498,28 +531,25 @@ public class AdminParkingManagementView extends JDialog {
         return "";
     }
 
-    private static class StatusCellRenderer extends DefaultTableCellRenderer {
-        private static final Color VACANT_COLOR = new Color(232, 248, 238);
-        private static final Color OCCUPIED_COLOR = new Color(253, 235, 235);
+    /**
+     * Clears the edit dialog state if the closed dialog is still the tracked dialog.
+     *
+     * @param dialog dialog that has just closed
+     */
+    private void clearActiveEditDialogIfMatches(JDialog dialog) {
+        if (activeEditDialog == dialog) {
+            clearActiveEditDialog();
+        }
+    }
 
-        /** Colors the status column according to vacancy. */
-        @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
-                                                       boolean hasFocus, int row, int column) {
-            Component cell = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-
-            if (!isSelected) {
-                String status = String.valueOf(value);
-                if ("Vacant".equals(status)) {
-                    cell.setBackground(VACANT_COLOR);
-                } else if ("Occupied".equals(status)) {
-                    cell.setBackground(OCCUPIED_COLOR);
-                } else {
-                    cell.setBackground(Color.WHITE);
-                }
-            }
-
-            return cell;
+    /**
+     * Clears the delete dialog state if the closed dialog is still the tracked dialog.
+     *
+     * @param dialog dialog that has just closed
+     */
+    private void clearActiveDeleteDialogIfMatches(JDialog dialog) {
+        if (activeDeleteDialog == dialog) {
+            clearActiveDeleteDialog();
         }
     }
 }
