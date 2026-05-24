@@ -31,7 +31,7 @@ public class VehicleDAOImpl implements VehicleDAO {
                 ON DUPLICATE KEY UPDATE vehicleType = VALUES(vehicleType)
                 """;
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, vehicle.getLicensePlate());
             ps.setInt(2, resolveOwnerUserId(vehicle.getOwner()));
             ps.setString(3, vehicle.getType().name());
@@ -51,7 +51,7 @@ public class VehicleDAOImpl implements VehicleDAO {
                 WHERE v.licensePlate = ?
                 """;
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, plate);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -77,7 +77,7 @@ public class VehicleDAOImpl implements VehicleDAO {
                 """;
         List<Vehicle> list = new ArrayList<>();
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setInt(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -96,7 +96,7 @@ public class VehicleDAOImpl implements VehicleDAO {
     public void delete(String plate) {
         String sql = "DELETE FROM vehicle WHERE licensePlate = ?";
 
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, plate);
             ps.executeUpdate();
         } catch (SQLException e) {
@@ -123,7 +123,7 @@ public class VehicleDAOImpl implements VehicleDAO {
             return Integer.parseInt(owner);
         } catch (NumberFormatException ignored) {
             String sql = "SELECT userId FROM user WHERE username = ?";
-            try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+            try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
                 ps.setString(1, owner);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
@@ -134,5 +134,10 @@ public class VehicleDAOImpl implements VehicleDAO {
         }
 
         throw new SQLException("Vehicle owner was not found.");
+    }
+
+    /** Gets the database connection through this DAO's database manager. */
+    private java.sql.Connection getConnection() {
+        return db.getConnection();
     }
 }

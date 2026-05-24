@@ -41,7 +41,7 @@ public class AdminService {
 	 *
 	 * @param spaceCode code of the space being removed
 	 */
-	public void deleteParkingSpace(String spaceCode) {
+	public DeleteParkingSpaceResult deleteParkingSpace(String spaceCode) {
 		synchronized (transactionLock()) {
 			try {
 				beginTransaction();
@@ -55,12 +55,13 @@ public class AdminService {
 							+ "\": it is currently occupied.");
 				}
 
-				reassignOrCancelReservationInTransaction(spaceCode);
+				ReservationMoveResult reservationResult = reassignOrCancelReservationInTransaction(spaceCode);
 				if (!deleteParkingSpaceThroughService(spaceCode)) {
 					throw new IllegalStateException("Could not delete space \"" + spaceCode + "\".");
 				}
 
 				commitTransaction();
+				return buildDeleteParkingSpaceResult(spaceCode, reservationResult);
 			} catch (RuntimeException e) {
 				rollbackTransaction();
 				throw e;
@@ -159,7 +160,7 @@ public class AdminService {
 	}
 
 	/** Reassigns or cancels a reservation while the caller owns the transaction. */
-	private void reassignOrCancelReservationInTransaction(String spaceCode) {
+	private ReservationMoveResult reassignOrCancelReservationInTransaction(String spaceCode) {
 		Reservation target = null;
 		for (Reservation reservation : findAllReservations()) {
 			if (reservation.isActive()
@@ -169,9 +170,10 @@ public class AdminService {
 				break;
 			}
 		}
-		if (target == null) return;
+		if (target == null) return new ReservationMoveResult(null, null, false);
 
 		ParkingSpace oldSpace = target.getParkingSpace();
+		String affectedPlate = target.getVehicle() != null ? target.getVehicle().getLicensePlate() : null;
 		VehicleType type = target.getVehicle() != null ? target.getVehicle().getType() : null;
 		if (type == null && oldSpace != null) {
 			type = oldSpace.getVehicleType();
@@ -194,6 +196,18 @@ public class AdminService {
 		}
 
 		updateReservation(target);
+		return new ReservationMoveResult(affectedPlate, newSpace != null ? newSpace.getId() : null, newSpace == null);
+	}
+
+	/** Builds the public result returned to the presentation layer. */
+	private DeleteParkingSpaceResult buildDeleteParkingSpaceResult(String spaceCode,
+			ReservationMoveResult reservationResult) {
+		if (reservationResult == null) {
+			return new DeleteParkingSpaceResult(spaceCode, null, null, false);
+		}
+
+		return new DeleteParkingSpaceResult(spaceCode, reservationResult.getAffectedPlate(),
+				reservationResult.getNewSpaceCode(), reservationResult.isReservationCancelled());
 	}
 
 	/** Cancels a reservation while the caller owns the transaction. */

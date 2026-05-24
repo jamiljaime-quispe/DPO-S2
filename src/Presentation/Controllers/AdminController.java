@@ -3,7 +3,9 @@ package Presentation.Controllers;
 import Business.Entities.ParkingSpace;
 import Business.Entities.VehicleType;
 import Business.Services.AdminService;
+import Business.Services.DeleteParkingSpaceResult;
 import Business.Services.ParkingService;
+import Presentation.Views.AdminParkingActions;
 import Presentation.Views.AdminParkingManagementView;
 
 import javax.swing.SwingWorker;
@@ -17,10 +19,12 @@ import java.util.concurrent.ExecutionException;
  * Controller for the admin parking space management view.
  * Handles creating, editing, deleting, and loading parking spaces.
  */
-public class AdminController {
+public class AdminController implements AdminParkingActions {
     private AdminParkingManagementView adminView;
     private ParkingService parkingService;
     private AdminService adminService;
+    private Runnable logoutAction;
+    private Runnable parkingStatusDisplayAction;
     private volatile int spacesLoadId;
 
     /**
@@ -33,11 +37,22 @@ public class AdminController {
         this.adminView = adminView;
         this.parkingService = parkingService;
         setViewController();
+        setViewLogoutListener();
     }
 
     /** Sets the admin service used for reservation operations. */
     public void setAdminService(AdminService adminService) {
         this.adminService = adminService;
+    }
+
+    /** Sets the action used when the admin logs out from this dialog. */
+    public void setLogoutAction(Runnable logoutAction) {
+        this.logoutAction = logoutAction;
+    }
+
+    /** Sets the action used to show the current parking status after creation. */
+    public void setParkingStatusDisplayAction(Runnable parkingStatusDisplayAction) {
+        this.parkingStatusDisplayAction = parkingStatusDisplayAction;
     }
 
     /** Clears the table, loads all spaces, and makes the view visible. */
@@ -58,13 +73,7 @@ public class AdminController {
         if (SwingUtilities.isEventDispatchThread()) {
             loadSpaces();
         } else {
-            SwingUtilities.invokeLater(new Runnable() {
-                /** Reloads the admin view on the EDT. */
-                @Override
-                public void run() {
-                    loadSpaces();
-                }
-            });
+            SwingUtilities.invokeLater(() -> loadSpaces());
         }
     }
 
@@ -77,21 +86,23 @@ public class AdminController {
      */
     public void createSpace(int floor, VehicleType type) {
         setLoading(true);
-        new SwingWorker<Void, Void>() {
+        new SwingWorker<ParkingSpace, Void>() {
             /** Creates the space away from the EDT. */
             @Override
-            protected Void doInBackground() throws Exception {
+            protected ParkingSpace doInBackground() throws Exception {
                 ParkingSpace space = new ParkingSpace(null, floor, type, false, false, null, null);
                 createParkingSpace(space);
-                return null;
+                return space;
             }
 
             /** Refreshes the view after the create operation finishes. */
             @Override
             protected void done() {
                 try {
-                    get();
+                    ParkingSpace createdSpace = get();
+                    showInfo("Parking space \"" + createdSpace.getId() + "\" was created successfully.");
                     loadSpaces();
+                    showParkingStatusView();
                 } catch (InterruptedException | ExecutionException e) {
                     setLoading(false);
                     Throwable cause = e.getCause();
@@ -99,6 +110,12 @@ public class AdminController {
                 }
             }
         }.execute();
+    }
+
+    /** Clears admin management state when the active user session ends. */
+    public void clearSessionState() {
+        spacesLoadId++;
+        clearAdminViewSessionState();
     }
 
     /**
@@ -149,23 +166,24 @@ public class AdminController {
      */
     public void deleteSpace(String code) {
         setLoading(true);
-        new SwingWorker<Void, Void>() {
+        new SwingWorker<DeleteParkingSpaceResult, Void>() {
             /** Deletes the space away from the EDT. */
             @Override
-            protected Void doInBackground() throws Exception {
+            protected DeleteParkingSpaceResult doInBackground() throws Exception {
                 if (adminService == null) {
                     throw new IllegalStateException("Admin service is not available.");
                 }
-                deleteParkingSpace(code);
-                return null;
+                return deleteParkingSpace(code);
             }
 
             /** Refreshes the view after the delete operation finishes. */
             @Override
             protected void done() {
                 try {
-                    get();
+                    DeleteParkingSpaceResult result = get();
+                    showInfo(buildDeleteSpaceMessage(result));
                     loadSpaces();
+                    notifyParkingStatusChanged();
                 } catch (InterruptedException | ExecutionException e) {
                     setLoading(false);
                     Throwable cause = e.getCause();
@@ -238,7 +256,12 @@ public class AdminController {
 
     /** Sets this controller on the admin view. */
     private void setViewController() {
-        adminView.setController(this);
+        adminView.setActions(this);
+    }
+
+    /** Connects the dialog logout button to this controller. */
+    private void setViewLogoutListener() {
+        adminView.addLogoutListener(e -> logoutIfConfirmed());
     }
 
     /** Clears the parking-space table. */
@@ -249,6 +272,19 @@ public class AdminController {
     /** Makes the admin view visible. */
     private void showAdminView() {
         adminView.setVisible(true);
+    }
+
+    /** Clears user-related data from the admin management view. */
+    private void clearAdminViewSessionState() {
+        adminView.clearSessionViewState();
+    }
+
+    /** Logs out from the admin dialog after confirmation. */
+    private void logoutIfConfirmed() {
+        if (logoutAction != null && adminView.confirmLogout()) {
+            adminView.dispose();
+            logoutAction.run();
+        }
     }
 
     /** Checks whether the admin view is visible. */
@@ -264,6 +300,11 @@ public class AdminController {
     /** Shows an error in the admin view. */
     private void showError(String message) {
         adminView.showError(message);
+    }
+
+    /** Shows an information message in the admin view. */
+    private void showInfo(String message) {
+        adminView.showInfo(message);
     }
 
     /** Creates a parking space through the parking service. */
@@ -282,8 +323,8 @@ public class AdminController {
     }
 
     /** Deletes a parking space through the admin service. */
-    private void deleteParkingSpace(String code) {
-        adminService.deleteParkingSpace(code);
+    private DeleteParkingSpaceResult deleteParkingSpace(String code) {
+        return adminService.deleteParkingSpace(code);
     }
 
     /** Loads all parking spaces through the parking service. */
@@ -309,6 +350,37 @@ public class AdminController {
     /** Closes edit dialogs that are no longer valid. */
     private void closeActiveEditDialogIfTargetUnavailable() {
         adminView.closeActiveEditDialogIfTargetUnavailable();
+    }
+
+    /** Shows the parking status view after a space is created. */
+    private void showParkingStatusView() {
+        if (parkingStatusDisplayAction != null) {
+            parkingStatusDisplayAction.run();
+        }
+    }
+
+    /** Refreshes related parking screens after a space deletion. */
+    private void notifyParkingStatusChanged() {
+        if (parkingStatusDisplayAction != null) {
+            parkingStatusDisplayAction.run();
+        }
+    }
+
+    /** Builds the admin message shown after deleting a parking space. */
+    private String buildDeleteSpaceMessage(DeleteParkingSpaceResult result) {
+        String message = "Parking space \"" + result.getDeletedSpaceCode() + "\" was deleted.";
+
+        if (!result.hasAffectedReservation()) {
+            return message;
+        }
+
+        if (result.isReservationCancelled()) {
+            return message + "\nReservation for plate \"" + result.getAffectedPlate()
+                    + "\" was cancelled because no similar vacant space was available.";
+        }
+
+        return message + "\nReservation for plate \"" + result.getAffectedPlate()
+                + "\" was moved to space \"" + result.getNewSpaceCode() + "\".";
     }
 
 }

@@ -1,5 +1,6 @@
 package Presentation.Controllers;
 
+import Business.Entities.OccupancyRecord;
 import Business.Services.StatisticsService;
 import Presentation.Views.OccupancyChartView;
 
@@ -32,14 +33,40 @@ public class StatisticsController {
     // DB query on background thread, the chart updates back on the EDT.
     /** Loads chart data from the service and updates the view. */
     public void loadChartData() {
-        new SwingWorker<List<Integer>, Void>() {
+        new SwingWorker<List<OccupancyRecord>, Void>() {
             /** Loads chart values away from the EDT. */
             @Override
-            protected List<Integer> doInBackground() {
+            protected List<OccupancyRecord> doInBackground() {
                 return loadLastHourData();
             }
 
             /** Updates the chart after data has loaded. */
+            @Override
+            protected void done() {
+                try {
+                    updateChartWith(get());
+                } catch (InterruptedException | ExecutionException e) {
+                    logChartLoadFailure(e);
+                }
+            }
+        }.execute();
+    }
+
+    /** Records the current occupancy and refreshes the chart if it is visible. */
+    public void recordAndRefreshVisibleChart() {
+        if (!isChartVisible()) {
+            return;
+        }
+
+        new SwingWorker<List<OccupancyRecord>, Void>() {
+            /** Records the latest occupancy and reloads the chart data away from the EDT. */
+            @Override
+            protected List<OccupancyRecord> doInBackground() {
+                recordCurrentOccupancy();
+                return loadLastHourData();
+            }
+
+            /** Updates the chart after the real-time occupancy refresh. */
             @Override
             protected void done() {
                 try {
@@ -70,14 +97,29 @@ public class StatisticsController {
         stopRefreshTimer();
     }
 
+    /** Stops chart timers when a user session ends. */
+    public void clearSessionState() {
+        stopTracking();
+    }
+
     /** Loads occupancy values through the statistics service. */
-    private List<Integer> loadLastHourData() {
+    private List<OccupancyRecord> loadLastHourData() {
         return statisticsService.getLastHourData();
     }
 
     /** Sends loaded chart data to the view. */
-    private void updateChartWith(List<Integer> data) {
+    private void updateChartWith(List<OccupancyRecord> data) {
         chartView.updateChart(data);
+    }
+
+    /** Records the current number of occupied spaces through the statistics service. */
+    private void recordCurrentOccupancy() {
+        statisticsService.recordOccupancy();
+    }
+
+    /** Checks whether the chart is currently visible to the user. */
+    private boolean isChartVisible() {
+        return chartView != null && chartView.isVisible();
     }
 
     /** Logs a chart loading error. */

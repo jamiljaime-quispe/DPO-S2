@@ -25,7 +25,7 @@ public class UserDAOImpl implements UserDAO {
     @Override
     public void save(User user) {
         String sql = "INSERT INTO user (username, email, password, isAdmin) VALUES (?, ?, ?, ?)";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, user.getUsername());
             ps.setString(2, user.getEmail());
             ps.setString(3, user.getPassword());
@@ -45,7 +45,7 @@ public class UserDAOImpl implements UserDAO {
     @Override
     public User findById(int id) {
         String sql = "SELECT * FROM user WHERE userId = ?";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next())
@@ -61,7 +61,7 @@ public class UserDAOImpl implements UserDAO {
     @Override
     public User findByUsername(String username) {
         String sql = "SELECT * FROM user WHERE username = ?";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, username);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next())
@@ -77,7 +77,7 @@ public class UserDAOImpl implements UserDAO {
     @Override
     public User findByEmail(String email) {
         String sql = "SELECT * FROM user WHERE email = ?";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next())
@@ -93,7 +93,7 @@ public class UserDAOImpl implements UserDAO {
     @Override
     public void delete(int id) {
         String sql = "DELETE FROM user WHERE userId = ?";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setInt(1, id);
             ps.executeUpdate();
         } catch (SQLException e) {
@@ -105,7 +105,7 @@ public class UserDAOImpl implements UserDAO {
     @Override
     public void update(User user) {
         String sql = "UPDATE user SET username = ?, email = ?, password = ?, isAdmin = ? WHERE userId = ?";
-        try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
             ps.setString(1, user.getUsername());
             ps.setString(2, user.getEmail());
             ps.setString(3, user.getPassword());
@@ -131,5 +131,10 @@ public class UserDAOImpl implements UserDAO {
         } else {
             return new Client(id, username, email, password, userType, new ArrayList<>());
         }
+    }
+
+    /** Gets the database connection through this DAO's database manager. */
+    private java.sql.Connection getConnection() {
+        return db.getConnection();
     }
 }

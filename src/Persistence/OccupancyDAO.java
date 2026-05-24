@@ -1,5 +1,7 @@
 package Persistence;
 
+import Business.Entities.OccupancyRecord;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -19,7 +21,7 @@ public interface OccupancyDAO {
     /**
      * Retrieves occupancy records from the last hour ordered from oldest to newest.
      *
-     * @return list of occupied-space counts; may be empty
+     * @return list of occupancy records; may be empty
      */
-    List<Integer> getLastHourData();
+    List<OccupancyRecord> getLastHourData();
 }

@@ -17,6 +17,7 @@ import java.util.Random;
  */
 public class SimulationService implements Runnable {
 	private static final int CHAOS_MODE_DELAY_MS = 1000;
+	private static final String SIMULATED_PLATE_PREFIX = "SIM-";
 
 	private ParkingService parkingService;
 	private Config config;
@@ -53,6 +54,7 @@ public class SimulationService implements Runnable {
 	/** Runs the background simulation loop. */
 	@Override
 	public void run() {
+		loadExistingSimulatedVehiclesSafely();
 		while (running) {
 			try {
 				simulateStep();
@@ -161,12 +163,12 @@ public class SimulationService implements Runnable {
 	 */
 	public String generateRandomPlate() {
 		for (int attempt = 0; attempt < 1000; attempt++) {
-			String candidate = "SIM-" + String.format("%04d", randomInt(10000));
+			String candidate = SIMULATED_PLATE_PREFIX + String.format("%04d", randomInt(10000));
 			if (isPlateAvailable(candidate)) return candidate;
 		}
 
 		while (true) {
-			String candidate = "SIM-" + System.nanoTime() + "-" + randomInt(10000);
+			String candidate = SIMULATED_PLATE_PREFIX + System.nanoTime() + "-" + randomInt(10000);
 			if (isPlateAvailable(candidate)) return candidate;
 		}
 	}
@@ -243,6 +245,45 @@ public class SimulationService implements Runnable {
 	/** Adds a vehicle to the simulated vehicle list. */
 	private void addSimulatedVehicle(Vehicle vehicle) {
 		simulatedVehicles.add(vehicle);
+	}
+
+	/** Loads parked simulated vehicles without stopping the simulation if loading fails. */
+	private void loadExistingSimulatedVehiclesSafely() {
+		try {
+			loadExistingSimulatedVehicles();
+		} catch (RuntimeException e) {
+			String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+			notifyParkingStatusChanged("[SIM] Error loading existing simulated vehicles: " + message);
+		}
+	}
+
+	/** Rebuilds the simulated vehicle list from currently parked SIM plates in the database. */
+	private void loadExistingSimulatedVehicles() {
+		clearSimulatedVehicles();
+		List<ParkingSpace> spaces = loadAllSpaces();
+		for (ParkingSpace space : spaces) {
+			if (isOccupiedBySimulatedVehicle(space)) {
+				addSimulatedVehicle(space.getParkedVehicle());
+			}
+		}
+	}
+
+	/** Clears the in-memory list of parked simulated vehicles. */
+	private void clearSimulatedVehicles() {
+		simulatedVehicles.clear();
+	}
+
+	/** Checks whether a parking space is occupied by a simulated vehicle. */
+	private boolean isOccupiedBySimulatedVehicle(ParkingSpace space) {
+		if (space == null || !space.isOccupied() || space.getParkedVehicle() == null) {
+			return false;
+		}
+		return isSimulatedPlate(space.getParkedVehicle().getLicensePlate());
+	}
+
+	/** Checks whether a plate belongs to a simulated vehicle. */
+	private boolean isSimulatedPlate(String plate) {
+		return plate != null && plate.startsWith(SIMULATED_PLATE_PREFIX);
 	}
 
 	/** Checks whether there are no simulated vehicles parked. */

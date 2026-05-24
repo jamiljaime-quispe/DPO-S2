@@ -155,20 +155,24 @@ public class AuthController {
     public void logout() {
         LOGGER.info("Logging out.");
 
-        // 1. Clear session state from memory
+        // 1. Clear controller/view data that could still contain the previous user.
+        clearMainSessionState();
+
+        // 2. Clear session state from the business service.
         clearUserSession();
 
-        // 2. Reset and hide the Main Menu
+        // 3. Reset and hide the Main Menu.
         resetMainMenuContent();
         hideMainMenuView();
 
-        // 2. Clear the old login data for security reasons
+        // 4. Clear old form data for security reasons.
         clearLoginFields();
+        clearSignupForm();
 
-        // 3. Reset the Login View (just in case it was left in a "Connecting..." state)
+        // 5. Reset the Login View in case it was left in a loading state.
         setLoginLoading(false);
 
-        // 4. Show the Login View
+        // 6. Show the Login View.
         showLoginView();
     }
 
@@ -328,7 +332,7 @@ public class AuthController {
                     } else {
                         showSignupError("Registration Failed", "Username or email already in use.");
                     }
-                } catch (Exception e) {
+                } catch (InterruptedException | ExecutionException e) {
                     showSignupError("Error", "Registration failed: " + e.getMessage());
                     logRegistrationFailure(e);
                 }
@@ -369,6 +373,13 @@ public class AuthController {
     /** Clears the logged-in user session. */
     private void clearUserSession() {
         userService.clearSession();
+    }
+
+    /** Clears all presentation state connected to the current session. */
+    private void clearMainSessionState() {
+        if (mainController != null) {
+            mainController.clearSessionState();
+        }
     }
 
     /** Checks whether reservation notifications are available. */
@@ -419,6 +430,7 @@ public class AuthController {
     /** Configures the main menu for the logged-in user. */
     private void configureMainMenu(int mode) {
         mainMenuView.setMode(mode, userService.getLastLoggedInUsername());
+        mainController.setMode(mode);
     }
 
     /** Shows the main menu on the EDT. */

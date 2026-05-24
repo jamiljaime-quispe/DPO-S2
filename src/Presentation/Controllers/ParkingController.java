@@ -33,6 +33,8 @@ public class ParkingController implements ParkingStatusChangeListener {
 	private AdminService adminService;
 	private AdminController adminController;
 	private AdminSlotBookingController slotBookingController;
+	private StatisticsController statisticsController;
+	private Runnable logoutAction;
 	private boolean exitAllowed;
 	private volatile int parkingStatusLoadId;
 
@@ -45,88 +47,30 @@ public class ParkingController implements ParkingStatusChangeListener {
 	/** Refreshes visible parking screens and logs a simulation message. */
 	@Override
 	public void parkingStatusChanged(String message) {
-		runOnEventDispatchThread(new Runnable() {
-			/** Refreshes visible parking screens on the EDT. */
-			@Override
-			public void run() {
-				if (hasSimulationMessage(message)) {
-					logSimulationMessage(message);
-				}
-				if (isParkingStatusTableVisible()) {
-					loadParkingStatus();
-				}
-				refreshSpaceDetailsIfVisible();
-				if (hasAdminController()) {
-					refreshAdminControllerIfVisible();
-				}
-				if (hasSlotBookingController()) {
-					refreshSlotBookingControllerIfVisible();
-				}
-			}
-		});
+		runOnEventDispatchThread(() -> refreshVisibleParkingScreens(message));
 	}
 
-	private static class StatusRow {
-		private ParkingSpace space;
-		private boolean userParkedVehicle;
-
-		/** Stores one parking status row loaded for the table. */
-		private StatusRow(ParkingSpace space, boolean userParkedVehicle) {
-			this.space = space;
-			this.userParkedVehicle = userParkedVehicle;
+	/**
+	 * Refreshes only the parking screens that are visible after a parking change.
+	 *
+	 * @param message optional simulation message
+	 */
+	private void refreshVisibleParkingScreens(String message) {
+		if (hasSimulationMessage(message)) {
+			logSimulationMessage(message);
 		}
-	}
-
-	private enum EntryStatus {
-		NEEDS_VEHICLE_TYPE,
-		ASSIGNED_FROM_RESERVATION,
-		ASSIGNED_WITHOUT_RESERVATION,
-		ALREADY_PARKED,
-		NO_SPACE,
-		ERROR
-	}
-
-	private static class EntryResult {
-		private final EntryStatus status;
-		private final ParkingSpace space;
-		private final String message;
-
-		/** Stores the result of a parking entry attempt. */
-		private EntryResult(EntryStatus status, ParkingSpace space, String message) {
-			this.status = status;
-			this.space = space;
-			this.message = message;
+		if (isParkingStatusTableVisible()) {
+			loadParkingStatus();
 		}
-
-		/** Creates a result that asks the user for vehicle type. */
-		private static EntryResult needsVehicleType() {
-			return new EntryResult(EntryStatus.NEEDS_VEHICLE_TYPE, null, null);
+		refreshSpaceDetailsIfVisible();
+		if (hasAdminController()) {
+			refreshAdminControllerIfVisible();
 		}
-
-		/** Creates a result for a reserved-space entry. */
-		private static EntryResult assignedFromReservation(ParkingSpace space) {
-			return new EntryResult(EntryStatus.ASSIGNED_FROM_RESERVATION, space, null);
+		if (hasSlotBookingController()) {
+			refreshSlotBookingControllerIfVisible();
 		}
-
-		/** Creates a result for an entry without reservation. */
-		private static EntryResult assignedWithoutReservation(ParkingSpace space) {
-			return new EntryResult(EntryStatus.ASSIGNED_WITHOUT_RESERVATION, space, null);
-		}
-
-		/** Creates a result for a vehicle that is already parked. */
-		private static EntryResult alreadyParked(ParkingSpace space) {
-			return new EntryResult(EntryStatus.ALREADY_PARKED, space, null);
-		}
-
-		/** Creates a result for a full compatible parking area. */
-		private static EntryResult noSpace(VehicleType type) {
-			return new EntryResult(EntryStatus.NO_SPACE, null,
-					"No vacant unreserved " + type.name() + " spaces are available.");
-		}
-
-		/** Creates a result for an entry error. */
-		private static EntryResult error(String message) {
-			return new EntryResult(EntryStatus.ERROR, null, message);
+		if (hasStatisticsController()) {
+			recordAndRefreshVisibleChart();
 		}
 	}
 
@@ -151,7 +95,7 @@ public class ParkingController implements ParkingStatusChangeListener {
 
 		showParkingSlotsTable();
 
-		SwingWorker<Set<String>, StatusRow> worker = new SwingWorker<Set<String>, StatusRow>() {
+		SwingWorker<Set<String>, ParkingStatusRow> worker = new SwingWorker<Set<String>, ParkingStatusRow>() {
 			/** Loads parking status rows away from the EDT. */
 			@Override
 			protected Set<String> doInBackground() {
@@ -169,7 +113,7 @@ public class ParkingController implements ParkingStatusChangeListener {
 				for (ParkingSpace space : spaces) {
 					loadedCodes.add(space.getId());
 					if (loadId == parkingStatusLoadId) {
-						publish(new StatusRow(space, userParkedCodes.contains(space.getId())));
+						publish(new ParkingStatusRow(space, userParkedCodes.contains(space.getId())));
 					}
 				}
 
@@ -178,10 +122,10 @@ public class ParkingController implements ParkingStatusChangeListener {
 
 			/** Adds parking rows to the table on the EDT. */
 			@Override
-			protected void process(List<StatusRow> chunks) {
+			protected void process(List<ParkingStatusRow> chunks) {
 				if (loadId != parkingStatusLoadId) return;
 
-				for (StatusRow row : chunks) {
+				for (ParkingStatusRow row : chunks) {
 					addParkingStatusRow(row);
 				}
 			}
@@ -299,18 +243,18 @@ public class ParkingController implements ParkingStatusChangeListener {
 	private void checkReservationAndEnter(String plate) {
 		setParkingEntryLoading(true);
 
-		new SwingWorker<EntryResult, Void>() {
+		new SwingWorker<ParkingEntryResult, Void>() {
 			/** Processes reserved entry rules away from the EDT. */
 			@Override
-			protected EntryResult doInBackground() throws Exception {
+			protected ParkingEntryResult doInBackground() throws Exception {
 				ParkingSpace alreadyParked = findOccupiedSpaceByPlate(plate);
 				if (alreadyParked != null) {
-					return EntryResult.alreadyParked(alreadyParked);
+					return ParkingEntryResult.alreadyParked(alreadyParked);
 				}
 
 				Reservation reservation = findActiveReservationByPlate(plate);
 				if (reservation == null) {
-					return EntryResult.needsVehicleType();
+					return ParkingEntryResult.needsVehicleType();
 				}
 
 				ParkingSpace assignedSpace = handleUserVehicleEntry(
@@ -318,10 +262,10 @@ public class ParkingController implements ParkingStatusChangeListener {
 						plate,
 						resolveReservationVehicleType(reservation));
 				if (assignedSpace == null) {
-					return EntryResult.error("Could not occupy the reserved parking space.");
+					return ParkingEntryResult.error("Could not occupy the reserved parking space.");
 				}
 
-				return EntryResult.assignedFromReservation(assignedSpace);
+				return ParkingEntryResult.assignedFromReservation(assignedSpace);
 			}
 
 			/** Handles the reserved entry result on the EDT. */
@@ -341,13 +285,13 @@ public class ParkingController implements ParkingStatusChangeListener {
 	private void enterWithoutReservation(String plate, VehicleType type) {
 		setParkingEntryLoading(true);
 
-		new SwingWorker<EntryResult, Void>() {
+		new SwingWorker<ParkingEntryResult, Void>() {
 			/** Processes unreserved entry rules away from the EDT. */
 			@Override
-			protected EntryResult doInBackground() throws Exception {
+			protected ParkingEntryResult doInBackground() throws Exception {
 				ParkingSpace alreadyParked = findOccupiedSpaceByPlate(plate);
 				if (alreadyParked != null) {
-					return EntryResult.alreadyParked(alreadyParked);
+					return ParkingEntryResult.alreadyParked(alreadyParked);
 				}
 
 				ParkingSpace assignedSpace = handleUserVehicleEntry(
@@ -355,10 +299,10 @@ public class ParkingController implements ParkingStatusChangeListener {
 						plate,
 						type);
 				if (assignedSpace == null) {
-					return EntryResult.noSpace(type);
+					return ParkingEntryResult.noSpace(type);
 				}
 
-				return EntryResult.assignedWithoutReservation(assignedSpace);
+				return ParkingEntryResult.assignedWithoutReservation(assignedSpace);
 			}
 
 			/** Handles the unreserved entry result on the EDT. */
@@ -375,8 +319,8 @@ public class ParkingController implements ParkingStatusChangeListener {
 	}
 
 	/** Shows the correct next step for a parking entry result. */
-	private void handleEntryResult(String plate, EntryResult result) {
-		if (result.status == EntryStatus.NEEDS_VEHICLE_TYPE) {
+	private void handleEntryResult(String plate, ParkingEntryResult result) {
+		if (result.getStatus() == ParkingEntryStatus.NEEDS_VEHICLE_TYPE) {
 			VehicleType type = promptForVehicleType(plate);
 			if (type != null) {
 				enterWithoutReservation(plate, type);
@@ -384,23 +328,23 @@ public class ParkingController implements ParkingStatusChangeListener {
 			return;
 		}
 
-		if (result.status == EntryStatus.ASSIGNED_FROM_RESERVATION) {
-			showAssignedSpace("Access granted using your reservation.", result.space);
+		if (result.getStatus() == ParkingEntryStatus.ASSIGNED_FROM_RESERVATION) {
+			showAssignedSpace("Access granted using your reservation.", result.getSpace());
 			return;
 		}
 
-		if (result.status == EntryStatus.ASSIGNED_WITHOUT_RESERVATION) {
-			showAssignedSpace("Access granted.", result.space);
+		if (result.getStatus() == ParkingEntryStatus.ASSIGNED_WITHOUT_RESERVATION) {
+			showAssignedSpace("Access granted.", result.getSpace());
 			return;
 		}
 
-		if (result.status == EntryStatus.ALREADY_PARKED) {
+		if (result.getStatus() == ParkingEntryStatus.ALREADY_PARKED) {
 			showEntryError("Vehicle " + plate + " is already parked in space "
-					+ result.space.getId() + ".");
+					+ result.getSpace().getId() + ".");
 			return;
 		}
 
-		showEntryError(result.message);
+		showEntryError(result.getMessage());
 	}
 
 	/** Asks the main menu view for a vehicle type. */
@@ -412,6 +356,7 @@ public class ParkingController implements ParkingStatusChangeListener {
 	private void showAssignedSpace(String message, ParkingSpace space) {
 		showAssignedParkingEntry(message, space);
 		refreshExitButtonState();
+		parkingStatusChanged();
 	}
 
 	/** Shows a parking entry error. */
@@ -632,6 +577,27 @@ public class ParkingController implements ParkingStatusChangeListener {
 		this.slotBookingController = slotBookingController;
 	}
 
+	/** Sets the statistics controller to refresh visible chart data when parking changes. */
+	public void setStatisticsController(StatisticsController statisticsController) {
+		this.statisticsController = statisticsController;
+	}
+
+	/** Clears parking state when the active user session ends. */
+	public void clearSessionState() {
+		exitAllowed = false;
+		parkingStatusLoadId++;
+		if (mainMenuView != null) {
+			setParkingEntryButtonEnabled(false);
+			setParkingExitButtonEnabled(false);
+		}
+		clearSpaceDetailsSessionState();
+	}
+
+	/** Sets the action used when the user logs out from a parking dialog. */
+	public void setLogoutAction(Runnable logoutAction) {
+		this.logoutAction = logoutAction;
+	}
+
 	/** Runs a task on the Swing event thread. */
 	private void runOnEventDispatchThread(Runnable task) {
 		SwingUtilities.invokeLater(task);
@@ -672,6 +638,16 @@ public class ParkingController implements ParkingStatusChangeListener {
 		slotBookingController.refreshIfVisible();
 	}
 
+	/** Checks whether the statistics controller was connected in Main. */
+	private boolean hasStatisticsController() {
+		return statisticsController != null;
+	}
+
+	/** Records the latest occupancy and refreshes the chart if it is visible. */
+	private void recordAndRefreshVisibleChart() {
+		statisticsController.recordAndRefreshVisibleChart();
+	}
+
 	/** Shows the parking status table in the main menu. */
 	private void showParkingSlotsTable() {
 		mainMenuView.showParkingSlotsTable();
@@ -698,8 +674,8 @@ public class ParkingController implements ParkingStatusChangeListener {
 	}
 
 	/** Adds one loaded status row to the main menu table. */
-	private void addParkingStatusRow(StatusRow row) {
-		mainMenuView.addParkingSpaceToTable(row.space, row.userParkedVehicle);
+	private void addParkingStatusRow(ParkingStatusRow row) {
+		mainMenuView.addParkingSpaceToTable(row.getSpace(), row.isUserParkedVehicle());
 	}
 
 	/** Removes table rows that were not returned by the latest load. */
@@ -757,11 +733,25 @@ public class ParkingController implements ParkingStatusChangeListener {
 	private void createFreshDetailsView() {
 		parkingSpaceDetailsView = new ParkingSpaceDetailsView(mainMenuView);
 		setDetailsCancelReservationListener();
+		setDetailsLogoutListener();
 	}
 
 	/** Connects the details cancel button to this controller. */
 	private void setDetailsCancelReservationListener() {
 		parkingSpaceDetailsView.setCancelReservationListener(e -> cancelReservationFromDetails());
+	}
+
+	/** Connects the details logout button to this controller. */
+	private void setDetailsLogoutListener() {
+		parkingSpaceDetailsView.setLogoutListener(e -> logoutFromDetailsIfConfirmed());
+	}
+
+	/** Logs out from the details dialog after confirmation. */
+	private void logoutFromDetailsIfConfirmed() {
+		if (logoutAction != null && parkingSpaceDetailsView.confirmLogout()) {
+			parkingSpaceDetailsView.dispose();
+			logoutAction.run();
+		}
 	}
 
 	/** Displays details for a loaded parking space. */
@@ -821,12 +811,12 @@ public class ParkingController implements ParkingStatusChangeListener {
 
 	/** Enables or disables the entry button. */
 	private void setParkingEntryButtonEnabled(boolean enabled) {
-		mainMenuView.getParkingEntryButton().setEnabled(enabled);
+		mainMenuView.setParkingEntryButtonEnabled(enabled);
 	}
 
 	/** Enables or disables the exit button. */
 	private void setParkingExitButtonEnabled(boolean enabled) {
-		mainMenuView.getParkingExitButton().setEnabled(enabled);
+		mainMenuView.setParkingExitButtonEnabled(enabled);
 	}
 
 	/** Asks the user which parked vehicle should leave. */
@@ -873,6 +863,15 @@ public class ParkingController implements ParkingStatusChangeListener {
 	private void hideAndDisposeDetailsView(ParkingSpaceDetailsView detailsView) {
 		detailsView.setVisible(false);
 		detailsView.dispose();
+	}
+
+	/** Clears and closes parking-space details that may contain user data. */
+	private void clearSpaceDetailsSessionState() {
+		if (parkingSpaceDetailsView != null) {
+			parkingSpaceDetailsView.clearSessionViewState();
+			parkingSpaceDetailsView.dispose();
+			parkingSpaceDetailsView = null;
+		}
 	}
 
 	/** Rebuilds the main menu parking table panel. */

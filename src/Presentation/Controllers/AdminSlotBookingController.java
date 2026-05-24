@@ -8,6 +8,7 @@ import Business.Services.ParkingService;
 import Business.Services.ReservationService;
 import Business.Services.UserService;
 import Presentation.Views.AdminSlotBookingManagementView;
+import Presentation.Views.SlotBookingActions;
 
 import javax.swing.SwingWorker;
 import javax.swing.SwingUtilities;
@@ -21,7 +22,7 @@ import java.util.concurrent.ExecutionException;
  * Controller for the slot booking management view.
  * Supports both admin mode (manage all bookings) and user mode (manage own bookings).
  */
-public class AdminSlotBookingController {
+public class AdminSlotBookingController implements SlotBookingActions {
     private static final int ADMIN_MODE = 1;
     private static final int USER_MODE = 2;
 
@@ -30,21 +31,11 @@ public class AdminSlotBookingController {
     private AdminService adminService;
     private ReservationService reservationService;
     private UserService userService;
+    private Runnable logoutAction;
     private int currentMode = ADMIN_MODE;
     private volatile int bookingsLoadId;
     private String currentUserBookingPlate;
     private VehicleType currentUserBookingType;
-
-    private static class BookingRow {
-        private ParkingSpace space;
-        private boolean userBooking;
-
-        /** Stores one booking row loaded for the table. */
-        private BookingRow(ParkingSpace space, boolean userBooking) {
-            this.space = space;
-            this.userBooking = userBooking;
-        }
-    }
 
     /**
      * Constructs the controller and wires it to the given view.
@@ -64,6 +55,12 @@ public class AdminSlotBookingController {
         this.reservationService = reservationService;
         this.userService = userService;
         setViewController();
+        setViewLogoutListener();
+    }
+
+    /** Sets the action used when the user logs out from this dialog. */
+    public void setLogoutAction(Runnable logoutAction) {
+        this.logoutAction = logoutAction;
     }
 
     /**
@@ -92,13 +89,7 @@ public class AdminSlotBookingController {
         if (isEventDispatchThread()) {
             loadBookings();
         } else {
-            runOnEventDispatchThread(new Runnable() {
-                /** Reloads the booking view on the EDT. */
-                @Override
-                public void run() {
-                    loadBookings();
-                }
-            });
+            runOnEventDispatchThread(() -> loadBookings());
         }
     }
 
@@ -109,7 +100,6 @@ public class AdminSlotBookingController {
     public void loadBookings() {
         bookingsLoadId++;
         int loadId = bookingsLoadId;
-
         setLoading(true);
 
         int modeForLoad = currentMode;
@@ -120,53 +110,16 @@ public class AdminSlotBookingController {
             /** Loads booking rows away from the EDT. */
             @Override
             protected Set<String> doInBackground() {
-                List<ParkingSpace> spaces;
-                if (modeForLoad == USER_MODE && typeForLoad != null) {
-                    spaces = findAvailableSpaces(typeForLoad);
-                } else {
-                    spaces = loadAllSpaces();
-                }
-                Set<String> userBookingCodes = new HashSet<>();
-                List<ParkingSpace> orderedSpaces = new ArrayList<>();
-                Set<String> loadedCodes = new HashSet<>();
-
-                if (modeForLoad == USER_MODE && userId > 0) {
-                    List<Reservation> userReservations = getReservationsByUser(userId);
-                    for (Reservation reservation : userReservations) {
-                        if (!reservation.isActive()) {
-                            continue;
-                        }
-                        if (reservation.getParkingSpace() != null) {
-                            String code = reservation.getParkingSpace().getId();
-                            userBookingCodes.add(code);
-
-                            ParkingSpace matchingSpace = findSpaceByCode(spaces, code);
-                            if (matchingSpace != null) {
-                                orderedSpaces.add(matchingSpace);
-                            } else {
-                                orderedSpaces.add(reservation.getParkingSpace());
-                            }
-                        }
-                    }
-                }
-
-                for (ParkingSpace space : spaces) {
-                    if (!userBookingCodes.contains(space.getId())) {
-                        orderedSpaces.add(space);
-                    }
-                }
-
-                for (ParkingSpace space : orderedSpaces) {
-                    loadedCodes.add(space.getId());
+                BookingLoadData loadData = loadBookingRows(modeForLoad, userId, typeForLoad);
+                for (BookingRow row : loadData.getRows()) {
                     if (Thread.currentThread().isInterrupted()) {
                         break;
                     }
                     if (loadId == bookingsLoadId) {
-                        publish(new BookingRow(space, userBookingCodes.contains(space.getId())));
+                        publish(row);
                     }
                 }
-
-                return loadedCodes;
+                return loadData.getLoadedCodes();
             }
 
             /** Adds loaded booking rows to the table on the EDT. */
@@ -175,7 +128,7 @@ public class AdminSlotBookingController {
                 if (loadId != bookingsLoadId) return;
 
                 for (BookingRow row : chunks) {
-                    addBookingToTable(row.space, row.userBooking);
+                    addBookingToTable(row.getSpace(), row.isUserBooking());
                 }
             }
 
@@ -186,16 +139,7 @@ public class AdminSlotBookingController {
 
                 try {
                     Set<String> loadedCodes = get();
-                    removeBookingSpacesNotIn(loadedCodes);
-                    closeActiveBookingDialogIfTargetUnavailable();
-                    closeActiveCancelDialogIfTargetUnavailable();
-                    if (modeForLoad == USER_MODE && userId > 0) {
-                        List<Reservation> active = new ArrayList<>();
-                        for (Reservation r : getReservationsByUser(userId)) {
-                            if (r.isActive()) active.add(r);
-                        }
-                        updateReservationsTable(active);
-                    }
+                    finishBookingsLoad(loadedCodes, modeForLoad, userId);
                 } catch (InterruptedException | ExecutionException e) {
                     showError("Failed to load slot bookings: " + e.getMessage());
                 } finally {
@@ -203,6 +147,122 @@ public class AdminSlotBookingController {
                 }
             }
         }.execute();
+    }
+
+    /** Loads and orders booking rows for one refresh. */
+    private BookingLoadData loadBookingRows(int modeForLoad, int userId, VehicleType typeForLoad) {
+        List<ParkingSpace> spaces = loadSpacesForBookingMode(modeForLoad, typeForLoad);
+        List<Reservation> userReservations = loadUserReservationsForMode(modeForLoad, userId);
+        Set<String> userBookingCodes = collectUserBookingCodes(userReservations);
+        List<ParkingSpace> orderedSpaces = orderSpacesForDisplay(spaces, userBookingCodes, userReservations);
+        return new BookingLoadData(
+                collectLoadedCodes(orderedSpaces),
+                buildBookingRows(orderedSpaces, userBookingCodes));
+    }
+
+    /** Loads the spaces that should be shown for the current booking mode. */
+    private List<ParkingSpace> loadSpacesForBookingMode(int modeForLoad, VehicleType typeForLoad) {
+        if (modeForLoad == USER_MODE && typeForLoad != null) {
+            return findAvailableSpaces(typeForLoad);
+        }
+        return loadAllSpaces();
+    }
+
+    /** Loads reservations only when the current refresh belongs to a regular user. */
+    private List<Reservation> loadUserReservationsForMode(int modeForLoad, int userId) {
+        if (modeForLoad == USER_MODE && userId > 0) {
+            return getReservationsByUser(userId);
+        }
+        return new ArrayList<>();
+    }
+
+    /** Collects active reservation space codes for the current user. */
+    private Set<String> collectUserBookingCodes(List<Reservation> userReservations) {
+        Set<String> userBookingCodes = new HashSet<>();
+        for (Reservation reservation : userReservations) {
+            if (reservation.isActive() && reservation.getParkingSpace() != null) {
+                userBookingCodes.add(reservation.getParkingSpace().getId());
+            }
+        }
+        return userBookingCodes;
+    }
+
+    /** Orders own reservations first, then every other visible space. */
+    private List<ParkingSpace> orderSpacesForDisplay(List<ParkingSpace> spaces, Set<String> userBookingCodes,
+                                                     List<Reservation> userReservations) {
+        List<ParkingSpace> orderedSpaces = new ArrayList<>();
+        addUserReservationSpaces(orderedSpaces, spaces, userReservations);
+        addRemainingSpaces(orderedSpaces, spaces, userBookingCodes);
+        return orderedSpaces;
+    }
+
+    /** Adds the current user's active reservation spaces at the top of the table. */
+    private void addUserReservationSpaces(List<ParkingSpace> orderedSpaces, List<ParkingSpace> spaces,
+                                          List<Reservation> userReservations) {
+        for (Reservation reservation : userReservations) {
+            if (reservation.isActive() && reservation.getParkingSpace() != null) {
+                ParkingSpace matchingSpace = findSpaceByCode(spaces, reservation.getParkingSpace().getId());
+                orderedSpaces.add(matchingSpace != null ? matchingSpace : reservation.getParkingSpace());
+            }
+        }
+    }
+
+    /** Clears booking state when the active user session ends. */
+    public void clearSessionState() {
+        bookingsLoadId++;
+        clearCurrentMode();
+        currentUserBookingPlate = null;
+        currentUserBookingType = null;
+        clearBookingViewSessionState();
+    }
+
+    /** Adds every non-user-reservation space after the user's own bookings. */
+    private void addRemainingSpaces(List<ParkingSpace> orderedSpaces, List<ParkingSpace> spaces,
+                                    Set<String> userBookingCodes) {
+        for (ParkingSpace space : spaces) {
+            if (!userBookingCodes.contains(space.getId())) {
+                orderedSpaces.add(space);
+            }
+        }
+    }
+
+    /** Collects the parking space codes loaded by the worker. */
+    private Set<String> collectLoadedCodes(List<ParkingSpace> orderedSpaces) {
+        Set<String> loadedCodes = new HashSet<>();
+        for (ParkingSpace space : orderedSpaces) {
+            loadedCodes.add(space.getId());
+        }
+        return loadedCodes;
+    }
+
+    /** Builds the table row objects published by the worker. */
+    private List<BookingRow> buildBookingRows(List<ParkingSpace> orderedSpaces, Set<String> userBookingCodes) {
+        List<BookingRow> rows = new ArrayList<>();
+        for (ParkingSpace space : orderedSpaces) {
+            rows.add(new BookingRow(space, userBookingCodes.contains(space.getId())));
+        }
+        return rows;
+    }
+
+    /** Applies the final state of a booking table refresh. */
+    private void finishBookingsLoad(Set<String> loadedCodes, int modeForLoad, int userId) {
+        removeBookingSpacesNotIn(loadedCodes);
+        closeActiveBookingDialogIfTargetUnavailable();
+        closeActiveCancelDialogIfTargetUnavailable();
+        if (modeForLoad == USER_MODE && userId > 0) {
+            updateReservationsTable(collectActiveReservations(userId));
+        }
+    }
+
+    /** Gets only active reservations for the current user's reservation tab. */
+    private List<Reservation> collectActiveReservations(int userId) {
+        List<Reservation> active = new ArrayList<>();
+        for (Reservation reservation : getReservationsByUser(userId)) {
+            if (reservation.isActive()) {
+                active.add(reservation);
+            }
+        }
+        return active;
     }
 
     /**
@@ -390,7 +450,20 @@ public class AdminSlotBookingController {
 
     /** Sets this controller on the booking view. */
     private void setViewController() {
-        bookingView.setController(this);
+        bookingView.setActions(this);
+    }
+
+    /** Connects the booking dialog logout button to this controller. */
+    private void setViewLogoutListener() {
+        bookingView.addLogoutListener(e -> logoutIfConfirmed());
+    }
+
+    /** Logs out from the booking dialog after confirmation. */
+    private void logoutIfConfirmed() {
+        if (logoutAction != null && bookingView.confirmLogout()) {
+            bookingView.dispose();
+            logoutAction.run();
+        }
     }
 
     /** Sets the booking view mode. */
@@ -411,6 +484,16 @@ public class AdminSlotBookingController {
     /** Shows the booking view. */
     private void showBookingView() {
         bookingView.setVisible(true);
+    }
+
+    /** Clears user-related data from the booking view. */
+    private void clearBookingViewSessionState() {
+        bookingView.clearSessionViewState();
+    }
+
+    /** Resets the mode so this controller keeps no role from the previous session. */
+    private void clearCurrentMode() {
+        currentMode = ADMIN_MODE;
     }
 
     /** Checks whether the booking view is visible. */
