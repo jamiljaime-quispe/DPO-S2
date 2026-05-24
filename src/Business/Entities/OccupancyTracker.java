@@ -5,8 +5,12 @@ import java.util.List;
 import java.util.Queue;
 
 /**
- * Tracks parking occupancy over time using a bounded queue.
- * Holds up to {@code maxHistorySize} entries (one per minute, 60 for the last hour).
+ * Tracks parking occupancy over time using a bounded queue. Holds up to {@code maxHistorySize} entries (one
+ * per minute, 60 for the last hour).
+ * <p>
+ * The class stores project data in a clear object so the services, controllers, and persistence code can
+ * pass the same information around safely.
+ * </p>
  */
 public class OccupancyTracker {
 	private Queue<Integer> occupancyHistory;
@@ -14,9 +18,13 @@ public class OccupancyTracker {
 
 	/**
 	 * Constructs a new OccupancyTracker.
+	 * <p>
+	 * The constructor receives the objects or values this class needs and stores them before the rest of the
+	 * methods are used.
+	 * </p>
 	 *
 	 * @param occupancyHistory the backing queue (typically a LinkedList)
-	 * @param maxHistory       the maximum number of entries to retain
+	 * @param maxHistory the maximum number of entries to retain
 	 */
 	public OccupancyTracker(Queue<Integer> occupancyHistory, int maxHistory) {
 		this.occupancyHistory = occupancyHistory;
@@ -24,8 +32,12 @@ public class OccupancyTracker {
 	}
 
 	/**
-	 * Records a new occupancy count.
-	 * If the queue is full, the oldest entry is removed before adding the new one.
+	 * Records a new occupancy count. If the queue is full, the oldest entry is removed before adding the new
+	 * one.
+	 * <p>
+	 * This helper keeps the step named and separate, which makes the larger operation easier to read and
+	 * follow.
+	 * </p>
 	 *
 	 * @param count the number of currently occupied spaces
 	 */
@@ -36,26 +48,4 @@ public class OccupancyTracker {
 		occupancyHistory.offer(count);
 	}
 
-	/**
-	 * Gets the full occupancy history ordered from oldest to newest.
-	 *
-	 * @return an ordered list of all recorded occupancy values
-	 */
-	public List<Integer> getHistory() {
-		return new ArrayList<>(occupancyHistory);
-	}
-
-	/**
-	 * Gets the most recently recorded occupancy count.
-	 *
-	 * @return the most recent occupancy count, or 0 if no data has been recorded
-	 */
-	public int getCurrentOccupancy() {
-		if (occupancyHistory.isEmpty()) return 0;
-		int last = 0;
-		for (int value : occupancyHistory) {
-			last = value;
-		}
-		return last;
-	}
 }

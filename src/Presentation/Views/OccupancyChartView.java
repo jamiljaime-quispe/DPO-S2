@@ -20,6 +20,10 @@ import java.util.List;
 
 /**
  * Panel that displays a bar chart of parking occupancy over the last hour.
+ * <p>
+ * The view builds or updates Swing components and leaves the decisions to controllers and services. This
+ * keeps the screen code focused on what the user sees.
+ * </p>
  */
 public class OccupancyChartView extends JPanel {
     private static final int REFRESH_INTERVAL_SECONDS = 60;
@@ -30,11 +34,23 @@ public class OccupancyChartView extends JPanel {
     private Timer countdownTimer;
     private int secondsLeft = REFRESH_INTERVAL_SECONDS;
 
-    /** Creates the occupancy chart panel. */
+    /**
+     * Creates the occupancy chart panel.
+     * <p>
+     * The constructor receives the objects or values this class needs and stores them before the rest of
+     * the methods are used.
+     * </p>
+     */
     public OccupancyChartView() {
     }
 
-    /** Builds the chart panel. */
+    /**
+     * Handles init components.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     public void initComponents() {
         setLayout(new BorderLayout(0, 8));
         setBackground(Color.WHITE);
@@ -53,7 +69,11 @@ public class OccupancyChartView extends JPanel {
     }
 
     /**
-     * Adds a listener to the button that returns to the main menu.
+     * Adds back listener.
+     * <p>
+     * This connects a Swing action with the code that should run when the user clicks a button or interacts
+     * with the screen.
+     * </p>
      *
      * @param listener action to run when the back button is clicked
      */
@@ -62,7 +82,10 @@ public class OccupancyChartView extends JPanel {
     }
 
     /**
-     * Updates the chart values.
+     * Updates chart.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
      *
      * @param data occupancy values to show
      */
@@ -76,7 +99,11 @@ public class OccupancyChartView extends JPanel {
     }
 
     /**
-     * Creates the header that contains the back button, title, and countdown.
+     * Creates header panel.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
      *
      * @return configured header panel
      */
@@ -94,7 +121,11 @@ public class OccupancyChartView extends JPanel {
     }
 
     /**
-     * Creates the panel that holds the back button.
+     * Creates back corner.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
      *
      * @return configured corner panel
      */
@@ -106,7 +137,11 @@ public class OccupancyChartView extends JPanel {
     }
 
     /**
-     * Creates the chart title label.
+     * Creates title label.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
      *
      * @return configured title label
      */
@@ -118,7 +153,11 @@ public class OccupancyChartView extends JPanel {
     }
 
     /**
-     * Creates the countdown label.
+     * Creates countdown label.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
      *
      * @return configured countdown label
      */
@@ -130,7 +169,11 @@ public class OccupancyChartView extends JPanel {
     }
 
     /**
-     * Creates the panel that holds the countdown label.
+     * Creates countdown corner.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
      *
      * @return configured corner panel
      */
@@ -142,7 +185,11 @@ public class OccupancyChartView extends JPanel {
     }
 
     /**
-     * Creates the compact back button for the chart panel.
+     * Creates back box button.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
      *
      * @return configured back button
      */
@@ -162,7 +209,11 @@ public class OccupancyChartView extends JPanel {
     }
 
     /**
-     * Creates the chart drawing panel.
+     * Creates chart panel.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
      *
      * @return chart drawing panel
      */
@@ -171,7 +222,11 @@ public class OccupancyChartView extends JPanel {
     }
 
     /**
-     * Creates the countdown timer used by the chart header.
+     * Creates countdown timer.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
      *
      * @return configured timer
      */
@@ -179,7 +234,12 @@ public class OccupancyChartView extends JPanel {
         return new Timer(1_000, event -> updateCountdownLabel());
     }
 
-    /** Decreases and redraws the countdown label. */
+    /**
+     * Updates countdown label.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
+     */
     private void updateCountdownLabel() {
         secondsLeft--;
 
@@ -189,7 +249,13 @@ public class OccupancyChartView extends JPanel {
         countdownLabel.setText("Next update in " + secondsLeft + "s");
     }
 
-    /** Restores the countdown label to the full interval. */
+    /**
+     * Handles reset countdown label.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     private void resetCountdownLabel() {
         secondsLeft = REFRESH_INTERVAL_SECONDS;
         if (countdownLabel != null) {
@@ -198,7 +264,10 @@ public class OccupancyChartView extends JPanel {
     }
 
     /**
-     * Converts null chart data to an empty list.
+     * Gets the safe chart data.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
      *
      * @param data source chart data
      * @return data that can safely be passed to the chart panel

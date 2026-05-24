@@ -1,8 +1,12 @@
 package Business.Entities;
 
 /**
- * Represents a single parking space in the lot.
- * The {@code id} field maps to the {@code code} column in the database.
+ * Represents a single parking space in the lot. The {@code id} field maps to the {@code code} column in the
+ * database.
+ * <p>
+ * The class stores project data in a clear object so the services, controllers, and persistence code can
+ * pass the same information around safely.
+ * </p>
  */
 public class ParkingSpace {
 	private String id;
@@ -15,14 +19,18 @@ public class ParkingSpace {
 
 	/**
 	 * Constructs a new ParkingSpace.
+	 * <p>
+	 * The constructor receives the objects or values this class needs and stores them before the rest of the
+	 * methods are used.
+	 * </p>
 	 *
-	 * @param id            the unique space code (e.g. "A-01")
-	 * @param floor         the floor number where the space is located
-	 * @param vehicleType   the type of vehicle this space accepts
-	 * @param occupied      whether a vehicle is currently parked here
-	 * @param reserved      whether the space has an active reservation
+	 * @param ID the unique space code (e.g. "A-01")
+	 * @param floor the floor number where the space is located
+	 * @param vehicleType the type of vehicle this space accepts
+	 * @param occupied whether a vehicle is currently parked here
+	 * @param reserved whether the space has an active reservation
 	 * @param parkedVehicle the vehicle currently parked, or null
-	 * @param reservation   the active reservation for this space, or null
+	 * @param reservation the active reservation for this space, or null
 	 */
 	public ParkingSpace(String id, int floor, VehicleType vehicleType, boolean occupied, boolean reserved,
 			Vehicle parkedVehicle, Reservation reservation) {
@@ -37,6 +45,9 @@ public class ParkingSpace {
 
 	/**
 	 * Gets the space code.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the space code
 	 */
@@ -46,6 +57,9 @@ public class ParkingSpace {
 
 	/**
 	 * Gets the floor number.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the floor number
 	 */
@@ -55,6 +69,9 @@ public class ParkingSpace {
 
 	/**
 	 * Gets the vehicle type this space accepts.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the vehicle type
 	 */
@@ -64,6 +81,10 @@ public class ParkingSpace {
 
 	/**
 	 * Returns whether a vehicle is currently parked here.
+	 * <p>
+	 * This helper keeps the step named and separate, which makes the larger operation easier to read and
+	 * follow.
+	 * </p>
 	 *
 	 * @return true if a vehicle is currently parked here
 	 */
@@ -73,6 +94,10 @@ public class ParkingSpace {
 
 	/**
 	 * Returns whether the space has an active reservation.
+	 * <p>
+	 * This helper keeps the step named and separate, which makes the larger operation easier to read and
+	 * follow.
+	 * </p>
 	 *
 	 * @return true if the space has an active reservation
 	 */
@@ -82,6 +107,9 @@ public class ParkingSpace {
 
 	/**
 	 * Gets the vehicle currently parked in this space.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the parked vehicle, or null if the space is free
 	 */
@@ -91,6 +119,9 @@ public class ParkingSpace {
 
 	/**
 	 * Gets the active reservation for this space.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the active reservation, or null if none exists
 	 */
@@ -100,8 +131,12 @@ public class ParkingSpace {
 
 	/**
 	 * Sets the space code.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
-	 * @param id the new space code
+	 * @param ID the new space code
 	 */
 	public void setId(String id) {
 		this.id = id;
@@ -109,6 +144,10 @@ public class ParkingSpace {
 
 	/**
 	 * Sets the floor number.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param floor the new floor number
 	 */
@@ -118,6 +157,10 @@ public class ParkingSpace {
 
 	/**
 	 * Sets the vehicle type this space accepts.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param vehicleType the new vehicle type
 	 */
@@ -127,6 +170,10 @@ public class ParkingSpace {
 
 	/**
 	 * Sets the occupied status.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param occupied the new occupied status
 	 */
@@ -136,6 +183,10 @@ public class ParkingSpace {
 
 	/**
 	 * Sets the reserved status.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param reserved the new reserved status
 	 */
@@ -145,6 +196,10 @@ public class ParkingSpace {
 
 	/**
 	 * Sets the vehicle currently parked in this space.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param parkedVehicle the parked vehicle, or null to clear it
 	 */
@@ -154,6 +209,10 @@ public class ParkingSpace {
 
 	/**
 	 * Sets the active reservation for this space.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param reservation the reservation to assign, or null to clear it
 	 */
@@ -162,7 +221,11 @@ public class ParkingSpace {
 	}
 
 	/**
-	 * Parks a vehicle in this space and marks it as occupied.
+	 * Handles occupy.
+	 * <p>
+	 * This helper keeps the step named and separate, which makes the larger operation easier to read and
+	 * follow.
+	 * </p>
 	 *
 	 * @param vehicle the vehicle to park
 	 */
@@ -174,7 +237,11 @@ public class ParkingSpace {
 	}
 
 	/**
-	 * Removes the parked vehicle and marks the space as free.
+	 * Handles free space.
+	 * <p>
+	 * This helper keeps the step named and separate, which makes the larger operation easier to read and
+	 * follow.
+	 * </p>
 	 */
 	public void freeSpace() {
 		if (parkedVehicle != null)
@@ -185,6 +252,10 @@ public class ParkingSpace {
 
 	/**
 	 * Assigns a reservation to this space and marks it as reserved.
+	 * <p>
+	 * This helper keeps the step named and separate, which makes the larger operation easier to read and
+	 * follow.
+	 * </p>
 	 *
 	 * @param reservation the reservation to assign
 	 */
@@ -194,7 +265,11 @@ public class ParkingSpace {
 	}
 
 	/**
-	 * Removes the active reservation and marks the space as unreserved.
+	 * Handles cancel reservation.
+	 * <p>
+	 * This helper keeps the step named and separate, which makes the larger operation easier to read and
+	 * follow.
+	 * </p>
 	 */
 	public void cancelReservation() {
 		this.reservation = null;
@@ -203,6 +278,10 @@ public class ParkingSpace {
 
 	/**
 	 * Returns whether the space is available for parking or reservation.
+	 * <p>
+	 * This helper keeps the step named and separate, which makes the larger operation easier to read and
+	 * follow.
+	 * </p>
 	 *
 	 * @return true if the space is neither occupied nor reserved
 	 */

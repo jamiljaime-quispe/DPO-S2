@@ -7,6 +7,10 @@ import java.awt.Component;
 
 /**
  * Colors the admin parking status column according to whether a space is vacant or occupied.
+ * <p>
+ * The view builds or updates Swing components and leaves the decisions to controllers and services. This
+ * keeps the screen code focused on what the user sees.
+ * </p>
  */
 class AdminStatusCellRenderer extends DefaultTableCellRenderer {
     private static final Color VACANT_COLOR = new Color(232, 248, 238);
@@ -14,13 +18,16 @@ class AdminStatusCellRenderer extends DefaultTableCellRenderer {
 
     /**
      * Returns the table cell component with the status color applied.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
      *
-     * @param table      table being painted
-     * @param value      value shown in the cell
+     * @param table table being painted
+     * @param value value shown in the cell
      * @param isSelected whether the row is selected
-     * @param hasFocus   whether the cell has focus
-     * @param row        view row
-     * @param column     view column
+     * @param hasFocus whether the cell has focus
+     * @param row view row
+     * @param column view column
      * @return component used to paint the cell
      */
     @Override
@@ -37,8 +44,12 @@ class AdminStatusCellRenderer extends DefaultTableCellRenderer {
 
     /**
      * Applies the background color that matches the parking status.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param cell  cell being painted
+     * @param cell cell being painted
      * @param value status value shown in the cell
      */
     private void applyStatusColor(Component cell, Object value) {

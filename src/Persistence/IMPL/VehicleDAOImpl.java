@@ -11,18 +11,37 @@ import Persistence.DatabaseManager;
 import Persistence.VehicleDAO;
 
 /**
- * MySQL/JDBC implementation of {@link Persistence.VehicleDAO}.
- * Maps the {@code vehicles} table to {@link Business.Entities.Vehicle} objects.
+ * MySQL/JDBC implementation of {@link Persistence.VehicleDAO}. Maps the {@code vehicles} table to {@link
+ * Business.Entities.Vehicle} objects.
+ * <p>
+ * The class belongs to the persistence layer, so it is responsible for reading or writing stored data while
+ * the other layers use cleaner methods.
+ * </p>
  */
 public class VehicleDAOImpl implements VehicleDAO {
     private final DatabaseManager db;
 
-    /** Creates the DAO with the shared database manager. */
+    /**
+     * Creates the DAO with the shared database manager.
+     * <p>
+     * The constructor receives the objects or values this class needs and stores them before the rest of
+     * the methods are used.
+     * </p>
+     *
+     * @param db database manager used by persistence classes
+     */
     public VehicleDAOImpl(DatabaseManager db) {
         this.db = db;
     }
 
-    /** Saves a vehicle. */
+    /**
+     * Handles save.
+     * <p>
+     * This method inserts a new row in the database using the values from the project object.
+     * </p>
+     *
+     * @param vehicle vehicle used by this operation
+     */
     @Override
     public void save(Vehicle vehicle) {
         String sql = """
@@ -41,7 +60,16 @@ public class VehicleDAOImpl implements VehicleDAO {
         }
     }
 
-    /** Finds a vehicle by license plate. */
+    /**
+     * Finds by plate.
+     * <p>
+     * This method runs the select query for this lookup and turns the database row back into a project
+     * object.
+     * </p>
+     *
+     * @param plate license plate involved in the operation
+     * @return the matching by plate, or null when it is not found
+     */
     @Override
     public Vehicle findByPlate(String plate) {
         String sql = """
@@ -65,7 +93,16 @@ public class VehicleDAOImpl implements VehicleDAO {
         return null;
     }
 
-    /** Loads vehicles owned by a user. */
+    /**
+     * Finds by user.
+     * <p>
+     * This method runs the select query for this lookup and turns the database row back into a project
+     * object.
+     * </p>
+     *
+     * @param userId identifier of the user involved in the operation
+     * @return the matching by user, or null when it is not found
+     */
     @Override
     public List<Vehicle> findByUser(int userId) {
         String sql = """
@@ -91,7 +128,14 @@ public class VehicleDAOImpl implements VehicleDAO {
         return list;
     }
 
-    /** Deletes a vehicle by license plate. */
+    /**
+     * Deletes value.
+     * <p>
+     * This method removes the matching row from the database while hiding the SQL details from the service.
+     * </p>
+     *
+     * @param plate license plate involved in the operation
+     */
     @Override
     public void delete(String plate) {
         String sql = "DELETE FROM vehicle WHERE licensePlate = ?";
@@ -104,7 +148,18 @@ public class VehicleDAOImpl implements VehicleDAO {
         }
     }
 
-    /** Converts a database row into a Vehicle object. */
+    /**
+     * Converts a database row into a Vehicle object. The operation is kept together so the stored data
+     * remains consistent if something goes wrong halfway through.
+     * <p>
+     * This method keeps the SQL work inside persistence so the business layer does not need
+     * database-specific code.
+     * </p>
+     *
+     * @param rs rs used by this operation
+     * @return the result of the operation
+     * @throws SQLException if the operation cannot be completed correctly
+     */
     private Vehicle mapRow(ResultSet rs) throws SQLException {
         return new Vehicle(
                 rs.getString("licensePlate"),
@@ -113,7 +168,18 @@ public class VehicleDAOImpl implements VehicleDAO {
                 false);
     }
 
-    /** Resolves the owner value into a database user ID. */
+    /**
+     * Resolves the owner value into a database user ID. The operation is kept together so the stored data
+     * remains consistent if something goes wrong halfway through.
+     * <p>
+     * This method keeps the SQL work inside persistence so the business layer does not need
+     * database-specific code.
+     * </p>
+     *
+     * @param owner owner used by this operation
+     * @return the result of the operation
+     * @throws SQLException if the operation cannot be completed correctly
+     */
     private int resolveOwnerUserId(String owner) throws SQLException {
         if (owner == null || owner.isBlank()) {
             throw new SQLException("Vehicle owner is required.");
@@ -136,7 +202,14 @@ public class VehicleDAOImpl implements VehicleDAO {
         throw new SQLException("Vehicle owner was not found.");
     }
 
-    /** Gets the database connection through this DAO's database manager. */
+    /**
+     * Gets the database connection through this DAO's database manager.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @return the current connection
+     */
     private java.sql.Connection getConnection() {
         return db.getConnection();
     }

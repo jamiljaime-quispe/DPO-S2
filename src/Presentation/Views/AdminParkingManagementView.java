@@ -10,8 +10,12 @@ import java.awt.event.ActionListener;
 import java.util.List;
 
 /**
- * Modal dialog for admin parking space management.
- * Lists all parking spaces in a table and provides Add, Edit, and Delete controls.
+ * Modal dialog for admin parking space management. Lists all parking spaces in a table and provides Add,
+ * Edit, and Delete controls.
+ * <p>
+ * The view builds or updates Swing components and leaves the decisions to controllers and services. This
+ * keeps the screen code focused on what the user sees.
+ * </p>
  */
 public class AdminParkingManagementView extends JDialog {
     private JTable spacesTable;
@@ -29,13 +33,27 @@ public class AdminParkingManagementView extends JDialog {
     private String activeEditSpaceCode;
     private boolean activeEditAllowsTypeChange;
 
-    /** Creates the admin parking management dialog. */
+    /**
+     * Creates the admin parking management dialog.
+     * <p>
+     * The constructor receives the objects or values this class needs and stores them before the rest of
+     * the methods are used.
+     * </p>
+     *
+     * @param parent parent used by this operation
+     */
     public AdminParkingManagementView(Frame parent) {
         super(parent, "Manage Parking Slots", true);
         initComponents();
     }
 
-    /** Builds the dialog components. */
+    /**
+     * Builds the dialog components.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     private void initComponents() {
         setLayout(new BorderLayout(10, 10));
         getContentPane().setBackground(new Color(245, 247, 250));
@@ -94,7 +112,15 @@ public class AdminParkingManagementView extends JDialog {
         });
     }
 
-    /** Applies the main button style. */
+    /**
+     * Handles style primary button.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param b b used by this operation
+     */
     private void stylePrimaryButton(JButton b) {
         b.setForeground(Color.WHITE);
         b.setBackground(new Color(33, 99, 168));
@@ -105,7 +131,12 @@ public class AdminParkingManagementView extends JDialog {
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
-    /** Opens the dialog used to add a parking space. */
+    /**
+     * Opens the dialog used to add a parking space.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     */
     private void showAddDialog() {
         JDialog dialog = new JDialog(this, "Add Parking Space", true);
         dialog.setLayout(new GridLayout(3, 2, 10, 10));
@@ -138,7 +169,12 @@ public class AdminParkingManagementView extends JDialog {
         dialog.setVisible(true);
     }
 
-    /** Opens the dialog used to edit the selected parking space. */
+    /**
+     * Opens the dialog used to edit the selected parking space.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     */
     private void showEditDialog() {
         int row = getSelectedModelRow();
         if (row < 0) return;
@@ -199,14 +235,25 @@ public class AdminParkingManagementView extends JDialog {
         dialog.setVisible(true);
     }
 
-    /** Clears the tracked edit dialog state. */
+    /**
+     * Clears the tracked edit dialog state.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
+     */
     private void clearActiveEditDialog() {
         activeEditDialog = null;
         activeEditSpaceCode = null;
         activeEditAllowsTypeChange = false;
     }
 
-    /** Closes the tracked edit dialog if one is open. */
+    /**
+     * Closes the tracked edit dialog if one is open.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     private void closeActiveEditDialog() {
         if (activeEditDialog != null) {
             activeEditDialog.dispose();
@@ -214,7 +261,13 @@ public class AdminParkingManagementView extends JDialog {
         clearActiveEditDialog();
     }
 
-    /** Starts the delete flow for the selected parking space. */
+    /**
+     * Handles delete.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     private void handleDelete() {
         int row = getSelectedModelRow();
         if (row < 0) return;
@@ -238,7 +291,15 @@ public class AdminParkingManagementView extends JDialog {
         showDeleteConfirmationDialog(code, message);
     }
 
-    /** Opens the delete confirmation dialog for a parking space. */
+    /**
+     * Opens the delete confirmation dialog for a parking space.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     *
+     * @param code parking space code involved in the operation
+     * @param message message shown to the user or written to the log
+     */
     private void showDeleteConfirmationDialog(String code, String message) {
         JDialog dialog = new JDialog(this, "Confirm Delete", true);
         activeDeleteDialog = dialog;
@@ -288,13 +349,24 @@ public class AdminParkingManagementView extends JDialog {
         dialog.setVisible(true);
     }
 
-    /** Clears the tracked delete dialog state. */
+    /**
+     * Clears the tracked delete dialog state.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
+     */
     private void clearActiveDeleteDialog() {
         activeDeleteDialog = null;
         activeDeleteSpaceCode = null;
     }
 
-    /** Closes the tracked delete dialog if one is open. */
+    /**
+     * Closes the tracked delete dialog if one is open.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     private void closeActiveDeleteDialog() {
         if (activeDeleteDialog != null) {
             activeDeleteDialog.dispose();
@@ -302,20 +374,23 @@ public class AdminParkingManagementView extends JDialog {
         clearActiveDeleteDialog();
     }
 
-    /** Replaces the table with the given parking spaces. */
-    public void updateSpaces(List<ParkingSpace> spaces) {
-        clearSpacesTable();
-        for (ParkingSpace space : spaces) {
-            addSpaceToTable(space);
-        }
-    }
 
-    /** Clears the parking-space table. */
+    /**
+     * Handles clear spaces table.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
+     */
     public void clearSpacesTable() {
         tableModel.setRowCount(0);
     }
 
-    /** Clears table data and closes child dialogs when a user session ends. */
+    /**
+     * Clears table data and closes child dialogs when a user session ends.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
+     */
     public void clearSessionViewState() {
         closeActiveDeleteDialog();
         closeActiveEditDialog();
@@ -324,7 +399,15 @@ public class AdminParkingManagementView extends JDialog {
         setVisible(false);
     }
 
-    /** Adds or updates one parking-space row. */
+    /**
+     * Adds space to table.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param space space used by this operation
+     */
     public void addSpaceToTable(ParkingSpace space) {
         Object[] rowData = buildSpaceRow(space);
         int existingRow = findSpaceRow(space.getId());
@@ -348,7 +431,16 @@ public class AdminParkingManagementView extends JDialog {
         updateActionButtons();
     }
 
-    /** Builds a table row for a parking space. */
+    /**
+     * Builds space row.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     *
+     * @param space space used by this operation
+     * @return the built space row
+     */
     private Object[] buildSpaceRow(ParkingSpace space) {
         return new Object[]{
             space.getId(),
@@ -360,7 +452,16 @@ public class AdminParkingManagementView extends JDialog {
         };
     }
 
-    /** Finds the table row for a parking space code. */
+    /**
+     * Finds space row.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param code parking space code involved in the operation
+     * @return the matching space row, or null when it is not found
+     */
     private int findSpaceRow(String code) {
         for (int row = 0; row < tableModel.getRowCount(); row++) {
             String currentCode = String.valueOf(tableModel.getValueAt(row, 0));
@@ -372,7 +473,15 @@ public class AdminParkingManagementView extends JDialog {
         return -1;
     }
 
-    /** Removes rows for spaces that are no longer present. */
+    /**
+     * Handles remove spaces not in.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param visibleCodes visible codes used by this operation
+     */
     public void removeSpacesNotIn(java.util.Set<String> visibleCodes) {
         for (int row = tableModel.getRowCount() - 1; row >= 0; row--) {
             String currentCode = String.valueOf(tableModel.getValueAt(row, 0));
@@ -384,7 +493,13 @@ public class AdminParkingManagementView extends JDialog {
         updateActionButtons();
     }
 
-    /** Closes the delete confirmation if the selected space can no longer be deleted. */
+    /**
+     * Handles close active delete dialog if target unavailable.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     public void closeActiveDeleteDialogIfTargetUnavailable() {
         if (activeDeleteDialog == null
                 || !activeDeleteDialog.isVisible()
@@ -414,7 +529,13 @@ public class AdminParkingManagementView extends JDialog {
         }
     }
 
-    /** Closes the edit dialog if the selected space changes state. */
+    /**
+     * Closes the edit dialog if the selected space changes state.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     public void closeActiveEditDialogIfTargetUnavailable() {
         if (activeEditDialog == null
                 || !activeEditDialog.isVisible()
@@ -449,17 +570,38 @@ public class AdminParkingManagementView extends JDialog {
         }
     }
 
-    /** Shows an error message owned by this dialog. */
+    /**
+     * Shows an error message owned by this dialog.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     *
+     * @param message message shown to the user or written to the log
+     */
     public void showError(String message) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
-    /** Shows an information message owned by this dialog. */
+    /**
+     * Shows an information message owned by this dialog.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     *
+     * @param message message shown to the user or written to the log
+     */
     public void showInfo(String message) {
         JOptionPane.showMessageDialog(this, message, "Info", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    /** Asks the admin to confirm logout from this dialog. */
+    /**
+     * Asks the admin to confirm logout from this dialog.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     *
+     * @return the answer chosen by the user
+     */
     public boolean confirmLogout() {
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Are you sure you want to log out?",
@@ -469,7 +611,11 @@ public class AdminParkingManagementView extends JDialog {
     }
 
     /**
-     * Adds a listener to the logout button.
+     * Adds logout listener.
+     * <p>
+     * This connects a Swing action with the code that should run when the user clicks a button or interacts
+     * with the screen.
+     * </p>
      *
      * @param listener action to run when logout is clicked
      */
@@ -477,7 +623,15 @@ public class AdminParkingManagementView extends JDialog {
         logoutButton.addActionListener(listener);
     }
 
-    /** Enables or disables controls while work is running. */
+    /**
+     * Sets the loading.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param loading true while the screen is waiting for an operation to finish
+     */
     public void setLoading(boolean loading) {
         this.loading = loading;
         setCursor(Cursor.getPredefinedCursor(loading ? Cursor.WAIT_CURSOR : Cursor.DEFAULT_CURSOR));
@@ -487,6 +641,10 @@ public class AdminParkingManagementView extends JDialog {
 
     /**
      * Sets the actions used by this dialog.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
      *
      * @param actions controller-backed actions for this dialog
      */
@@ -494,7 +652,12 @@ public class AdminParkingManagementView extends JDialog {
         this.actions = actions;
     }
 
-    /** Enables or disables buttons based on the current selection. */
+    /**
+     * Updates action buttons.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
+     */
     private void updateActionButtons() {
         boolean selected = spacesTable.getSelectedRow() >= 0;
         boolean occupied = isSelectedSpaceOccupied();
@@ -505,7 +668,15 @@ public class AdminParkingManagementView extends JDialog {
         logoutButton.setEnabled(!loading);
     }
 
-    /** Checks whether the selected table row is occupied. */
+    /**
+     * Checks whether selected space occupied.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @return true when the condition is met, false otherwise
+     */
     private boolean isSelectedSpaceOccupied() {
         int row = getSelectedModelRow();
         if (row < 0) return false;
@@ -514,14 +685,29 @@ public class AdminParkingManagementView extends JDialog {
         return "Occupied".equals(status);
     }
 
-    /** Gets the selected row index in the table model. */
+    /**
+     * Gets the selected row index in the table model.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @return the current selected model row
+     */
     private int getSelectedModelRow() {
         int row = spacesTable.getSelectedRow();
         if (row < 0) return -1;
         return spacesTable.convertRowIndexToModel(row);
     }
 
-    /** Gets the plate displayed for a parking space. */
+    /**
+     * Gets the plate displayed for a parking space.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @param space space used by this operation
+     * @return the current license plate
+     */
     private String getLicensePlate(ParkingSpace space) {
         if (space.getParkedVehicle() != null) {
             return space.getParkedVehicle().getLicensePlate();
@@ -533,6 +719,9 @@ public class AdminParkingManagementView extends JDialog {
 
     /**
      * Clears the edit dialog state if the closed dialog is still the tracked dialog.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
      *
      * @param dialog dialog that has just closed
      */
@@ -544,6 +733,9 @@ public class AdminParkingManagementView extends JDialog {
 
     /**
      * Clears the delete dialog state if the closed dialog is still the tracked dialog.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
      *
      * @param dialog dialog that has just closed
      */

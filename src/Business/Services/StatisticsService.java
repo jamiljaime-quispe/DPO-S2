@@ -14,6 +14,10 @@ import java.util.List;
 
 /**
  * Calculates and records parking occupancy statistics.
+ * <p>
+ * The service keeps the business rule in one place before any data is saved, loaded, or shown. This helps
+ * the rest of the project call the same logic consistently.
+ * </p>
  */
 public class StatisticsService {
 	private static final int LAST_HOUR_MINUTES = 60;
@@ -24,10 +28,14 @@ public class StatisticsService {
 
 	/**
 	 * Constructs a new StatisticsService.
+	 * <p>
+	 * The constructor receives the objects or values this class needs and stores them before the rest of the
+	 * methods are used.
+	 * </p>
 	 *
 	 * @param occupancyTracker the in-memory occupancy history buffer
-	 * @param parkingSpaceDAO  the DAO used to count occupied spaces
-	 * @param occupancyDAO     the DAO used to persist and retrieve occupancy records
+	 * @param parkingSpaceDAO the DAO used to count occupied spaces
+	 * @param occupancyDAO the DAO used to persist and retrieve occupancy records
 	 */
 	public StatisticsService(OccupancyTracker occupancyTracker, ParkingSpaceDAO parkingSpaceDAO,
 							 OccupancyDAO occupancyDAO) {
@@ -37,7 +45,11 @@ public class StatisticsService {
 	}
 
 	/**
-	 * Counts the number of currently occupied parking spaces.
+	 * Handles calculate current occupancy.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
 	 * @return count of occupied spaces
 	 */
 	public int calculateCurrentOccupancy() {
@@ -50,8 +62,11 @@ public class StatisticsService {
 	}
 
 	/**
-	 * Records the current occupancy count to the database and the in-memory tracker.
-	 * Should be called once per minute (e.g. from a Swing Timer or scheduled executor).
+	 * Records the current occupancy count to the database and the in-memory tracker. Should be called once per
+	 * minute (e.g. from a Swing Timer or scheduled executor).
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
 	 */
 	public void recordOccupancy() {
 		int count = calculateCurrentOccupancy();
@@ -61,33 +76,75 @@ public class StatisticsService {
 
 	/**
 	 * Returns occupancy data for the last hour (up to 60 entries, one per minute).
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
 	 * @return ordered list of occupancy records (oldest first)
 	 */
 	public List<OccupancyRecord> getLastHourData() {
 		return buildLastHourSeries(loadLastHourOccupancyData());
 	}
 
-	/** Loads all parking spaces from persistence. */
+	/**
+	 * Loads parking spaces.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @return the loaded parking spaces
+	 */
 	private List<ParkingSpace> loadParkingSpaces() {
 		return parkingSpaceDAO.findAll();
 	}
 
-	/** Saves one occupancy count in persistence. */
+	/**
+	 * Handles save occupancy record.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param count count used by this operation
+	 */
 	private void saveOccupancyRecord(int count) {
 		occupancyDAO.saveRecord(LocalDateTime.now(), count);
 	}
 
-	/** Stores one occupancy count in the in-memory tracker. */
+	/**
+	 * Handles record occupancy in memory.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param count count used by this operation
+	 */
 	private void recordOccupancyInMemory(int count) {
 		occupancyTracker.recordOccupancy(count);
 	}
 
-	/** Loads the occupancy data recorded during the last hour. */
+	/**
+	 * Loads last hour occupancy data.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @return the loaded last hour occupancy data
+	 */
 	private List<OccupancyRecord> loadLastHourOccupancyData() {
 		return occupancyDAO.getLastHourData();
 	}
 
-	/** Builds a 60-minute series where each position represents one minute of the last hour. */
+	/**
+	 * Builds last hour series.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param records records used by this operation
+	 * @return the built last hour series
+	 */
 	private List<OccupancyRecord> buildLastHourSeries(List<OccupancyRecord> records) {
 		List<OccupancyRecord> series = new ArrayList<>();
 		long latestMinute = findLatestEpochMinute(records);
@@ -101,7 +158,16 @@ public class StatisticsService {
 		return series;
 	}
 
-	/** Finds the latest recorded epoch minute, or the current minute when no records exist. */
+	/**
+	 * Finds latest epoch minute.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @param records records used by this operation
+	 * @return the matching latest epoch minute, or null when it is not found
+	 */
 	private long findLatestEpochMinute(List<OccupancyRecord> records) {
 		if (records == null || records.isEmpty()) {
 			return getCurrentEpochMinute();
@@ -117,7 +183,17 @@ public class StatisticsService {
 		return latest;
 	}
 
-	/** Gets the occupancy count stored for one minute, or 0 if that minute has no record. */
+	/**
+	 * Gets the occupancy count stored for one minute, or 0 if that minute has no record.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @param records records used by this operation
+	 * @param minute minute used by this operation
+	 * @return the matching count for minute, or null when it is not found
+	 */
 	private int findCountForMinute(List<OccupancyRecord> records, long minute) {
 		if (records == null) {
 			return 0;
@@ -134,7 +210,10 @@ public class StatisticsService {
 	}
 
 	/**
-	 * Converts a date to minutes elapsed since January 1, 1970.
+	 * Handles to epoch minute.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
 	 *
 	 * @param timestamp date to convert
 	 * @return epoch minute for the date
@@ -145,6 +224,9 @@ public class StatisticsService {
 
 	/**
 	 * Gets the current minute using January 1, 1970 as reference.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return current epoch minute
 	 */
@@ -153,7 +235,10 @@ public class StatisticsService {
 	}
 
 	/**
-	 * Converts an epoch minute back to local date-time for display.
+	 * Handles to local date time.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
 	 *
 	 * @param epochMinute minute elapsed since January 1, 1970
 	 * @return local date-time at that minute

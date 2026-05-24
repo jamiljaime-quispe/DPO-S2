@@ -1,8 +1,12 @@
 package Business.Entities;
 
 /**
- * Holds application configuration loaded from config.json.
- * All values are populated by ConfigService at startup.
+ * Holds application configuration loaded from config.json. All values are populated by ConfigService at
+ * startup.
+ * <p>
+ * The class stores project data in a clear object so the services, controllers, and persistence code can
+ * pass the same information around safely.
+ * </p>
  */
 public class Config {
 	private int dbPort;
@@ -15,11 +19,18 @@ public class Config {
 
 	/**
 	 * Constructs a new Config with default (empty) values.
+	 * <p>
+	 * The constructor receives the objects or values this class needs and stores them before the rest of the
+	 * methods are used.
+	 * </p>
 	 */
 	public Config() {}
 
 	/**
 	 * Gets the database port.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the database port number
 	 */
@@ -27,6 +38,9 @@ public class Config {
 
 	/**
 	 * Gets the database IP address.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the database IP address
 	 */
@@ -34,6 +48,9 @@ public class Config {
 
 	/**
 	 * Gets the database name.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the database name
 	 */
@@ -41,6 +58,9 @@ public class Config {
 
 	/**
 	 * Gets the database username.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the database username
 	 */
@@ -48,6 +68,9 @@ public class Config {
 
 	/**
 	 * Gets the database password.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the database password
 	 */
@@ -55,6 +78,9 @@ public class Config {
 
 	/**
 	 * Gets the admin account password.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the admin password
 	 */
@@ -62,6 +88,9 @@ public class Config {
 
 	/**
 	 * Gets the maximum delay in seconds between simulated vehicle events.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the simulated vehicle delay in seconds
 	 */
@@ -69,6 +98,10 @@ public class Config {
 
 	/**
 	 * Sets the database port.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param dbPort the new database port number
 	 */
@@ -76,6 +109,10 @@ public class Config {
 
 	/**
 	 * Sets the database IP address.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param dbIP the new database IP address
 	 */
@@ -83,6 +120,10 @@ public class Config {
 
 	/**
 	 * Sets the database name.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param dbName the new database name
 	 */
@@ -90,6 +131,10 @@ public class Config {
 
 	/**
 	 * Sets the database username.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param dbUser the new database username
 	 */
@@ -97,6 +142,10 @@ public class Config {
 
 	/**
 	 * Sets the database password.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param dbPassword the new database password
 	 */
@@ -104,6 +153,10 @@ public class Config {
 
 	/**
 	 * Sets the admin account password.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param adminPassword the new admin password
 	 */
@@ -111,6 +164,10 @@ public class Config {
 
 	/**
 	 * Sets the maximum delay in seconds between simulated vehicle events.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param simulatedVehicleDelay the new delay in seconds
 	 */

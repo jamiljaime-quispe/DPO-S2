@@ -15,19 +15,39 @@ import Persistence.ParkingSpaceDAO;
 import java.time.LocalDateTime;
 
 /**
- * MySQL/JDBC implementation of {@link Persistence.ParkingSpaceDAO}.
- * Maps the {@code parking_space} table to {@link Business.Entities.ParkingSpace} objects,
- * including any active reservation and currently parked vehicle.
+ * MySQL/JDBC implementation of {@link Persistence.ParkingSpaceDAO}. Maps the {@code parking_space} table to
+ * {@link Business.Entities.ParkingSpace} objects, including any active reservation and currently parked
+ * vehicle.
+ * <p>
+ * The class belongs to the persistence layer, so it is responsible for reading or writing stored data while
+ * the other layers use cleaner methods.
+ * </p>
  */
 public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
     private final DatabaseManager db;
 
-    /** Creates the DAO with the shared database manager. */
+    /**
+     * Creates the DAO with the shared database manager.
+     * <p>
+     * The constructor receives the objects or values this class needs and stores them before the rest of
+     * the methods are used.
+     * </p>
+     *
+     * @param db database manager used by persistence classes
+     */
     public ParkingSpaceDAOImpl(DatabaseManager db) {
         this.db = db;
     }
 
-    /** Loads all parking spaces. */
+    /**
+     * Finds all.
+     * <p>
+     * This method runs the select query for this lookup and turns the database row back into a project
+     * object.
+     * </p>
+     *
+     * @return the matching all, or null when it is not found
+     */
     @Override
     public List<ParkingSpace> findAll() {
         String sql = """
@@ -55,7 +75,16 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         return list;
     }
 
-    /** Finds one parking space by code. */
+    /**
+     * Finds a record by its code.
+     * <p>
+     * This method runs the select query for this lookup and turns the database row back into a project
+     * object.
+     * </p>
+     *
+     * @param code parking space code involved in the operation
+     * @return the matching by code, or null when it is not found
+     */
     @Override
     public ParkingSpace findByCode(String code) {
         String sql = """
@@ -83,7 +112,16 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         return null;
     }
 
-    /** Loads vacant and unreserved spaces for a vehicle type. */
+    /**
+     * Finds available by type.
+     * <p>
+     * This method runs the select query for this lookup and turns the database row back into a project
+     * object.
+     * </p>
+     *
+     * @param type vehicle type involved in the operation
+     * @return the matching available by type, or null when it is not found
+     */
     @Override
     public List<ParkingSpace> findAvailableByType(VehicleType type) {
         String sql = """
@@ -114,7 +152,14 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         return list;
     }
 
-    /** Saves a new parking space. */
+    /**
+     * Handles save.
+     * <p>
+     * This method inserts a new row in the database using the values from the project object.
+     * </p>
+     *
+     * @param space space used by this operation
+     */
     @Override
     public void save(ParkingSpace space) {
         String sql = "INSERT INTO parking_space (code, floor, vehicleType, isOccupied, occupiedByPlate) VALUES (?, ?, ?, ?, ?)";
@@ -131,7 +176,14 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         }
     }
 
-    /** Updates the occupied state of a parking space. */
+    /**
+     * Updates value.
+     * <p>
+     * This method writes the changed values back to the database for an existing row.
+     * </p>
+     *
+     * @param space space used by this operation
+     */
     @Override
     public void update(ParkingSpace space) {
         String sql = "UPDATE parking_space SET isOccupied = ?, occupiedByPlate = ? WHERE code = ?";
@@ -146,7 +198,14 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         }
     }
 
-    /** Updates the editable details of a parking space. */
+    /**
+     * Updates details.
+     * <p>
+     * This method writes the changed values back to the database for an existing row.
+     * </p>
+     *
+     * @param space space used by this operation
+     */
     @Override
     public void updateDetails(ParkingSpace space) {
         String sql = "UPDATE parking_space SET floor = ?, vehicleType = ? WHERE code = ?";
@@ -160,7 +219,14 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         }
     }
 
-    /** Deletes a parking space by code. */
+    /**
+     * Deletes value.
+     * <p>
+     * This method removes the matching row from the database while hiding the SQL details from the service.
+     * </p>
+     *
+     * @param code parking space code involved in the operation
+     */
     @Override
     public void delete(String code) {
         String sql = "DELETE FROM parking_space WHERE code = ?";
@@ -173,7 +239,18 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         }
     }
 
-    /** Converts a database row into a ParkingSpace object. */
+    /**
+     * Converts a database row into a ParkingSpace object. The operation is kept together so the stored data
+     * remains consistent if something goes wrong halfway through.
+     * <p>
+     * This method keeps the SQL work inside persistence so the business layer does not need
+     * database-specific code.
+     * </p>
+     *
+     * @param rs rs used by this operation
+     * @return the result of the operation
+     * @throws SQLException if the operation cannot be completed correctly
+     */
     private ParkingSpace mapRow(ResultSet rs) throws SQLException {
         String code = rs.getString("code");
         int floor = rs.getInt("floor");
@@ -221,7 +298,14 @@ public class ParkingSpaceDAOImpl implements ParkingSpaceDAO {
         return space;
     }
 
-    /** Gets the database connection through this DAO's database manager. */
+    /**
+     * Gets the database connection through this DAO's database manager.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @return the current connection
+     */
     private java.sql.Connection getConnection() {
         return db.getConnection();
     }

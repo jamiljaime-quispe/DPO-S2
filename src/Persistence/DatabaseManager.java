@@ -4,8 +4,12 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 /**
- * Manages the JDBC connection to the MySQL database.
- * Provides a single lazily-initialised connection reused across all DAO calls.
+ * Manages the JDBC connection to the MySQL database. Provides a single lazily-initialised connection reused
+ * across all DAO calls.
+ * <p>
+ * The class belongs to the persistence layer, so it is responsible for reading or writing stored data while
+ * the other layers use cleaner methods.
+ * </p>
  */
 public class DatabaseManager implements TransactionManager {
 	static {
@@ -26,11 +30,15 @@ public class DatabaseManager implements TransactionManager {
 
 	/**
 	 * Constructs a new DatabaseManager and builds the JDBC connection URL.
+	 * <p>
+	 * The constructor receives the objects or values this class needs and stores them before the rest of the
+	 * methods are used.
+	 * </p>
 	 *
-	 * @param ip       the database host IP or hostname
-	 * @param port     the database port
-	 * @param dbName   the schema/database name
-	 * @param user     the database username
+	 * @param ip the database host IP or hostname
+	 * @param port the database port
+	 * @param dbName the schema/database name
+	 * @param user the database username
 	 * @param password the database password
 	 */
 	public DatabaseManager(String ip, int port, String dbName, String user, String password) {
@@ -41,6 +49,9 @@ public class DatabaseManager implements TransactionManager {
 
 	/**
 	 * Returns the active database connection, opening a new one if needed.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return a live JDBC Connection
 	 * @throws RuntimeException if the connection cannot be established
@@ -56,7 +67,15 @@ public class DatabaseManager implements TransactionManager {
 		return connection;
 	}
 
-	/** Closes the database connection if it is open. */
+	/**
+	 * Closes the database connection if it is open. The operation is kept together so the stored data remains
+	 * consistent if something goes wrong halfway through.
+	 * <p>
+	 * This helper keeps the step named and separate, which makes the larger operation easier to read and
+	 * follow.
+	 * </p>
+	 */
+    /*
 	public void disconnect() {
 		try {
 			if (connection != null && !connection.isClosed()) {
@@ -65,9 +84,16 @@ public class DatabaseManager implements TransactionManager {
 		} catch (SQLException e) {
 			throw new RuntimeException("Failed to close database connection: " + e.getMessage(), e);
 		}
-	}
+	}*/
 
-	/** Starts a database transaction by disabling auto-commit. */
+	/**
+	 * Starts a database transaction by disabling auto-commit. The operation is kept together so the stored
+	 * data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This helper keeps the step named and separate, which makes the larger operation easier to read and
+	 * follow.
+	 * </p>
+	 */
 	public void beginTransaction() {
 		try {
 			getConnection().setAutoCommit(false);
@@ -76,7 +102,14 @@ public class DatabaseManager implements TransactionManager {
 		}
 	}
 
-	/** Commits the current transaction and re-enables auto-commit. */
+	/**
+	 * Commits the current transaction and re-enables auto-commit. The operation is kept together so the stored
+	 * data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This helper keeps the step named and separate, which makes the larger operation easier to read and
+	 * follow.
+	 * </p>
+	 */
 	public void commit() {
 		try {
 			getConnection().commit();
@@ -86,7 +119,14 @@ public class DatabaseManager implements TransactionManager {
 		}
 	}
 
-	/** Rolls back the current transaction and re-enables auto-commit. */
+	/**
+	 * Rolls back the current transaction and re-enables auto-commit. The operation is kept together so the
+	 * stored data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This helper keeps the step named and separate, which makes the larger operation easier to read and
+	 * follow.
+	 * </p>
+	 */
 	public void rollback() {
 		try {
 			getConnection().rollback();

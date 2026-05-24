@@ -5,34 +5,56 @@ import java.util.List;
 import Business.Entities.Reservation;
 
 /**
- * Data access interface for reservations.
+ * Data access interface for reservations. This interface keeps the promise clear so another class can use
+ * it without depending on a specific implementation.
+ * <p>
+ * The interface lets the business layer ask for stored data without depending on the class that talks
+ * directly to the database.
+ * </p>
  */
 public interface ReservationDAO {
 
     /**
-     * Persists a new reservation to the database.
+     * Persists a new reservation to the database. The operation is kept together so the stored data remains
+     * consistent if something goes wrong halfway through.
+     * <p>
+     * This helper keeps the step named and separate, which makes the larger operation easier to read and
+     * follow.
+     * </p>
      *
      * @param reservation the reservation to save
      */
     void save(Reservation reservation);
 
     /**
-     * Deletes a reservation by its ID.
+     * Deletes value.
+     * <p>
+     * This helper keeps the step named and separate, which makes the larger operation easier to read and
+     * follow.
+     * </p>
      *
-     * @param id the reservation ID to delete
+     * @param ID the reservation ID to delete
      */
     void delete(int id);
 
     /**
-     * Retrieves a reservation by its ID.
+     * Finds by id.
+     * <p>
+     * This helper keeps the step named and separate, which makes the larger operation easier to read and
+     * follow.
+     * </p>
      *
-     * @param id the reservation ID
+     * @param ID the reservation ID
      * @return the reservation, or null if not found
      */
     Reservation findById(int id);
 
     /**
-     * Retrieves all reservations (active and cancelled) belonging to a user.
+     * Finds by user.
+     * <p>
+     * This helper keeps the step named and separate, which makes the larger operation easier to read and
+     * follow.
+     * </p>
      *
      * @param userId the user ID
      * @return list of reservations; empty if none
@@ -40,7 +62,11 @@ public interface ReservationDAO {
     List<Reservation> findByUser(int userId);
 
     /**
-     * Retrieves the active reservation for a given license plate, if any.
+     * Finds by plate.
+     * <p>
+     * This helper keeps the step named and separate, which makes the larger operation easier to read and
+     * follow.
+     * </p>
      *
      * @param plate the license plate
      * @return the reservation, or null if not found
@@ -48,14 +74,22 @@ public interface ReservationDAO {
     Reservation findByPlate(String plate);
 
     /**
-     * Retrieves all reservations in the system.
+     * Finds all.
+     * <p>
+     * This helper keeps the step named and separate, which makes the larger operation easier to read and
+     * follow.
+     * </p>
      *
      * @return list of all reservations; empty if none
      */
     List<Reservation> findAll();
 
     /**
-     * Updates an existing reservation (e.g., to mark it cancelled or change the space).
+     * Updates value.
+     * <p>
+     * This helper keeps the step named and separate, which makes the larger operation easier to read and
+     * follow.
+     * </p>
      *
      * @param reservation the reservation with updated fields
      */

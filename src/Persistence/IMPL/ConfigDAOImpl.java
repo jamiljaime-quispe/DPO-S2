@@ -10,11 +10,23 @@ import java.io.IOException;
 
 /**
  * File-based implementation that reads configuration values from config.json.
+ * <p>
+ * The class belongs to the persistence layer, so it is responsible for reading or writing stored data while
+ * the other layers use cleaner methods.
+ * </p>
  */
 public class ConfigDAOImpl implements ConfigDAO {
 	private static final String CONFIG_FILE_NAME = "config.json";
 
-	/** Loads config.json from the project root. */
+	/**
+	 * Loads config.
+	 * <p>
+	 * This method keeps the SQL work inside persistence so the business layer does not need database-specific
+	 * code.
+	 * </p>
+	 *
+	 * @return the loaded config
+	 */
 	@Override
 	public Config loadConfig() {
 		File configFile = new File(CONFIG_FILE_NAME);
@@ -44,7 +56,17 @@ public class ConfigDAOImpl implements ConfigDAO {
 		}
 	}
 
-	/** Reads a text value from the config file content. */
+	/**
+	 * Handles parse string value.
+	 * <p>
+	 * This method keeps the SQL work inside persistence so the business layer does not need database-specific
+	 * code.
+	 * </p>
+	 *
+	 * @param json json used by this operation
+	 * @param key key used by this operation
+	 * @return the result of the operation
+	 */
 	private String parseStringValue(String json, String key) {
 		int keyIdx = json.indexOf("\"" + key + "\"");
 		if (keyIdx == -1) return null;
@@ -61,7 +83,17 @@ public class ConfigDAOImpl implements ConfigDAO {
 		return rest.substring(start, end);
 	}
 
-	/** Reads a number value from the config file content. */
+	/**
+	 * Handles parse int value.
+	 * <p>
+	 * This method keeps the SQL work inside persistence so the business layer does not need database-specific
+	 * code.
+	 * </p>
+	 *
+	 * @param json json used by this operation
+	 * @param key key used by this operation
+	 * @return the result of the operation
+	 */
 	private int parseIntValue(String json, String key) {
 		int keyIdx = json.indexOf("\"" + key + "\"");
 		if (keyIdx == -1) return 0;

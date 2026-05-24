@@ -4,13 +4,21 @@ import javax.swing.table.DefaultTableModel;
 
 /**
  * Table model used when a table should only display data and not allow direct cell editing.
+ * <p>
+ * The view builds or updates Swing components and leaves the decisions to controllers and services. This
+ * keeps the screen code focused on what the user sees.
+ * </p>
  */
 class NonEditableTableModel extends DefaultTableModel {
 
     /**
      * Creates an empty read-only table model with the given columns.
+     * <p>
+     * The constructor receives the objects or values this class needs and stores them before the rest of
+     * the methods are used.
+     * </p>
      *
-     * @param columns  table column names
+     * @param columns table column names
      * @param rowCount number of empty rows to create
      */
     NonEditableTableModel(Object[] columns, int rowCount) {
@@ -19,8 +27,12 @@ class NonEditableTableModel extends DefaultTableModel {
 
     /**
      * Creates a read-only table model with the given rows and columns.
+     * <p>
+     * The constructor receives the objects or values this class needs and stores them before the rest of
+     * the methods are used.
+     * </p>
      *
-     * @param rows    table row data
+     * @param rows table row data
      * @param columns table column names
      */
     NonEditableTableModel(Object[][] rows, Object[] columns) {
@@ -28,9 +40,13 @@ class NonEditableTableModel extends DefaultTableModel {
     }
 
     /**
-     * Keeps every cell read-only because changes must go through the controller.
+     * Checks whether cell editable.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param row    row being checked
+     * @param row row being checked
      * @param column column being checked
      * @return false because table cells are not edited directly
      */

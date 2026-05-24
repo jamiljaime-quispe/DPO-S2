@@ -20,8 +20,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
 /**
- * Controller for parking status, vehicle entry/exit, and space details.
- * Implements {@link ParkingStatusChangeListener} to react to simulation events.
+ * Controller for parking status, vehicle entry/exit, and space details. Implements {@link
+ * ParkingStatusChangeListener} to react to simulation events.
+ * <p>
+ * The controller receives actions from the view, calls the needed service, and then asks the view to show
+ * the result. This keeps Swing code separate from the business rules.
+ * </p>
  */
 public class ParkingController implements ParkingStatusChangeListener {
 	private static final Logger LOGGER = Logger.getLogger(ParkingController.class.getName());
@@ -38,13 +42,25 @@ public class ParkingController implements ParkingStatusChangeListener {
 	private boolean exitAllowed;
 	private volatile int parkingStatusLoadId;
 
-	/** Refreshes visible parking screens after a parking change. */
+	/**
+	 * Refreshes visible parking screens after a parking change.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 */
 	@Override
 	public void parkingStatusChanged() {
 		parkingStatusChanged(null);
 	}
 
-	/** Refreshes visible parking screens and logs a simulation message. */
+	/**
+	 * Refreshes visible parking screens and logs a simulation message.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param message message shown to the user or written to the log
+	 */
 	@Override
 	public void parkingStatusChanged(String message) {
 		runOnEventDispatchThread(() -> refreshVisibleParkingScreens(message));
@@ -52,6 +68,10 @@ public class ParkingController implements ParkingStatusChangeListener {
 
 	/**
 	 * Refreshes only the parking screens that are visible after a parking change.
+	 * <p>
+	 * This method asks the service for fresh data and sends it back to the visible table or dialog when the
+	 * screen needs to change.
+	 * </p>
 	 *
 	 * @param message optional simulation message
 	 */
@@ -76,6 +96,10 @@ public class ParkingController implements ParkingStatusChangeListener {
 
 	/**
 	 * Constructs the controller.
+	 * <p>
+	 * The constructor receives the objects or values this class needs and stores them before the rest of the
+	 * methods are used.
+	 * </p>
 	 *
 	 * @param parkingService the parking service
 	 */
@@ -85,7 +109,10 @@ public class ParkingController implements ParkingStatusChangeListener {
 
 	/**
 	 * Loads all parking spaces and updates the main menu table.
-	 * Uses a generation counter to discard results from stale background tasks.
+	 * <p>
+	 * This method asks the service for fresh data and sends it back to the visible table or dialog when the
+	 * screen needs to change.
+	 * </p>
 	 */
 	public void loadParkingStatus() {
 		if (mainMenuView == null) return;
@@ -96,7 +123,15 @@ public class ParkingController implements ParkingStatusChangeListener {
 		showParkingSlotsTable();
 
 		SwingWorker<Set<String>, ParkingStatusRow> worker = new SwingWorker<Set<String>, ParkingStatusRow>() {
-			/** Loads parking status rows away from the EDT. */
+			/**
+			 * Runs the worker task away from the Swing screen thread.
+			 * <p>
+			 * This runs away from the Swing screen thread so database work or longer calculations do not freeze the
+			 * interface while the user is waiting.
+			 * </p>
+			 *
+			 * @return the set of values found for the operation
+			 */
 			@Override
 			protected Set<String> doInBackground() {
 				List<ParkingSpace> spaces = loadParkingStatusFromService();
@@ -120,7 +155,15 @@ public class ParkingController implements ParkingStatusChangeListener {
 				return loadedCodes;
 			}
 
-			/** Adds parking rows to the table on the EDT. */
+			/**
+			 * Applies worker updates on the Swing screen thread.
+			 * <p>
+			 * This receives the values published by the worker on the Swing screen thread, which makes it safe to
+			 * add rows or refresh visible components little by little.
+			 * </p>
+			 *
+			 * @param chunks chunks used by this operation
+			 */
 			@Override
 			protected void process(List<ParkingStatusRow> chunks) {
 				if (loadId != parkingStatusLoadId) return;
@@ -130,7 +173,13 @@ public class ParkingController implements ParkingStatusChangeListener {
 				}
 			}
 
-			/** Finishes the parking status refresh. */
+			/**
+			 * Finishes the worker task on the Swing screen thread.
+			 * <p>
+			 * This runs when the worker has finished, so it can read the final result, restore buttons or cursors,
+			 * and show the user a message if something failed.
+			 * </p>
+			 */
 			@Override
 			protected void done() {
 				if (loadId != parkingStatusLoadId) return;
@@ -150,6 +199,10 @@ public class ParkingController implements ParkingStatusChangeListener {
 
 	/**
 	 * Loads and displays the details dialog for the given parking space code.
+	 * <p>
+	 * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+	 * display.
+	 * </p>
 	 *
 	 * @param code the parking space code
 	 */
@@ -159,13 +212,27 @@ public class ParkingController implements ParkingStatusChangeListener {
 		setMainMenuWaitCursor();
 
 		new SwingWorker<ParkingSpace, Void>() {
-			/** Loads the selected parking space away from the EDT. */
+			/**
+			 * Runs the worker task away from the Swing screen thread.
+			 * <p>
+			 * This runs away from the Swing screen thread so database work or longer calculations do not freeze the
+			 * interface while the user is waiting.
+			 * </p>
+			 *
+			 * @return the result of the operation
+			 */
 			@Override
 			protected ParkingSpace doInBackground() {
 				return findParkingSpace(code);
 			}
 
-			/** Shows the details dialog after loading the space. */
+			/**
+			 * Shows the details dialog after loading the space.
+			 * <p>
+			 * This runs when the worker has finished, so it can read the final result, restore buttons or cursors,
+			 * and show the user a message if something failed.
+			 * </p>
+			 */
 			@Override
 			protected void done() {
 				try {
@@ -187,7 +254,13 @@ public class ParkingController implements ParkingStatusChangeListener {
 
 	}
 
-	/** Refreshes the open parking-space details dialog, if any. */
+	/**
+	 * Refreshes the open parking-space details dialog, if any.
+	 * <p>
+	 * This method asks the service for fresh data and sends it back to the visible table or dialog when the
+	 * screen needs to change.
+	 * </p>
+	 */
 	private void refreshSpaceDetailsIfVisible() {
 		if (!isSpaceDetailsVisible()) return;
 
@@ -195,13 +268,27 @@ public class ParkingController implements ParkingStatusChangeListener {
 		if (code == null || code.isBlank()) return;
 
 		new SwingWorker<ParkingSpace, Void>() {
-			/** Reloads the displayed parking space away from the EDT. */
+			/**
+			 * Runs the worker task away from the Swing screen thread.
+			 * <p>
+			 * This runs away from the Swing screen thread so database work or longer calculations do not freeze the
+			 * interface while the user is waiting.
+			 * </p>
+			 *
+			 * @return the result of the operation
+			 */
 			@Override
 			protected ParkingSpace doInBackground() {
 				return findParkingSpace(code);
 			}
 
-			/** Updates or closes the details dialog after refresh. */
+			/**
+			 * Updates or closes the details dialog after refresh.
+			 * <p>
+			 * This runs when the worker has finished, so it can read the final result, restore buttons or cursors,
+			 * and show the user a message if something failed.
+			 * </p>
+			 */
 			@Override
 			protected void done() {
 				if (!isSpaceDetailsVisible()) return;
@@ -224,7 +311,13 @@ public class ParkingController implements ParkingStatusChangeListener {
 		}.execute();
 	}
 
-	/** Opens the vehicle entry dialog. Prompts for a license plate, then processes entry. */
+	/**
+	 * Opens the vehicle entry dialog. Prompts for a license plate, then processes entry.
+	 * <p>
+	 * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+	 * display.
+	 * </p>
+	 */
 	public void showVehicleEntryDialog() {
 		if (mainMenuView == null) return;
 
@@ -234,17 +327,41 @@ public class ParkingController implements ParkingStatusChangeListener {
 		checkReservationAndEnter(plate);
 	}
 
-	/** Asks the main menu view for a license plate. */
+	/**
+	 * Asks the main menu view for a license plate.
+	 * <p>
+	 * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+	 * display.
+	 * </p>
+	 *
+	 * @return the answer chosen by the user
+	 */
 	private String promptForLicensePlate() {
 		return promptLicensePlateFromMainMenu("Parking entry");
 	}
 
-	/** Checks whether a plate has a reservation and continues the entry flow. */
+	/**
+	 * Handles check reservation and enter.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 */
 	private void checkReservationAndEnter(String plate) {
 		setParkingEntryLoading(true);
 
 		new SwingWorker<ParkingEntryResult, Void>() {
-			/** Processes reserved entry rules away from the EDT. */
+			/**
+			 * Runs the worker task away from the Swing screen thread.
+			 * <p>
+			 * This runs away from the Swing screen thread so database work or longer calculations do not freeze the
+			 * interface while the user is waiting.
+			 * </p>
+			 *
+			 * @return the result of the operation
+			 * @throws Exception if the operation cannot be completed correctly
+			 */
 			@Override
 			protected ParkingEntryResult doInBackground() throws Exception {
 				ParkingSpace alreadyParked = findOccupiedSpaceByPlate(plate);
@@ -268,7 +385,13 @@ public class ParkingController implements ParkingStatusChangeListener {
 				return ParkingEntryResult.assignedFromReservation(assignedSpace);
 			}
 
-			/** Handles the reserved entry result on the EDT. */
+			/**
+			 * Finishes the worker task on the Swing screen thread.
+			 * <p>
+			 * This runs when the worker has finished, so it can read the final result, restore buttons or cursors,
+			 * and show the user a message if something failed.
+			 * </p>
+			 */
 			@Override
 			protected void done() {
 				setParkingEntryLoading(false);
@@ -281,12 +404,29 @@ public class ParkingController implements ParkingStatusChangeListener {
 		}.execute();
 	}
 
-	/** Parks a vehicle without an active reservation. */
+	/**
+	 * Handles enter without reservation.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 * @param type vehicle type involved in the operation
+	 */
 	private void enterWithoutReservation(String plate, VehicleType type) {
 		setParkingEntryLoading(true);
 
 		new SwingWorker<ParkingEntryResult, Void>() {
-			/** Processes unreserved entry rules away from the EDT. */
+			/**
+			 * Runs the worker task away from the Swing screen thread.
+			 * <p>
+			 * This runs away from the Swing screen thread so database work or longer calculations do not freeze the
+			 * interface while the user is waiting.
+			 * </p>
+			 *
+			 * @return the result of the operation
+			 * @throws Exception if the operation cannot be completed correctly
+			 */
 			@Override
 			protected ParkingEntryResult doInBackground() throws Exception {
 				ParkingSpace alreadyParked = findOccupiedSpaceByPlate(plate);
@@ -305,7 +445,13 @@ public class ParkingController implements ParkingStatusChangeListener {
 				return ParkingEntryResult.assignedWithoutReservation(assignedSpace);
 			}
 
-			/** Handles the unreserved entry result on the EDT. */
+			/**
+			 * Finishes the worker task on the Swing screen thread.
+			 * <p>
+			 * This runs when the worker has finished, so it can read the final result, restore buttons or cursors,
+			 * and show the user a message if something failed.
+			 * </p>
+			 */
 			@Override
 			protected void done() {
 				setParkingEntryLoading(false);
@@ -318,7 +464,16 @@ public class ParkingController implements ParkingStatusChangeListener {
 		}.execute();
 	}
 
-	/** Shows the correct next step for a parking entry result. */
+	/**
+	 * Handles entry result.
+	 * <p>
+	 * This method is called from a user action, gathers what the screen needs, and passes the real work to the
+	 * service layer.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 * @param result result used by this operation
+	 */
 	private void handleEntryResult(String plate, ParkingEntryResult result) {
 		if (result.getStatus() == ParkingEntryStatus.NEEDS_VEHICLE_TYPE) {
 			VehicleType type = promptForVehicleType(plate);
@@ -347,24 +502,58 @@ public class ParkingController implements ParkingStatusChangeListener {
 		showEntryError(result.getMessage());
 	}
 
-	/** Asks the main menu view for a vehicle type. */
+	/**
+	 * Asks the main menu view for a vehicle type.
+	 * <p>
+	 * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+	 * display.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 * @return the answer chosen by the user
+	 */
 	private VehicleType promptForVehicleType(String plate) {
 		return promptVehicleTypeForEntry(plate);
 	}
 
-	/** Shows the assigned entry space to the user. */
+	/**
+	 * Shows assigned space.
+	 * <p>
+	 * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+	 * display.
+	 * </p>
+	 *
+	 * @param message message shown to the user or written to the log
+	 * @param space space used by this operation
+	 */
 	private void showAssignedSpace(String message, ParkingSpace space) {
 		showAssignedParkingEntry(message, space);
 		refreshExitButtonState();
 		parkingStatusChanged();
 	}
 
-	/** Shows a parking entry error. */
+	/**
+	 * Shows entry error.
+	 * <p>
+	 * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+	 * display.
+	 * </p>
+	 *
+	 * @param message message shown to the user or written to the log
+	 */
 	private void showEntryError(String message) {
 		showMainError("Parking entry", message);
 	}
 
-	/** Finds the vehicle type that should be used for a reservation entry. */
+	/**
+	 * Handles resolve reservation vehicle type.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param reservation reservation used by this operation
+	 * @return the result of the operation
+	 */
 	private VehicleType resolveReservationVehicleType(Reservation reservation) {
 		if (reservation.getVehicle() != null && reservation.getVehicle().getType() != null) {
 			return reservation.getVehicle().getType();
@@ -377,7 +566,15 @@ public class ParkingController implements ParkingStatusChangeListener {
 		return VehicleType.CAR;
 	}
 
-	/** Enables or disables entry controls while work is running. */
+	/**
+	 * Sets the parking entry loading.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param loading true while the screen is waiting for an operation to finish
+	 */
 	private void setParkingEntryLoading(boolean loading) {
 		if (mainMenuView == null) return;
 
@@ -386,20 +583,40 @@ public class ParkingController implements ParkingStatusChangeListener {
 		setMainMenuCursor(loading);
 	}
 
-	/** Checks whether the current user has any parked vehicles and updates the Exit button state. */
+	/**
+	 * Handles refresh exit button state.
+	 * <p>
+	 * This method asks the service for fresh data and sends it back to the visible table or dialog when the
+	 * screen needs to change.
+	 * </p>
+	 */
 	public void refreshExitButtonState() {
 		if (mainMenuView == null || userService == null) return;
 
 		setParkingExitButtonEnabled(false);
 		new SwingWorker<Boolean, Void>() {
-			/** Checks parked vehicles for the current user away from the EDT. */
+			/**
+			 * Runs the worker task away from the Swing screen thread.
+			 * <p>
+			 * This runs away from the Swing screen thread so database work or longer calculations do not freeze the
+			 * interface while the user is waiting.
+			 * </p>
+			 *
+			 * @return the result of the operation
+			 */
 			@Override
 			protected Boolean doInBackground() {
 				List<ParkingSpace> parkedSpaces = loadCurrentUserParkedSpaces();
 				return !parkedSpaces.isEmpty();
 			}
 
-			/** Updates the exit button after the parked-vehicle check. */
+			/**
+			 * Finishes the worker task on the Swing screen thread.
+			 * <p>
+			 * This runs when the worker has finished, so it can read the final result, restore buttons or cursors,
+			 * and show the user a message if something failed.
+			 * </p>
+			 */
 			@Override
 			protected void done() {
 				try {
@@ -413,19 +630,40 @@ public class ParkingController implements ParkingStatusChangeListener {
 		}.execute();
 	}
 
-	/** Opens the vehicle exit dialog, listing the user's currently parked vehicles. */
+	/**
+	 * Opens the vehicle exit dialog, listing the user's currently parked vehicles.
+	 * <p>
+	 * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+	 * display.
+	 * </p>
+	 */
 	public void showVehicleExitDialog() {
 		if (mainMenuView == null || userService == null) return;
 
 		setExitLoading(true);
 		new SwingWorker<List<ParkingSpace>, Void>() {
-			/** Loads the current user's parked vehicles away from the EDT. */
+			/**
+			 * Runs the worker task away from the Swing screen thread.
+			 * <p>
+			 * This runs away from the Swing screen thread so database work or longer calculations do not freeze the
+			 * interface while the user is waiting.
+			 * </p>
+			 *
+			 * @return the list of values found for the operation
+			 * @throws Exception if the operation cannot be completed correctly
+			 */
 			@Override
 			protected List<ParkingSpace> doInBackground() throws Exception {
 				return loadCurrentUserParkedSpaces();
 			}
 
-			/** Shows the exit choice dialog after parked vehicles load. */
+			/**
+			 * Shows the exit choice dialog after parked vehicles load.
+			 * <p>
+			 * This runs when the worker has finished, so it can read the final result, restore buttons or cursors,
+			 * and show the user a message if something failed.
+			 * </p>
+			 */
 			@Override
 			protected void done() {
 				setExitLoading(false);
@@ -450,12 +688,28 @@ public class ParkingController implements ParkingStatusChangeListener {
 		}.execute();
 	}
 
-	/** Processes exit for the selected parked vehicle. */
+	/**
+	 * Handles exit with vehicle.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param selectedSpace selected space used by this operation
+	 */
 	private void exitWithVehicle(ParkingSpace selectedSpace) {
 		String plate = selectedSpace.getParkedVehicle().getLicensePlate();
 		setExitLoading(true);
 		new SwingWorker<ParkingSpace, Void>() {
-			/** Frees the selected vehicle's space away from the EDT. */
+			/**
+			 * Runs the worker task away from the Swing screen thread.
+			 * <p>
+			 * This runs away from the Swing screen thread so database work or longer calculations do not freeze the
+			 * interface while the user is waiting.
+			 * </p>
+			 *
+			 * @return the result of the operation
+			 * @throws Exception if the operation cannot be completed correctly
+			 */
 			@Override
 			protected ParkingSpace doInBackground() throws Exception {
 				return handleUserVehicleExit(
@@ -463,7 +717,13 @@ public class ParkingController implements ParkingStatusChangeListener {
 						plate);
 			}
 
-			/** Shows the exit result on the EDT. */
+			/**
+			 * Finishes the worker task on the Swing screen thread.
+			 * <p>
+			 * This runs when the worker has finished, so it can read the final result, restore buttons or cursors,
+			 * and show the user a message if something failed.
+			 * </p>
+			 */
 			@Override
 			protected void done() {
 				setExitLoading(false);
@@ -488,7 +748,15 @@ public class ParkingController implements ParkingStatusChangeListener {
 		}.execute();
 	}
 
-	/** Enables or disables exit controls while work is running. */
+	/**
+	 * Sets the exit loading.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param loading true while the screen is waiting for an operation to finish
+	 */
 	private void setExitLoading(boolean loading) {
 		if (mainMenuView == null) return;
 
@@ -497,13 +765,26 @@ public class ParkingController implements ParkingStatusChangeListener {
 		setMainMenuCursor(loading);
 	}
 
-	/** Shows a parking exit error. */
+	/**
+	 * Shows exit error.
+	 * <p>
+	 * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+	 * display.
+	 * </p>
+	 *
+	 * @param message message shown to the user or written to the log
+	 */
 	private void showExitError(String message) {
 		showMainError("Parking exit", message);
 	}
 
 
-	/** Cancels the reservation shown in the admin space-details dialog. */
+	/**
+	 * Cancels the reservation shown in the admin space-details dialog.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 */
 	private void cancelReservationFromDetails() {
 		if (parkingSpaceDetailsView == null || adminService == null) return;
 
@@ -519,13 +800,28 @@ public class ParkingController implements ParkingStatusChangeListener {
 
 		setDetailsLoading(detailsView, true);
 		new SwingWorker<Boolean, Void>() {
-			/** Cancels the reservation away from the EDT. */
+			/**
+			 * Runs the worker task away from the Swing screen thread.
+			 * <p>
+			 * This runs away from the Swing screen thread so database work or longer calculations do not freeze the
+			 * interface while the user is waiting.
+			 * </p>
+			 *
+			 * @return the result of the operation
+			 * @throws Exception if the operation cannot be completed correctly
+			 */
 			@Override
 			protected Boolean doInBackground() throws Exception {
 				return cancelReservationByPlate(plate);
 			}
 
-			/** Updates the UI after reservation cancellation. */
+			/**
+			 * Finishes the worker task on the Swing screen thread.
+			 * <p>
+			 * This runs when the worker has finished, so it can read the final result, restore buttons or cursors,
+			 * and show the user a message if something failed.
+			 * </p>
+			 */
 			@Override
 			protected void done() {
 				setDetailsLoading(detailsView, false);
@@ -551,38 +847,91 @@ public class ParkingController implements ParkingStatusChangeListener {
 	}
 
 
-	/** Sets the main menu view and initialises the space details view. */
+	/**
+	 * Sets the main menu view and initialises the space details view.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param mainMenuView main menu view that will be shown or updated
+	 */
 	public void setMainMenuView(MainMenuView mainMenuView) {
 		this.mainMenuView = mainMenuView;
 		createFreshDetailsView();
 	}
 
-	/** Sets the user service. */
+	/**
+	 * Sets the user service.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param userService user service used to apply the needed project logic
+	 */
 	public void setUserService(UserService userService) {
 		this.userService = userService;
 	}
 
-	/** Sets the admin service. */
+	/**
+	 * Sets the admin service.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param adminService admin service used to apply the needed project logic
+	 */
 	public void setAdminService(AdminService adminService) {
 		this.adminService = adminService;
 	}
 
-	/** Sets the admin controller to refresh when parking status changes. */
+	/**
+	 * Sets the admin controller to refresh when parking status changes.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param adminController admin controller that coordinates the related screen action
+	 */
 	public void setAdminController(AdminController adminController) {
 		this.adminController = adminController;
 	}
 
-	/** Sets the slot booking controller to refresh when parking status changes. */
+	/**
+	 * Sets the slot booking controller to refresh when parking status changes.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param slotBookingController slot booking controller that coordinates the related screen action
+	 */
 	public void setSlotBookingController(AdminSlotBookingController slotBookingController) {
 		this.slotBookingController = slotBookingController;
 	}
 
-	/** Sets the statistics controller to refresh visible chart data when parking changes. */
+	/**
+	 * Sets the statistics controller to refresh visible chart data when parking changes.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param statisticsController statistics controller that coordinates the related screen action
+	 */
 	public void setStatisticsController(StatisticsController statisticsController) {
 		this.statisticsController = statisticsController;
 	}
 
-	/** Clears parking state when the active user session ends. */
+	/**
+	 * Handles clear session state.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 */
 	public void clearSessionState() {
 		exitAllowed = false;
 		parkingStatusLoadId++;
@@ -593,122 +942,292 @@ public class ParkingController implements ParkingStatusChangeListener {
 		clearSpaceDetailsSessionState();
 	}
 
-	/** Sets the action used when the user logs out from a parking dialog. */
+	/**
+	 * Sets the action used when the user logs out from a parking dialog.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param logoutAction logout action used by this operation
+	 */
 	public void setLogoutAction(Runnable logoutAction) {
 		this.logoutAction = logoutAction;
 	}
 
-	/** Runs a task on the Swing event thread. */
+	/**
+	 * Handles run on event dispatch thread.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param task task used by this operation
+	 */
 	private void runOnEventDispatchThread(Runnable task) {
 		SwingUtilities.invokeLater(task);
 	}
 
-	/** Checks whether a simulation message should be shown in the log. */
+	/**
+	 * Checks whether a simulation message should be shown in the log. The method supports the simulated
+	 * traffic flow while keeping the parking updates coordinated with the rest of the system.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param message message shown to the user or written to the log
+	 * @return true when the condition is met, false otherwise
+	 */
 	private boolean hasSimulationMessage(String message) {
 		return message != null && !message.isBlank();
 	}
 
-	/** Writes a simulation message through the controller logger. */
+	/**
+	 * Writes a simulation message through the controller logger. The method supports the simulated traffic
+	 * flow while keeping the parking updates coordinated with the rest of the system.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param message message shown to the user or written to the log
+	 */
 	private void logSimulationMessage(String message) {
 		LOGGER.info(message);
 	}
 
-	/** Checks whether the parking status table is currently visible. */
+	/**
+	 * Checks whether parking status table visible.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @return true when the condition is met, false otherwise
+	 */
 	private boolean isParkingStatusTableVisible() {
 		return mainMenuView != null && mainMenuView.isParkingSlotsTableVisible();
 	}
 
-	/** Checks whether the admin controller was connected in Main. */
+	/**
+	 * Checks whether admin controller exists.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @return true when the condition is met, false otherwise
+	 */
 	private boolean hasAdminController() {
 		return adminController != null;
 	}
 
-	/** Asks the admin controller to refresh its visible screen. */
+	/**
+	 * Asks the admin controller to refresh its visible screen.
+	 * <p>
+	 * This method asks the service for fresh data and sends it back to the visible table or dialog when the
+	 * screen needs to change.
+	 * </p>
+	 */
 	private void refreshAdminControllerIfVisible() {
 		adminController.refreshIfVisible();
 	}
 
-	/** Checks whether the booking controller was connected in Main. */
+	/**
+	 * Checks whether slot booking controller exists.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @return true when the condition is met, false otherwise
+	 */
 	private boolean hasSlotBookingController() {
 		return slotBookingController != null;
 	}
 
-	/** Asks the booking controller to refresh its visible screen. */
+	/**
+	 * Asks the booking controller to refresh its visible screen.
+	 * <p>
+	 * This method asks the service for fresh data and sends it back to the visible table or dialog when the
+	 * screen needs to change.
+	 * </p>
+	 */
 	private void refreshSlotBookingControllerIfVisible() {
 		slotBookingController.refreshIfVisible();
 	}
 
-	/** Checks whether the statistics controller was connected in Main. */
+	/**
+	 * Checks whether statistics controller exists.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @return true when the condition is met, false otherwise
+	 */
 	private boolean hasStatisticsController() {
 		return statisticsController != null;
 	}
 
-	/** Records the latest occupancy and refreshes the chart if it is visible. */
+	/**
+	 * Handles record and refresh visible chart.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 */
 	private void recordAndRefreshVisibleChart() {
 		statisticsController.recordAndRefreshVisibleChart();
 	}
 
-	/** Shows the parking status table in the main menu. */
+	/**
+	 * Shows parking slots table.
+	 * <p>
+	 * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+	 * display.
+	 * </p>
+	 */
 	private void showParkingSlotsTable() {
 		mainMenuView.showParkingSlotsTable();
 	}
 
-	/** Loads the parking status from the business layer. */
+	/**
+	 * Loads parking status from service.
+	 * <p>
+	 * This method asks the service for fresh data and sends it back to the visible table or dialog when the
+	 * screen needs to change.
+	 * </p>
+	 *
+	 * @return the loaded parking status from service
+	 */
 	private List<ParkingSpace> loadParkingStatusFromService() {
 		return parkingService.getParkingStatus();
 	}
 
-	/** Checks whether a user is logged in for user-specific parking highlights. */
+	/**
+	 * Checks whether logged in user exists.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @return true when the condition is met, false otherwise
+	 */
 	private boolean hasLoggedInUser() {
 		return userService != null && getCurrentUserId() > 0;
 	}
 
-	/** Gets the id of the logged-in user from the user service. */
+	/**
+	 * Gets the id of the logged-in user from the user service.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
+	 * @return the current current user ID
+	 */
 	private int getCurrentUserId() {
 		return userService.getLastLoggedInUserId();
 	}
 
-	/** Loads the spaces occupied by the current user. */
+	/**
+	 * Loads current user parked spaces.
+	 * <p>
+	 * This method asks the service for fresh data and sends it back to the visible table or dialog when the
+	 * screen needs to change.
+	 * </p>
+	 *
+	 * @return the loaded current user parked spaces
+	 */
 	private List<ParkingSpace> loadCurrentUserParkedSpaces() {
 		return parkingService.getParkedSpacesByUser(getCurrentUserId());
 	}
 
-	/** Adds one loaded status row to the main menu table. */
+	/**
+	 * Adds parking status row.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param row row position in the table
+	 */
 	private void addParkingStatusRow(ParkingStatusRow row) {
 		mainMenuView.addParkingSpaceToTable(row.getSpace(), row.isUserParkedVehicle());
 	}
 
-	/** Removes table rows that were not returned by the latest load. */
+	/**
+	 * Handles remove parking spaces not in.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param loadedCodes loaded codes used by this operation
+	 */
 	private void removeParkingSpacesNotIn(Set<String> loadedCodes) {
 		mainMenuView.removeParkingSpacesNotIn(loadedCodes);
 	}
 
-	/** Writes a successful parking status load message to the logger. */
+	/**
+	 * Handles log parking spaces loaded.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 */
 	private void logParkingSpacesLoaded() {
 		LOGGER.fine("Parking spaces loaded successfully.");
 	}
 
-	/** Shows an error from the main menu view. */
+	/**
+	 * Shows an error from the main menu view.
+	 * <p>
+	 * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+	 * display.
+	 * </p>
+	 *
+	 * @param title title used by this operation
+	 * @param message message shown to the user or written to the log
+	 */
 	private void showMainError(String title, String message) {
 		mainMenuView.showError(title, message);
 	}
 
-	/** Shows an information message from the main menu view. */
+	/**
+	 * Shows an information message from the main menu view.
+	 * <p>
+	 * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+	 * display.
+	 * </p>
+	 *
+	 * @param title title used by this operation
+	 * @param message message shown to the user or written to the log
+	 */
 	private void showMainInfo(String title, String message) {
 		mainMenuView.showInfo(title, message);
 	}
 
-	/** Sets the main menu cursor to waiting. */
+	/**
+	 * Sets the main menu cursor to waiting.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 */
 	private void setMainMenuWaitCursor() {
 		mainMenuView.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 	}
 
-	/** Restores the normal main menu cursor. */
+	/**
+	 * Sets the main menu default cursor.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 */
 	private void setMainMenuDefaultCursor() {
 		mainMenuView.setCursor(Cursor.getDefaultCursor());
 	}
 
-	/** Sets the main menu cursor according to a loading state. */
+	/**
+	 * Sets the main menu cursor according to a loading state.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param loading true while the screen is waiting for an operation to finish
+	 */
 	private void setMainMenuCursor(boolean loading) {
 		if (loading) {
 			setMainMenuWaitCursor();
@@ -717,36 +1236,71 @@ public class ParkingController implements ParkingStatusChangeListener {
 		}
 	}
 
-	/** Finds one parking space through the business layer. */
+	/**
+	 * Finds parking space.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param code parking space code involved in the operation
+	 * @return the matching parking space, or null when it is not found
+	 */
 	private ParkingSpace findParkingSpace(String code) {
 		return parkingService.findByCode(code);
 	}
 
-	/** Creates the space details view if it has not been created yet. */
+	/**
+	 * Creates the space details view if it has not been created yet.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 */
 	private void createDetailsViewIfNeeded() {
 		if (parkingSpaceDetailsView == null) {
 			createFreshDetailsView();
 		}
 	}
 
-	/** Creates a new space details view and connects its cancel action. */
+	/**
+	 * Creates a new space details view and connects its cancel action.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 */
 	private void createFreshDetailsView() {
 		parkingSpaceDetailsView = new ParkingSpaceDetailsView(mainMenuView);
 		setDetailsCancelReservationListener();
 		setDetailsLogoutListener();
 	}
 
-	/** Connects the details cancel button to this controller. */
+	/**
+	 * Sets the details cancel reservation listener.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 */
 	private void setDetailsCancelReservationListener() {
 		parkingSpaceDetailsView.setCancelReservationListener(e -> cancelReservationFromDetails());
 	}
 
-	/** Connects the details logout button to this controller. */
+	/**
+	 * Sets the details logout listener.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 */
 	private void setDetailsLogoutListener() {
 		parkingSpaceDetailsView.setLogoutListener(e -> logoutFromDetailsIfConfirmed());
 	}
 
-	/** Logs out from the details dialog after confirmation. */
+	/**
+	 * Logs out from the details dialog after confirmation.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 */
 	private void logoutFromDetailsIfConfirmed() {
 		if (logoutAction != null && parkingSpaceDetailsView.confirmLogout()) {
 			parkingSpaceDetailsView.dispose();
@@ -754,118 +1308,304 @@ public class ParkingController implements ParkingStatusChangeListener {
 		}
 	}
 
-	/** Displays details for a loaded parking space. */
+	/**
+	 * Handles display space details.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param space space used by this operation
+	 */
 	private void displaySpaceDetails(ParkingSpace space) {
 		parkingSpaceDetailsView.displaySpaceDetails(space);
 	}
 
-	/** Checks whether the details dialog is currently open. */
+	/**
+	 * Checks whether the details dialog is currently open.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @return true when the condition is met, false otherwise
+	 */
 	private boolean isSpaceDetailsVisible() {
 		return parkingSpaceDetailsView != null && parkingSpaceDetailsView.isVisible();
 	}
 
-	/** Gets the parking space code currently shown in the details dialog. */
+	/**
+	 * Gets the parking space code currently shown in the details dialog.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
+	 * @return the current displayed space code
+	 */
 	private String getDisplayedSpaceCode() {
 		return parkingSpaceDetailsView.getDisplayedSpaceCode();
 	}
 
-	/** Closes the current parking space details dialog. */
+	/**
+	 * Closes the current parking space details dialog.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 */
 	private void disposeSpaceDetailsView() {
 		parkingSpaceDetailsView.dispose();
 	}
 
-	/** Updates the current parking space details dialog. */
+	/**
+	 * Updates the current parking space details dialog.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param space space used by this operation
+	 */
 	private void updateSpaceDetails(ParkingSpace space) {
 		parkingSpaceDetailsView.updateSpaceDetails(space);
 	}
 
-	/** Asks the main menu for a license plate. */
+	/**
+	 * Prompts for license plate from main menu.
+	 * <p>
+	 * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+	 * display.
+	 * </p>
+	 *
+	 * @param title title used by this operation
+	 * @return the answer chosen by the user
+	 */
 	private String promptLicensePlateFromMainMenu(String title) {
 		return mainMenuView.promptLicensePlate(title);
 	}
 
-	/** Finds an occupied parking space by plate through the business layer. */
+	/**
+	 * Finds occupied space by plate.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 * @return the matching occupied space by plate, or null when it is not found
+	 */
 	private ParkingSpace findOccupiedSpaceByPlate(String plate) {
 		return parkingService.findOccupiedSpaceByPlate(plate);
 	}
 
-	/** Finds an active reservation by plate through the business layer. */
+	/**
+	 * Finds active reservation by plate.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 * @return the matching active reservation by plate, or null when it is not found
+	 */
 	private Reservation findActiveReservationByPlate(String plate) {
 		return parkingService.findActiveReservationByPlate(plate);
 	}
 
-	/** Handles a user vehicle entry through the business layer. */
+	/**
+	 * Handles user vehicle entry.
+	 * <p>
+	 * This method is called from a user action, gathers what the screen needs, and passes the real work to the
+	 * service layer.
+	 * </p>
+	 *
+	 * @param userId identifier of the user involved in the operation
+	 * @param plate license plate involved in the operation
+	 * @param type vehicle type involved in the operation
+	 * @return the result of the operation
+	 */
 	private ParkingSpace handleUserVehicleEntry(int userId, String plate, VehicleType type) {
 		return parkingService.handleUserVehicleEntry(userId, plate, type);
 	}
 
-	/** Asks the main menu for the vehicle type used during entry. */
+	/**
+	 * Prompts for vehicle type for entry.
+	 * <p>
+	 * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+	 * display.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 * @return the answer chosen by the user
+	 */
 	private VehicleType promptVehicleTypeForEntry(String plate) {
 		return mainMenuView.promptVehicleTypeForEntry(plate);
 	}
 
-	/** Shows the parking entry result with its assigned space. */
+	/**
+	 * Shows assigned parking entry.
+	 * <p>
+	 * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+	 * display.
+	 * </p>
+	 *
+	 * @param message message shown to the user or written to the log
+	 * @param space space used by this operation
+	 */
 	private void showAssignedParkingEntry(String message, ParkingSpace space) {
 		mainMenuView.showAssignedParkingEntry(message, space);
 	}
 
-	/** Enables or disables the entry button. */
+	/**
+	 * Sets the parking entry button enabled.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param enabled enabled used by this operation
+	 */
 	private void setParkingEntryButtonEnabled(boolean enabled) {
 		mainMenuView.setParkingEntryButtonEnabled(enabled);
 	}
 
-	/** Enables or disables the exit button. */
+	/**
+	 * Sets the parking exit button enabled.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param enabled enabled used by this operation
+	 */
 	private void setParkingExitButtonEnabled(boolean enabled) {
 		mainMenuView.setParkingExitButtonEnabled(enabled);
 	}
 
-	/** Asks the user which parked vehicle should leave. */
+	/**
+	 * Prompts for exit vehicle.
+	 * <p>
+	 * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+	 * display.
+	 * </p>
+	 *
+	 * @param parkedSpaces parked spaces used by this operation
+	 * @return the answer chosen by the user
+	 */
 	private ParkingSpace promptExitVehicle(List<ParkingSpace> parkedSpaces) {
 		return mainMenuView.promptExitVehicle(parkedSpaces);
 	}
 
-	/** Handles a user vehicle exit through the business layer. */
+	/**
+	 * Handles user vehicle exit.
+	 * <p>
+	 * This method is called from a user action, gathers what the screen needs, and passes the real work to the
+	 * service layer.
+	 * </p>
+	 *
+	 * @param userId identifier of the user involved in the operation
+	 * @param plate license plate involved in the operation
+	 * @return the result of the operation
+	 */
 	private ParkingSpace handleUserVehicleExit(int userId, String plate) {
 		return parkingService.handleUserVehicleExit(userId, plate);
 	}
 
-	/** Gets the space code currently shown in a details dialog. */
+	/**
+	 * Gets the space code currently shown in a details dialog.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
+	 * @param detailsView details view that will be shown or updated
+	 * @return the current displayed space code
+	 */
 	private String getDisplayedSpaceCode(ParkingSpaceDetailsView detailsView) {
 		return detailsView.getDisplayedSpaceCode();
 	}
 
-	/** Gets the reserved plate currently shown in a details dialog. */
+	/**
+	 * Gets the reserved plate currently shown in a details dialog.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
+	 * @param detailsView details view that will be shown or updated
+	 * @return the current displayed reservation plate
+	 */
 	private String getDisplayedReservationPlate(ParkingSpaceDetailsView detailsView) {
 		return detailsView.getDisplayedReservationPlate();
 	}
 
-	/** Shows an error in a details dialog. */
+	/**
+	 * Shows an error in a details dialog.
+	 * <p>
+	 * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+	 * display.
+	 * </p>
+	 *
+	 * @param detailsView details view that will be shown or updated
+	 * @param message message shown to the user or written to the log
+	 */
 	private void showDetailsError(ParkingSpaceDetailsView detailsView, String message) {
 		detailsView.showError(message);
 	}
 
-	/** Asks the admin to confirm cancelling a reservation from details. */
+	/**
+	 * Confirms cancel reservation.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param detailsView details view that will be shown or updated
+	 * @param spaceCode parking space code involved in the operation
+	 * @param plate license plate involved in the operation
+	 * @return the answer chosen by the user
+	 */
 	private boolean confirmCancelReservation(ParkingSpaceDetailsView detailsView, String spaceCode, String plate) {
 		return detailsView.confirmCancelReservation(spaceCode, plate);
 	}
 
-	/** Enables or disables loading state in a details dialog. */
+	/**
+	 * Enables or disables loading state in a details dialog.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param detailsView details view that will be shown or updated
+	 * @param loading true while the screen is waiting for an operation to finish
+	 */
 	private void setDetailsLoading(ParkingSpaceDetailsView detailsView, boolean loading) {
 		detailsView.setLoading(loading);
 	}
 
-	/** Cancels a reservation by plate through the admin service. */
+	/**
+	 * Handles cancel reservation by plate.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 * @return true when the condition is met, false otherwise
+	 */
 	private boolean cancelReservationByPlate(String plate) {
 		return adminService.cancelReservationByPlate(plate);
 	}
 
-	/** Hides and disposes a details dialog. */
+	/**
+	 * Hides and disposes a details dialog.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 *
+	 * @param detailsView details view that will be shown or updated
+	 */
 	private void hideAndDisposeDetailsView(ParkingSpaceDetailsView detailsView) {
 		detailsView.setVisible(false);
 		detailsView.dispose();
 	}
 
-	/** Clears and closes parking-space details that may contain user data. */
+	/**
+	 * Handles clear space details session state.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 */
 	private void clearSpaceDetailsSessionState() {
 		if (parkingSpaceDetailsView != null) {
 			parkingSpaceDetailsView.clearSessionViewState();
@@ -874,7 +1614,12 @@ public class ParkingController implements ParkingStatusChangeListener {
 		}
 	}
 
-	/** Rebuilds the main menu parking table panel. */
+	/**
+	 * Handles rebuild parking slots panel.
+	 * <p>
+	 * This method keeps the controller action separate from the view code and from the business rule itself.
+	 * </p>
+	 */
 	private void rebuildParkingSlotsPanel() {
 		mainMenuView.rebuildParkingSlotsPanel();
 	}

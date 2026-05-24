@@ -6,8 +6,12 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 
 /**
- * Root controller for the main menu.
- * Routes button clicks to the appropriate sub-controllers (admin, parking, booking, statistics).
+ * Root controller for the main menu. Routes button clicks to the appropriate sub-controllers (admin,
+ * parking, booking, statistics).
+ * <p>
+ * The controller receives actions from the view, calls the needed service, and then asks the view to show
+ * the result. This keeps Swing code separate from the business rules.
+ * </p>
  */
 public class MainController {
     private MainMenuView view;
@@ -20,6 +24,10 @@ public class MainController {
 
     /**
      * Constructs the main menu controller.
+     * <p>
+     * The constructor receives the objects or values this class needs and stores them before the rest of
+     * the methods are used.
+     * </p>
      *
      * @param view main menu window
      */
@@ -28,7 +36,13 @@ public class MainController {
         initListeners();
     }
 
-    /** Wires the main menu buttons to their controllers. */
+    /**
+     * Handles init listeners.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void initListeners() {
         // 1. Manage Slots (admin only)
         addEntryExitListener(e -> openAdminParkingManagement());
@@ -69,21 +83,41 @@ public class MainController {
         addDeleteAccountListener(e -> deleteAccountIfPossible());
     }
 
-    /** Opens the regular-user parking entry flow. */
+    /**
+     * Handles parking entry.
+     * <p>
+     * This method is called from a user action, gathers what the screen needs, and passes the real work to
+     * the service layer.
+     * </p>
+     */
     private void handleParkingEntry() {
         if (hasParkingController()) {
             showVehicleEntryDialog();
         }
     }
 
-    /** Opens the regular-user parking exit flow. */
+    /**
+     * Handles parking exit.
+     * <p>
+     * This method is called from a user action, gathers what the screen needs, and passes the real work to
+     * the service layer.
+     * </p>
+     */
     private void handleParkingExit() {
         if (hasParkingController()) {
             showVehicleExitDialog();
         }
     }
 
-    /** Sets the active menu mode: admin or regular user. */
+    /**
+     * Sets the active menu mode: admin or regular user.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param mode mode used by this operation
+     */
     public void setMode(int mode) {
         setCurrentMode(mode);
         if (isRegularUserMode() && hasParkingController()) {
@@ -91,12 +125,28 @@ public class MainController {
         }
     }
 
-    /** Sets the authentication controller used for logout and account deletion. */
+    /**
+     * Sets the authentication controller used for logout and account deletion.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param authController auth controller that coordinates the related screen action
+     */
     public void setAuthController(AuthController authController) {
         this.authController = authController;
     }
 
-    /** Sets the parking controller used by parking buttons. */
+    /**
+     * Sets the parking controller used by parking buttons.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param parkingController parking controller that coordinates the related screen action
+     */
     public void setParkingController(ParkingController parkingController) {
         this.parkingController = parkingController;
         if (isRegularUserMode() && hasParkingController()) {
@@ -104,22 +154,52 @@ public class MainController {
         }
     }
 
-    /** Sets the statistics controller used by the chart button. */
+    /**
+     * Sets the statistics controller used by the chart button.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param statisticsController statistics controller that coordinates the related screen action
+     */
     public void setStatisticsController(StatisticsController statisticsController) {
         this.statisticsController = statisticsController;
     }
 
-    /** Sets the admin parking controller. */
+    /**
+     * Sets the admin parking controller.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param adminController admin controller that coordinates the related screen action
+     */
     public void setAdminController(AdminController adminController) {
         this.adminController = adminController;
     }
 
-    /** Sets the booking controller. */
+    /**
+     * Sets the booking controller.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param slotBookingController slot booking controller that coordinates the related screen action
+     */
     public void setSlotBookingController(AdminSlotBookingController slotBookingController) {
         this.slotBookingController = slotBookingController;
     }
 
-    /** Clears every controller and view that may still hold data from the logged-out user. */
+    /**
+     * Clears every controller and view that may still hold data from the logged-out user.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     public void clearSessionState() {
         clearCurrentMode();
         clearStatisticsSessionState();
@@ -129,76 +209,182 @@ public class MainController {
         clearMainViewSessionState();
     }
 
-    /** Adds a listener to the admin parking management action. */
+    /**
+     * Adds entry exit listener.
+     * <p>
+     * This connects a Swing action with the code that should run when the user clicks a button or interacts
+     * with the screen.
+     * </p>
+     *
+     * @param listener action that will run when the related event happens
+     */
     private void addEntryExitListener(ActionListener listener) {
         view.addEntryExitListener(listener);
     }
 
-    /** Adds a listener to the booking management action. */
+    /**
+     * Adds reservation listener.
+     * <p>
+     * This connects a Swing action with the code that should run when the user clicks a button or interacts
+     * with the screen.
+     * </p>
+     *
+     * @param listener action that will run when the related event happens
+     */
     private void addReservationListener(ActionListener listener) {
         view.addReservationListener(listener);
     }
 
-    /** Adds a listener to the parking entry action. */
+    /**
+     * Adds parking entry listener.
+     * <p>
+     * This connects a Swing action with the code that should run when the user clicks a button or interacts
+     * with the screen.
+     * </p>
+     *
+     * @param listener action that will run when the related event happens
+     */
     private void addParkingEntryListener(ActionListener listener) {
         view.addParkingEntryListener(listener);
     }
 
-    /** Adds a listener to the parking exit action. */
+    /**
+     * Adds parking exit listener.
+     * <p>
+     * This connects a Swing action with the code that should run when the user clicks a button or interacts
+     * with the screen.
+     * </p>
+     *
+     * @param listener action that will run when the related event happens
+     */
     private void addParkingExitListener(ActionListener listener) {
         view.addParkingExitListener(listener);
     }
 
-    /** Adds a listener to the occupancy chart action. */
+    /**
+     * Adds occupancy chart listener.
+     * <p>
+     * This connects a Swing action with the code that should run when the user clicks a button or interacts
+     * with the screen.
+     * </p>
+     *
+     * @param listener action that will run when the related event happens
+     */
     private void addOccupancyChartListener(ActionListener listener) {
         view.addOccupancyChartListener(listener);
     }
 
-    /** Adds a listener to the current parking status action. */
+    /**
+     * Adds status listener.
+     * <p>
+     * This connects a Swing action with the code that should run when the user clicks a button or interacts
+     * with the screen.
+     * </p>
+     *
+     * @param listener action that will run when the related event happens
+     */
     private void addStatusListener(ActionListener listener) {
         view.addStatusListener(listener);
     }
 
-    /** Adds a listener to the occupancy chart back action. */
+    /**
+     * Adds occupancy chart back listener.
+     * <p>
+     * This connects a Swing action with the code that should run when the user clicks a button or interacts
+     * with the screen.
+     * </p>
+     *
+     * @param listener action that will run when the related event happens
+     */
     private void addOccupancyChartBackListener(ActionListener listener) {
         view.addOccupancyChartBackListener(listener);
     }
 
-    /** Adds a listener to the logout action. */
+    /**
+     * Adds logout listener.
+     * <p>
+     * This connects a Swing action with the code that should run when the user clicks a button or interacts
+     * with the screen.
+     * </p>
+     *
+     * @param listener action that will run when the related event happens
+     */
     private void addLogoutListener(ActionListener listener) {
         view.addLogoutListener(listener);
     }
 
-    /** Adds a listener to the delete-account action. */
+    /**
+     * Adds delete account listener.
+     * <p>
+     * This connects a Swing action with the code that should run when the user clicks a button or interacts
+     * with the screen.
+     * </p>
+     *
+     * @param listener action that will run when the related event happens
+     */
     private void addDeleteAccountListener(ActionListener listener) {
         view.addDeleteAccountListener(listener);
     }
 
-    /** Adds a mouse listener to the parking slots table. */
+    /**
+     * Adds parking slots table mouse listener.
+     * <p>
+     * This connects a Swing action with the code that should run when the user clicks a button or interacts
+     * with the screen.
+     * </p>
+     *
+     * @param listener action that will run when the related event happens
+     */
     private void addParkingSlotsTableMouseListener(MouseListener listener) {
         view.addParkingSlotsTableMouseListener(listener);
     }
 
-    /** Adds a listener to the parking slots back action. */
+    /**
+     * Adds parking slots back listener.
+     * <p>
+     * This connects a Swing action with the code that should run when the user clicks a button or interacts
+     * with the screen.
+     * </p>
+     *
+     * @param listener action that will run when the related event happens
+     */
     private void addParkingSlotsBackListener(ActionListener listener) {
         view.addParkingSlotsBackListener(listener);
     }
 
-    /** Opens admin parking management when the current mode is admin. */
+    /**
+     * Handles open admin parking management.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void openAdminParkingManagement() {
         if (isAdminMode() && hasAdminController()) {
             showAdminParkingManagementView();
         }
     }
 
-    /** Opens booking management for the current mode. */
+    /**
+     * Handles open booking management.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void openBookingManagement() {
         if (hasSlotBookingController()) {
             showSlotBookingView();
         }
     }
 
-    /** Opens the occupancy chart and starts tracking. */
+    /**
+     * Handles open occupancy chart.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void openOccupancyChart() {
         showOccupancyChartView();
         if (hasStatisticsController()) {
@@ -206,7 +392,13 @@ public class MainController {
         }
     }
 
-    /** Opens the current parking status table. */
+    /**
+     * Handles open current parking status.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void openCurrentParkingStatus() {
         if (hasParkingController()) {
             rebuildParkingSlotsPanel();
@@ -214,7 +406,15 @@ public class MainController {
         }
     }
 
-    /** Opens details for a clicked space when the current mode is admin. */
+    /**
+     * Handles open space details if admin clicked.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param e e used by this operation
+     */
     private void openSpaceDetailsIfAdminClicked(MouseEvent e) {
         if (!isAdminMode() || !hasParkingController()) return;
 
@@ -225,7 +425,11 @@ public class MainController {
     }
 
     /**
-     * Handles a click on the parking status table.
+     * Handles parking slots table click.
+     * <p>
+     * This method is called from a user action, gathers what the screen needs, and passes the real work to
+     * the service layer.
+     * </p>
      *
      * @param event mouse click event
      */
@@ -233,7 +437,13 @@ public class MainController {
         openSpaceDetailsIfAdminClicked(event);
     }
 
-    /** Restores the main menu and stops chart tracking. */
+    /**
+     * Handles return to main menu.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void returnToMainMenu() {
         resetDisplayedContent();
         if (hasStatisticsController()) {
@@ -241,174 +451,388 @@ public class MainController {
         }
     }
 
-    /** Logs the user out when they confirm. */
+    /**
+     * Handles logout if confirmed.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void logoutIfConfirmed() {
         if (isLogoutConfirmed() && hasAuthController()) {
             logout();
         }
     }
 
-    /** Starts account deletion when the auth controller exists. */
+    /**
+     * Deletes account if possible.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void deleteAccountIfPossible() {
         if (hasAuthController()) {
             handleDeleteAccount();
         }
     }
 
-    /** Saves the current mode in memory. */
+    /**
+     * Sets the current mode.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param mode mode used by this operation
+     */
     private void setCurrentMode(int mode) {
         currentMode = mode;
     }
 
-    /** Checks whether the menu is in regular-user mode. */
+    /**
+     * Checks whether regular user mode.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @return true when the condition is met, false otherwise
+     */
     private boolean isRegularUserMode() {
         return currentMode == 2;
     }
 
-    /** Checks whether the menu is in admin mode. */
+    /**
+     * Checks whether admin mode.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @return true when the condition is met, false otherwise
+     */
     private boolean isAdminMode() {
         return currentMode == 1;
     }
 
-    /** Checks whether the parking controller exists. */
+    /**
+     * Checks whether parking controller exists.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @return true when the condition is met, false otherwise
+     */
     private boolean hasParkingController() {
         return parkingController != null;
     }
 
-    /** Checks whether the admin controller exists. */
+    /**
+     * Checks whether admin controller exists.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @return true when the condition is met, false otherwise
+     */
     private boolean hasAdminController() {
         return adminController != null;
     }
 
-    /** Checks whether the slot booking controller exists. */
+    /**
+     * Checks whether slot booking controller exists.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @return true when the condition is met, false otherwise
+     */
     private boolean hasSlotBookingController() {
         return slotBookingController != null;
     }
 
-    /** Checks whether the statistics controller exists. */
+    /**
+     * Checks whether statistics controller exists.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @return true when the condition is met, false otherwise
+     */
     private boolean hasStatisticsController() {
         return statisticsController != null;
     }
 
-    /** Checks whether the authentication controller exists. */
+    /**
+     * Checks whether auth controller exists.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @return true when the condition is met, false otherwise
+     */
     private boolean hasAuthController() {
         return authController != null;
     }
 
-    /** Shows the admin parking management view. */
+    /**
+     * Shows the admin parking management view.
+     * <p>
+     * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+     * display.
+     * </p>
+     */
     private void showAdminParkingManagementView() {
         adminController.showView();
     }
 
-    /** Shows the slot booking view with the current mode. */
+    /**
+     * Shows the slot booking view with the current mode.
+     * <p>
+     * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+     * display.
+     * </p>
+     */
     private void showSlotBookingView() {
         slotBookingController.showView(currentMode);
     }
 
-    /** Shows the occupancy chart view. */
+    /**
+     * Shows the occupancy chart view.
+     * <p>
+     * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+     * display.
+     * </p>
+     */
     private void showOccupancyChartView() {
         view.showOccupancyChart();
     }
 
-    /** Starts chart tracking through the statistics controller. */
+    /**
+     * Handles start statistics tracking.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void startStatisticsTracking() {
         statisticsController.startTracking();
     }
 
-    /** Rebuilds the current parking status panel. */
+    /**
+     * Handles rebuild parking slots panel.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void rebuildParkingSlotsPanel() {
         view.rebuildParkingSlotsPanel();
     }
 
-    /** Loads parking status through the parking controller. */
+    /**
+     * Loads parking status.
+     * <p>
+     * This method asks the service for fresh data and sends it back to the visible table or dialog when the
+     * screen needs to change.
+     * </p>
+     */
     private void loadParkingStatus() {
         parkingController.loadParkingStatus();
     }
 
-    /** Gets the parking space code at the clicked point. */
+    /**
+     * Gets the parking space code at the clicked point.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @param e e used by this operation
+     * @return the current parking space code at point
+     */
     private String getParkingSpaceCodeAtPoint(MouseEvent e) {
         return view.getParkingSpaceCodeAtPoint(e.getPoint());
     }
 
-    /** Shows parking-space details through the parking controller. */
+    /**
+     * Shows space details.
+     * <p>
+     * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+     * display.
+     * </p>
+     *
+     * @param code parking space code involved in the operation
+     */
     private void showSpaceDetails(String code) {
         parkingController.showSpaceDetails(code);
     }
 
-    /** Resets the main menu content. */
+    /**
+     * Handles reset displayed content.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void resetDisplayedContent() {
         view.resetDisplayedContent();
     }
 
-    /** Stops chart tracking through the statistics controller. */
+    /**
+     * Handles stop statistics tracking.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void stopStatisticsTracking() {
         statisticsController.stopTracking();
     }
 
-    /** Checks whether logout was confirmed in the view. */
+    /**
+     * Checks whether logout was confirmed in the view.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @return true when the condition is met, false otherwise
+     */
     private boolean isLogoutConfirmed() {
         return view.confirmLogout();
     }
 
-    /** Logs out through the authentication controller. */
+    /**
+     * Handles logout.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void logout() {
         authController.logout();
     }
 
-    /** Starts account deletion through the authentication controller. */
+    /**
+     * Handles delete account.
+     * <p>
+     * This method is called from a user action, gathers what the screen needs, and passes the real work to
+     * the service layer.
+     * </p>
+     */
     private void handleDeleteAccount() {
         authController.handleDeleteAccount();
     }
 
-    /** Opens the parking entry dialog through the parking controller. */
+    /**
+     * Opens the parking entry dialog through the parking controller.
+     * <p>
+     * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+     * display.
+     * </p>
+     */
     private void showVehicleEntryDialog() {
         parkingController.showVehicleEntryDialog();
     }
 
-    /** Opens the parking exit dialog through the parking controller. */
+    /**
+     * Opens the parking exit dialog through the parking controller.
+     * <p>
+     * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+     * display.
+     * </p>
+     */
     private void showVehicleExitDialog() {
         parkingController.showVehicleExitDialog();
     }
 
-    /** Refreshes the exit button through the parking controller. */
+    /**
+     * Handles refresh exit button state.
+     * <p>
+     * This method asks the service for fresh data and sends it back to the visible table or dialog when the
+     * screen needs to change.
+     * </p>
+     */
     private void refreshExitButtonState() {
         parkingController.refreshExitButtonState();
     }
 
-    /** Clears chart timers and chart-related session state. */
+    /**
+     * Handles clear statistics session state.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void clearStatisticsSessionState() {
         if (statisticsController != null) {
             statisticsController.clearSessionState();
         }
     }
 
-    /** Clears parking status, exit-button state, and details dialogs. */
+    /**
+     * Clears parking status, exit-button state, and details dialogs.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void clearParkingSessionState() {
         if (parkingController != null) {
             parkingController.clearSessionState();
         }
     }
 
-    /** Clears admin parking management tables and dialogs. */
+    /**
+     * Clears admin parking management tables and dialogs.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void clearAdminSessionState() {
         if (adminController != null) {
             adminController.clearSessionState();
         }
     }
 
-    /** Clears booking tables, selected plates, and booking dialogs. */
+    /**
+     * Clears booking tables, selected plates, and booking dialogs.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void clearBookingSessionState() {
         if (slotBookingController != null) {
             slotBookingController.clearSessionState();
         }
     }
 
-    /** Clears the main menu text and table state. */
+    /**
+     * Handles clear main view session state.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void clearMainViewSessionState() {
         view.clearSessionViewState();
     }
 
-    /** Resets the menu mode so the controller keeps no role from the previous session. */
+    /**
+     * Handles clear current mode.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void clearCurrentMode() {
         currentMode = 0;
     }

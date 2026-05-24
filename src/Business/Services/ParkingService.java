@@ -17,6 +17,10 @@ import java.util.TreeSet;
 
 /**
  * Manages parking spaces and vehicle entry or exit.
+ * <p>
+ * The service keeps the business rule in one place before any data is saved, loaded, or shown. This helps
+ * the rest of the project call the same logic consistently.
+ * </p>
  */
 public class ParkingService {
 	private ParkingSpaceDAO parkingSpaceDAO;
@@ -26,10 +30,14 @@ public class ParkingService {
 
 	/**
 	 * Constructs a new ParkingService.
+	 * <p>
+	 * The constructor receives the objects or values this class needs and stores them before the rest of the
+	 * methods are used.
+	 * </p>
 	 *
-	 * @param parkingSpaceDAO    DAO used for parking spaces
-	 * @param vehicleDAO         DAO used for vehicles
-	 * @param reservationDAO     DAO used for reservations
+	 * @param parkingSpaceDAO DAO used for parking spaces
+	 * @param vehicleDAO DAO used for vehicles
+	 * @param reservationDAO DAO used for reservations
 	 * @param transactionManager object that controls database transactions
 	 */
 	public ParkingService(ParkingSpaceDAO parkingSpaceDAO, VehicleDAO vehicleDAO,
@@ -40,13 +48,24 @@ public class ParkingService {
 		this.transactionManager = transactionManager;
 	}
 
-	/** Gets all parking spaces. */
+	/**
+	 * Gets all parking spaces.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
+	 * @return all spaces
+	 */
 	public List<ParkingSpace> getAllSpaces() {
 		return loadAllSpaces();
 	}
 
 	/**
-	 * Finds a parking space by its code.
+	 * Finds a record by its code.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
 	 *
 	 * @param code space code
 	 * @return matching space, or null if not found
@@ -56,7 +75,11 @@ public class ParkingService {
 	}
 
 	/**
-	 * Updates editable details for an existing space.
+	 * Updates parking space details.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
 	 *
 	 * @param space space with updated details
 	 */
@@ -78,7 +101,11 @@ public class ParkingService {
 	}
 
 	/**
-	 * Creates a new empty parking space.
+	 * Creates a parking space.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
 	 *
 	 * @param space space to create
 	 */
@@ -101,7 +128,11 @@ public class ParkingService {
 	}
 
 	/**
-	 * Updates the occupied state of a parking space.
+	 * Updates a parking space.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
 	 *
 	 * @param space space with updated state
 	 */
@@ -110,7 +141,11 @@ public class ParkingService {
 	}
 
 	/**
-	 * Deletes a vacant and unreserved parking space.
+	 * Deletes a parking space.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
 	 *
 	 * @param code space code to delete
 	 * @return true if the space was deleted
@@ -124,7 +159,11 @@ public class ParkingService {
 	}
 
 	/**
-	 * Finds all spaces that can receive a vehicle of the given type.
+	 * Finds available spaces.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
 	 *
 	 * @param type vehicle type
 	 * @return available spaces
@@ -134,7 +173,11 @@ public class ParkingService {
 	}
 
 	/**
-	 * Finds the active reservation for a license plate.
+	 * Finds active reservation by plate.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
 	 *
 	 * @param plate license plate to check
 	 * @return active reservation, or null if none exists
@@ -150,7 +193,11 @@ public class ParkingService {
 	}
 
 	/**
-	 * Finds the occupied space for a license plate.
+	 * Finds occupied space by plate.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
 	 *
 	 * @param plate license plate to check
 	 * @return occupied space, or null if the vehicle is not parked
@@ -171,6 +218,9 @@ public class ParkingService {
 
 	/**
 	 * Returns spaces occupied by vehicles registered to a user.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @param userId owner user ID
 	 * @return occupied spaces for that user
@@ -197,26 +247,20 @@ public class ParkingService {
 		return parkedSpaces;
 	}
 
-	/**
-	 * Assigns a vehicle to a space using the normal entry rules.
-	 *
-	 * @param vehicle vehicle to park
-	 * @return assigned space, or null if no space is available
-	 */
-	public ParkingSpace assignVehicleToSpace(Vehicle vehicle) {
-		return handleVehicleEntry(vehicle.getLicensePlate(), vehicle.getType());
-	}
 
 	/**
-	 * Handles entry for a logged-in user and registers new vehicles to that user.
-	 * This method synchronizes the transaction because it may create a vehicle,
-	 * check ownership, and occupy a space as one database operation. Without this,
-	 * the simulation thread or another UI action could change the same space between
+	 * Handles entry for a logged-in user and registers new vehicles to that user. This method synchronizes the
+	 * transaction because it may create a vehicle, check ownership, and occupy a space as one database
+	 * operation. Without this, the simulation thread or another UI action could change the same space between
 	 * those steps.
+	 * <p>
+	 * This method groups the complete parking operation so the controller does not need to know each database
+	 * step.
+	 * </p>
 	 *
 	 * @param userId owner user ID
-	 * @param plate  license plate
-	 * @param type   vehicle type
+	 * @param plate license plate
+	 * @param type vehicle type
 	 * @return assigned space, or null if no space is available
 	 */
 	public ParkingSpace handleUserVehicleEntry(int userId, String plate, VehicleType type) {
@@ -236,15 +280,17 @@ public class ParkingService {
 	}
 
 	/**
-	 * Handles a vehicle entering the parking lot.
-	 * A reserved plate uses its reserved space; otherwise the first compatible
-	 * available space is used.
-	 * This method synchronizes the transaction because entry checks availability
-	 * and then changes a parking space. Those steps must not be interleaved with
-	 * another vehicle entry, exit, or simulation update.
+	 * Handles a vehicle entering the parking lot. A reserved plate uses its reserved space; otherwise the
+	 * first compatible available space is used. This method synchronizes the transaction because entry checks
+	 * availability and then changes a parking space. Those steps must not be interleaved with another vehicle
+	 * entry, exit, or simulation update.
+	 * <p>
+	 * This method groups the complete parking operation so the controller does not need to know each database
+	 * step.
+	 * </p>
 	 *
 	 * @param plate license plate of the entering vehicle
-	 * @param type  vehicle type
+	 * @param type vehicle type
 	 * @return assigned space, or null if the lot has no compatible space
 	 */
 	public ParkingSpace handleVehicleEntry(String plate, VehicleType type) {
@@ -264,10 +310,13 @@ public class ParkingService {
 	}
 
 	/**
-	 * Handles a vehicle exiting the parking lot.
-	 * This method synchronizes the transaction because it searches for the parked
-	 * vehicle, frees its space, and removes any active reservation that was already
-	 * used by that vehicle. Those steps must see the same parking state.
+	 * Handles a vehicle exiting the parking lot. This method synchronizes the transaction because it searches
+	 * for the parked vehicle, frees its space, and removes any active reservation that was already used by
+	 * that vehicle. Those steps must see the same parking state.
+	 * <p>
+	 * This method groups the complete parking operation so the controller does not need to know each database
+	 * step.
+	 * </p>
 	 *
 	 * @param plate license plate of the exiting vehicle
 	 */
@@ -285,13 +334,16 @@ public class ParkingService {
 	}
 
 	/**
-	 * Handles exit for a logged-in user.
-	 * This method synchronizes the transaction because it verifies that the parked
-	 * vehicle belongs to the user before freeing the space and removing any used
-	 * reservation. The verification and update must happen together.
+	 * Handles exit for a logged-in user. This method synchronizes the transaction because it verifies that the
+	 * parked vehicle belongs to the user before freeing the space and removing any used reservation. The
+	 * verification and update must happen together.
+	 * <p>
+	 * This method groups the complete parking operation so the controller does not need to know each database
+	 * step.
+	 * </p>
 	 *
 	 * @param userId owner user ID
-	 * @param plate  license plate to exit with
+	 * @param plate license plate to exit with
 	 * @return freed space, or null if the vehicle is not parked for that user
 	 */
 	public ParkingSpace handleUserVehicleExit(int userId, String plate) {
@@ -310,12 +362,31 @@ public class ParkingService {
 		}
 	}
 
-	/** Gets the current parking status. */
+	/**
+	 * Gets the current parking status.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
+	 * @return the current parking status
+	 */
 	public List<ParkingSpace> getParkingStatus() {
 		return loadAllSpaces();
 	}
 
-	/** Registers the user's vehicle if needed, then parks it in the same transaction. */
+	/**
+	 * Registers the user's vehicle if needed, then parks it in the same transaction. The operation is kept
+	 * together so the stored data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method groups the complete parking operation so the controller does not need to know each database
+	 * step.
+	 * </p>
+	 *
+	 * @param userId identifier of the user involved in the operation
+	 * @param plate license plate involved in the operation
+	 * @param type vehicle type involved in the operation
+	 * @return the result of the operation
+	 */
 	private ParkingSpace handleUserVehicleEntryInTransaction(int userId, String plate, VehicleType type) {
 		if (userId <= 0) {
 			throw new IllegalArgumentException("No logged-in user was found.");
@@ -333,7 +404,18 @@ public class ParkingService {
 		return handleVehicleEntryInTransaction(plate, type);
 	}
 
-	/** Parks a vehicle while the caller owns the transaction. */
+	/**
+	 * Parks a vehicle while the caller owns the transaction. The operation is kept together so the stored data
+	 * remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method groups the complete parking operation so the controller does not need to know each database
+	 * step.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 * @param type vehicle type involved in the operation
+	 * @return the result of the operation
+	 */
 	private ParkingSpace handleVehicleEntryInTransaction(String plate, VehicleType type) {
 		Reservation reservation = findReservationByPlate(plate);
 		if (reservation != null && reservation.isActive()) {
@@ -368,7 +450,16 @@ public class ParkingService {
 		return space;
 	}
 
-	/** Frees the space occupied by a plate while the caller owns the transaction. */
+	/**
+	 * Frees the space occupied by a plate while the caller owns the transaction. The operation is kept
+	 * together so the stored data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method groups the complete parking operation so the controller does not need to know each database
+	 * step.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 */
 	private void handleVehicleExitInTransaction(String plate) {
 		List<ParkingSpace> allSpaces = loadAllSpaces();
 		for (ParkingSpace space : allSpaces) {
@@ -383,7 +474,18 @@ public class ParkingService {
 		}
 	}
 
-	/** Frees a user's parked vehicle while the caller owns the transaction. */
+	/**
+	 * Frees a user's parked vehicle while the caller owns the transaction. The operation is kept together so
+	 * the stored data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method groups the complete parking operation so the controller does not need to know each database
+	 * step.
+	 * </p>
+	 *
+	 * @param userId identifier of the user involved in the operation
+	 * @param plate license plate involved in the operation
+	 * @return the result of the operation
+	 */
 	private ParkingSpace handleUserVehicleExitInTransaction(int userId, String plate) {
 		List<ParkingSpace> parkedSpaces = getParkedSpacesByUser(userId);
 		for (ParkingSpace space : parkedSpaces) {
@@ -398,7 +500,16 @@ public class ParkingService {
 		return null;
 	}
 
-	/** Deletes the active reservation for a plate after the reserved vehicle leaves. */
+	/**
+	 * Deletes used reservation for plate.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 * @param space space used by this operation
+	 */
 	private void deleteUsedReservationForPlate(String plate, ParkingSpace space) {
 		Reservation reservation = findReservationByPlate(plate);
 		if (reservation != null && reservation.isActive()) {
@@ -409,7 +520,16 @@ public class ParkingService {
 		}
 	}
 
-	/** Checks whether a plate belongs to the given user. */
+	/**
+	 * Handles user owns vehicle.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param userId identifier of the user involved in the operation
+	 * @param plate license plate involved in the operation
+	 * @return the result of the operation
+	 */
 	private boolean userOwnsVehicle(int userId, String plate) {
 		List<Vehicle> vehicles = findVehiclesByUser(userId);
 		for (Vehicle vehicle : vehicles) {
@@ -420,7 +540,15 @@ public class ParkingService {
 		return false;
 	}
 
-	/** Generates the next free parking-space code for a floor. */
+	/**
+	 * Handles generate next code for floor.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param floor floor used by this operation
+	 * @return the result of the operation
+	 */
 	private String generateNextCodeForFloor(int floor) {
 		String prefix = floorPrefix(floor) + "-";
 		TreeSet<Integer> used = new TreeSet<>();
@@ -438,92 +566,222 @@ public class ParkingService {
 		return prefix + String.format("%02d", next);
 	}
 
-	/** Converts a floor number into the letter prefix used by space codes. */
+	/**
+	 * Handles floor prefix.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param floor floor used by this operation
+	 * @return the result of the operation
+	 */
 	private String floorPrefix(int floor) {
 		int normalized = Math.max(0, floor - 1) % 26;
 		return String.valueOf((char) ('A' + normalized));
 	}
 
-	/** Loads every parking space through persistence. */
+	/**
+	 * Loads all spaces.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @return the loaded all spaces
+	 */
 	private List<ParkingSpace> loadAllSpaces() {
 		return parkingSpaceDAO.findAll();
 	}
 
-	/** Finds a parking space through persistence. */
+	/**
+	 * Finds space by code.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @param code parking space code involved in the operation
+	 * @return the matching space by code, or null when it is not found
+	 */
 	private ParkingSpace findSpaceByCode(String code) {
 		return parkingSpaceDAO.findByCode(code);
 	}
 
-	/** Saves a parking space through persistence. */
+	/**
+	 * Handles save parking space record.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param space space used by this operation
+	 */
 	private void saveParkingSpaceRecord(ParkingSpace space) {
 		parkingSpaceDAO.save(space);
 	}
 
-	/** Updates the current state of a parking space through persistence. */
+	/**
+	 * Updates parking space record.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 *
+	 * @param space space used by this operation
+	 */
 	private void updateParkingSpaceRecord(ParkingSpace space) {
 		parkingSpaceDAO.update(space);
 	}
 
-	/** Updates editable parking-space details through persistence. */
+	/**
+	 * Updates parking space details record.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 *
+	 * @param space space used by this operation
+	 */
 	private void updateParkingSpaceDetailsRecord(ParkingSpace space) {
 		parkingSpaceDAO.updateDetails(space);
 	}
 
-	/** Deletes a parking space through persistence. */
+	/**
+	 * Deletes parking space record.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 *
+	 * @param code parking space code involved in the operation
+	 */
 	private void deleteParkingSpaceRecord(String code) {
 		parkingSpaceDAO.delete(code);
 	}
 
-	/** Finds available parking spaces through persistence. */
+	/**
+	 * Finds available spaces by type.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @param type vehicle type involved in the operation
+	 * @return the matching available spaces by type, or null when it is not found
+	 */
 	private List<ParkingSpace> findAvailableSpacesByType(VehicleType type) {
 		return parkingSpaceDAO.findAvailableByType(type);
 	}
 
-	/** Finds a reservation by license plate through persistence. */
+	/**
+	 * Finds reservation by plate.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 * @return the matching reservation by plate, or null when it is not found
+	 */
 	private Reservation findReservationByPlate(String plate) {
 		return reservationDAO.findByPlate(plate);
 	}
 
-	/** Deletes a reservation through persistence. */
+	/**
+	 * Deletes reservation record.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 *
+	 * @param reservationId reservation ID used by this operation
+	 */
 	private void deleteReservationRecord(int reservationId) {
 		reservationDAO.delete(reservationId);
 	}
 
-	/** Finds a vehicle by license plate through persistence. */
+	/**
+	 * Finds vehicle by plate.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 * @return the matching vehicle by plate, or null when it is not found
+	 */
 	private Vehicle findVehicleByPlate(String plate) {
 		return vehicleDAO.findByPlate(plate);
 	}
 
-	/** Saves a vehicle through persistence. */
+	/**
+	 * Handles save vehicle record.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param vehicle vehicle used by this operation
+	 */
 	private void saveVehicleRecord(Vehicle vehicle) {
 		vehicleDAO.save(vehicle);
 	}
 
-	/** Finds vehicles belonging to a user through persistence. */
+	/**
+	 * Finds vehicles by user.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @param userId identifier of the user involved in the operation
+	 * @return the matching vehicles by user, or null when it is not found
+	 */
 	private List<Vehicle> findVehiclesByUser(int userId) {
 		return vehicleDAO.findByUser(userId);
 	}
 
 	/**
-	 * Gets the shared lock used by synchronized transaction blocks.
-	 * The simulation thread and SwingWorkers can both change parking data, so
-	 * this lock makes one multi-step database operation finish before another begins.
+	 * Gets the shared lock used by synchronized transaction blocks. The simulation thread and SwingWorkers can
+	 * both change parking data, so this lock makes one multi-step database operation finish before another
+	 * begins.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @return the result of the operation
 	 */
 	private Object transactionLock() {
 		return transactionManager != null ? transactionManager : this;
 	}
 
-	/** Starts a transaction when transaction support is available. */
+	/**
+	 * Starts a transaction when transaction support is available. The operation is kept together so the stored
+	 * data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	private void beginTransaction() {
 		if (transactionManager != null) transactionManager.beginTransaction();
 	}
 
-	/** Commits a transaction when transaction support is available. */
+	/**
+	 * Commits a transaction when transaction support is available. The operation is kept together so the
+	 * stored data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	private void commitTransaction() {
 		if (transactionManager != null) transactionManager.commit();
 	}
 
-	/** Rolls back a transaction when transaction support is available. */
+	/**
+	 * Rolls back a transaction when transaction support is available. The operation is kept together so the
+	 * stored data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	private void rollbackTransaction() {
 		if (transactionManager != null) transactionManager.rollback();
 	}

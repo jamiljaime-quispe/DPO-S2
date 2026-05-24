@@ -4,8 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Base class for users of the parking system.
- * A user has login data, a role, and a list of registered vehicles.
+ * Base class for users of the parking system. A user has login data, a role, and a list of registered
+ * vehicles.
+ * <p>
+ * The class stores project data in a clear object so the services, controllers, and persistence code can
+ * pass the same information around safely.
+ * </p>
  */
 public abstract class User {
 	private String id;
@@ -17,10 +21,14 @@ public abstract class User {
 
 	/**
 	 * Constructs a new User.
+	 * <p>
+	 * The constructor receives the objects or values this class needs and stores them before the rest of the
+	 * methods are used.
+	 * </p>
 	 *
-	 * @param id       the unique user identifier
+	 * @param ID the unique user identifier
 	 * @param username the chosen username
-	 * @param email    the user's email address
+	 * @param email the user's email address
 	 * @param password the stored password value
 	 * @param userType the role string
 	 * @param vehicles the initial vehicles owned by this user
@@ -35,62 +43,108 @@ public abstract class User {
 		this.vehicles = vehicles != null ? vehicles : new ArrayList<>();
 	}
 
-	/** Gets the user ID. */
+	/**
+	 * Gets the user ID.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
+	 * @return the current ID
+	 */
 	public String getId() { return id; }
 
-	/** Gets the username. */
+	/**
+	 * Gets the username.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
+	 * @return the current username
+	 */
 	public String getUsername() { return username; }
 
-	/** Gets the email address. */
+	/**
+	 * Gets the email address.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
+	 * @return the current email
+	 */
 	public String getEmail() { return email; }
 
-	/** Gets the stored password value. */
+	/**
+	 * Gets the stored password value.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
+	 * @return the current password
+	 */
 	public String getPassword() { return password; }
 
-	/** Gets the user role. */
+	/**
+	 * Gets the user role.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
+	 * @return the current user type
+	 */
 	public String getUserType() { return userType; }
 
-	/** Gets this user's vehicles. */
+	/**
+	 * Gets this user's vehicles.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
+	 * @return the current vehicles
+	 */
 	public List<Vehicle> getVehicles() { return vehicles; }
 
-	/** Sets the user ID. */
+	/**
+	 * Sets the user ID.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param ID ID used by this operation
+	 */
 	public void setId(String id) { this.id = id; }
 
-	/** Sets the username. */
+	/**
+	 * Sets the username.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param username username entered or stored for the user
+	 */
 	public void setUsername(String username) { this.username = username; }
 
-	/** Sets the email address. */
+	/**
+	 * Sets the email address.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param email email entered or stored for the user
+	 */
 	public void setEmail(String email) { this.email = email; }
 
-	/** Sets the stored password value. */
+	/**
+	 * Sets the stored password value.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param password password entered by the user
+	 */
 	public void setPassword(String password) { this.password = password; }
 
-	/** Sets the user role. */
-	public void setUserType(String userType) { this.userType = userType; }
-
-	/**
-	 * Adds a vehicle to this user's vehicle list.
-	 *
-	 * @param vehicle the vehicle to add
-	 */
-	public void addVehicle(Vehicle vehicle) {
-		if (vehicles == null) vehicles = new ArrayList<>();
-		vehicles.add(vehicle);
-	}
-
-	/**
-	 * Removes a vehicle from this user's vehicle list by license plate.
-	 *
-	 * @param licensePlate the plate of the vehicle to remove
-	 */
-	public void removeVehicle(String licensePlate) {
-		if (vehicles == null) return;
-
-		for (int i = vehicles.size() - 1; i >= 0; i--) {
-			Vehicle vehicle = vehicles.get(i);
-			if (vehicle != null && licensePlate.equals(vehicle.getLicensePlate())) {
-				vehicles.remove(i);
-			}
-		}
-	}
 }

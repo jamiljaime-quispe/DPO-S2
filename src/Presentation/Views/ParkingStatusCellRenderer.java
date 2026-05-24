@@ -7,6 +7,10 @@ import java.awt.Component;
 
 /**
  * Colors the current parking status table according to status and current-user ownership.
+ * <p>
+ * The view builds or updates Swing components and leaves the decisions to controllers and services. This
+ * keeps the screen code focused on what the user sees.
+ * </p>
  */
 class ParkingStatusCellRenderer extends DefaultTableCellRenderer {
     private static final int STATUS_COLUMN = 2;
@@ -17,13 +21,16 @@ class ParkingStatusCellRenderer extends DefaultTableCellRenderer {
 
     /**
      * Returns the table cell component with the parking status colors applied.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
      *
-     * @param table      table being painted
-     * @param value      value shown in the cell
+     * @param table table being painted
+     * @param value value shown in the cell
      * @param isSelected whether the row is selected
-     * @param hasFocus   whether the cell has focus
-     * @param row        view row
-     * @param column     view column
+     * @param hasFocus whether the cell has focus
+     * @param row view row
+     * @param column view column
      * @return component used to paint the cell
      */
     @Override
@@ -40,10 +47,14 @@ class ParkingStatusCellRenderer extends DefaultTableCellRenderer {
 
     /**
      * Applies the correct background for the current row and column.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param table  table being painted
-     * @param cell   cell being painted
-     * @param row    view row
+     * @param table table being painted
+     * @param cell cell being painted
+     * @param row view row
      * @param column view column
      */
     private void applyParkingStatusColor(JTable table, Component cell, int row, int column) {

@@ -5,8 +5,12 @@ import java.awt.*;
 import java.awt.event.ActionListener;
 
 /**
- * Registration screen for new users.
- * Collects username, email, password, and confirmation; delegates validation and account creation to {@link Presentation.Controllers.AuthController}.
+ * Registration screen for new users. Collects username, email, password, and confirmation; delegates
+ * validation and account creation to {@link Presentation.Controllers.AuthController}.
+ * <p>
+ * The view builds or updates Swing components and leaves the decisions to controllers and services. This
+ * keeps the screen code focused on what the user sees.
+ * </p>
  */
 public class SignupView extends JFrame {
     private JTextField usernameField;
@@ -16,7 +20,13 @@ public class SignupView extends JFrame {
     private JButton signupButton;
     private JButton backButton;
 
-    /** Creates the signup window. */
+    /**
+     * Creates the signup window.
+     * <p>
+     * The constructor receives the objects or values this class needs and stores them before the rest of
+     * the methods are used.
+     * </p>
+     */
     public SignupView() {
         setTitle("Sign Up - Parking System");
         setSize(930, 650);
@@ -24,7 +34,13 @@ public class SignupView extends JFrame {
         setLocationRelativeTo(null);
     }
 
-    /** Builds the signup window components. */
+    /**
+     * Handles init components.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     public void initComponents() {
         JPanel mainPanel = createMainPanel();
         mainPanel.add(createBrandPanel());
@@ -32,7 +48,15 @@ public class SignupView extends JFrame {
         setContentPane(mainPanel);
     }
 
-    /** Creates the base panel for the signup window. */
+    /**
+     * Creates main panel.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     *
+     * @return the created main panel
+     */
     private JPanel createMainPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(null);
@@ -40,7 +64,15 @@ public class SignupView extends JFrame {
         return panel;
     }
 
-    /** Creates the blue brand section shown on the left. */
+    /**
+     * Creates brand panel.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     *
+     * @return the created brand panel
+     */
     private JPanel createBrandPanel() {
         JPanel brand = new JPanel();
         brand.setLayout(null);
@@ -52,7 +84,15 @@ public class SignupView extends JFrame {
         return brand;
     }
 
-    /** Creates the square logo label used by the brand panel. */
+    /**
+     * Creates brand logo.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     *
+     * @return the created brand logo
+     */
     private JLabel createBrandLogo() {
         JLabel logo = new JLabel("P", SwingConstants.CENTER);
         logo.setFont(new Font("SansSerif", Font.BOLD, 64));
@@ -62,7 +102,15 @@ public class SignupView extends JFrame {
         return logo;
     }
 
-    /** Creates the main brand title. */
+    /**
+     * Creates brand title.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     *
+     * @return the created brand title
+     */
     private JLabel createBrandTitle() {
         JLabel brandTitle = new JLabel("Create an account", SwingConstants.CENTER);
         brandTitle.setFont(new Font("SansSerif", Font.BOLD, 26));
@@ -71,7 +119,15 @@ public class SignupView extends JFrame {
         return brandTitle;
     }
 
-    /** Creates the brand subtitle. */
+    /**
+     * Creates brand subtitle.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     *
+     * @return the created brand subtitle
+     */
     private JLabel createBrandSubtitle() {
         JLabel brandSub = new JLabel("Join the Parking System", SwingConstants.CENTER);
         brandSub.setFont(new Font("SansSerif", Font.PLAIN, 15));
@@ -80,7 +136,15 @@ public class SignupView extends JFrame {
         return brandSub;
     }
 
-    /** Creates the white card containing the signup form. */
+    /**
+     * Creates signup card.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     *
+     * @return the created signup card
+     */
     private JPanel createSignupCard() {
         JPanel card = createFormCard();
         addSignupHeader(card);
@@ -90,7 +154,15 @@ public class SignupView extends JFrame {
         return card;
     }
 
-    /** Creates a form card with consistent visual styling. */
+    /**
+     * Creates form card.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     *
+     * @return the created form card
+     */
     private JPanel createFormCard() {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
@@ -102,7 +174,15 @@ public class SignupView extends JFrame {
         return card;
     }
 
-    /** Adds the title and subtitle to the signup card. */
+    /**
+     * Adds signup header.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param card card used by this operation
+     */
     private void addSignupHeader(JPanel card) {
         JLabel heading = createCardHeading("Sign up");
         JLabel subHeading = createCardSubheading("Fill in your details to register");
@@ -112,7 +192,16 @@ public class SignupView extends JFrame {
         card.add(Box.createRigidArea(new Dimension(0, 22)));
     }
 
-    /** Creates the heading shown at the top of the card. */
+    /**
+     * Creates card heading.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     *
+     * @param text text used by this operation
+     * @return the created card heading
+     */
     private JLabel createCardHeading(String text) {
         JLabel heading = new JLabel(text);
         heading.setFont(new Font("SansSerif", Font.BOLD, 26));
@@ -121,7 +210,16 @@ public class SignupView extends JFrame {
         return heading;
     }
 
-    /** Creates the smaller subtitle shown below the heading. */
+    /**
+     * Creates card subheading.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     *
+     * @param text text used by this operation
+     * @return the created card subheading
+     */
     private JLabel createCardSubheading(String text) {
         JLabel subHeading = new JLabel(text);
         subHeading.setFont(new Font("SansSerif", Font.PLAIN, 13));
@@ -130,7 +228,13 @@ public class SignupView extends JFrame {
         return subHeading;
     }
 
-    /** Creates and styles the signup form fields. */
+    /**
+     * Creates signup fields.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     */
     private void createSignupFields() {
         usernameField = new JTextField();
         emailField = new JTextField();
@@ -142,7 +246,15 @@ public class SignupView extends JFrame {
         styleField(confirmPasswordField);
     }
 
-    /** Adds the signup fields to the card. */
+    /**
+     * Adds signup fields.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param card card used by this operation
+     */
     private void addSignupFields(JPanel card) {
         addField(card, "Username", usernameField, 14);
         addField(card, "Email", emailField, 14);
@@ -150,7 +262,18 @@ public class SignupView extends JFrame {
         addField(card, "Confirm password", confirmPasswordField, 24);
     }
 
-    /** Adds one labeled field to the signup card. */
+    /**
+     * Adds field.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param card card used by this operation
+     * @param label label used by this operation
+     * @param field field used by this operation
+     * @param bottomGap bottom gap used by this operation
+     */
     private void addField(JPanel card, String label, JTextField field, int bottomGap) {
         card.add(fieldLabel(label));
         card.add(Box.createRigidArea(new Dimension(0, 6)));
@@ -158,7 +281,15 @@ public class SignupView extends JFrame {
         card.add(Box.createRigidArea(new Dimension(0, bottomGap)));
     }
 
-    /** Creates and adds the signup buttons to the card. */
+    /**
+     * Adds signup buttons.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param card card used by this operation
+     */
     private void addSignupButtons(JPanel card) {
         signupButton = primaryButton("Create account");
         backButton = linkButton("<- Back to login");
@@ -167,7 +298,16 @@ public class SignupView extends JFrame {
         card.add(backButton);
     }
 
-    /** Creates a label for a form field. */
+    /**
+     * Handles field label.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param text text used by this operation
+     * @return the result of the operation
+     */
     private JLabel fieldLabel(String text) {
         JLabel l = new JLabel(text);
         l.setFont(new Font("SansSerif", Font.BOLD, 12));
@@ -176,7 +316,15 @@ public class SignupView extends JFrame {
         return l;
     }
 
-    /** Applies the standard text-field style. */
+    /**
+     * Handles style field.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param f f used by this operation
+     */
     private void styleField(JTextField f) {
         f.setFont(new Font("SansSerif", Font.PLAIN, 14));
         f.setPreferredSize(new Dimension(340, 38));
@@ -187,7 +335,16 @@ public class SignupView extends JFrame {
                 BorderFactory.createEmptyBorder(6, 12, 6, 12)));
     }
 
-    /** Creates a primary action button. */
+    /**
+     * Handles primary button.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param text text used by this operation
+     * @return the result of the operation
+     */
     private JButton primaryButton(String text) {
         JButton b = new JButton(text);
         b.setForeground(Color.WHITE);
@@ -203,7 +360,16 @@ public class SignupView extends JFrame {
         return b;
     }
 
-    /** Creates a link-style button. */
+    /**
+     * Handles link button.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param text text used by this operation
+     * @return the result of the operation
+     */
     private JButton linkButton(String text) {
         JButton b = new JButton(text);
         b.setForeground(new Color(33, 99, 168));
@@ -217,27 +383,60 @@ public class SignupView extends JFrame {
         return b;
     }
 
-    /** Gets the username typed by the user. */
+    /**
+     * Gets the username typed by the user.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @return the current username
+     */
     public String getUsername() {
         return usernameField.getText().trim();
     }
 
-    /** Gets the email typed by the user. */
+    /**
+     * Gets the email typed by the user.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @return the current email
+     */
     public String getEmail() {
         return emailField.getText().trim();
     }
 
-    /** Gets the password typed by the user. */
+    /**
+     * Gets the password typed by the user.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @return the current password
+     */
     public String getPassword() {
         return new String(passwordField.getPassword());
     }
 
-    /** Gets the repeated password typed by the user. */
+    /**
+     * Gets the repeated password typed by the user.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @return the current confirm password
+     */
     public String getConfirmPassword() {
         return new String(confirmPasswordField.getPassword());
     }
 
-    /** Clears the signup form. */
+    /**
+     * Handles clear form.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
+     */
     public void clearForm() {
         usernameField.setText("");
         emailField.setText("");
@@ -245,7 +444,15 @@ public class SignupView extends JFrame {
         confirmPasswordField.setText("");
     }
 
-    /** Enables or disables the signup form while work is running. */
+    /**
+     * Sets the loading state.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param isLoading true while the screen is waiting for an operation to finish
+     */
     public void setLoadingState(boolean isLoading) {
         if (isLoading) {
             signupButton.setEnabled(false);
@@ -261,7 +468,11 @@ public class SignupView extends JFrame {
     }
 
     /**
-     * Adds a listener to the account creation action.
+     * Adds registration listener.
+     * <p>
+     * This connects a Swing action with the code that should run when the user clicks a button or interacts
+     * with the screen.
+     * </p>
      *
      * @param listener action to run when the user submits the signup form
      */
@@ -271,7 +482,11 @@ public class SignupView extends JFrame {
     }
 
     /**
-     * Adds a listener to the back-to-login action.
+     * Adds back to login listener.
+     * <p>
+     * This connects a Swing action with the code that should run when the user clicks a button or interacts
+     * with the screen.
+     * </p>
      *
      * @param listener action to run when the user returns to login
      */
@@ -280,9 +495,12 @@ public class SignupView extends JFrame {
     }
 
     /**
-     * Shows an error message owned by the sign-up window.
+     * Shows error.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
      *
-     * @param title   dialog title
+     * @param title dialog title
      * @param message message to show
      */
     public void showError(String title, String message) {

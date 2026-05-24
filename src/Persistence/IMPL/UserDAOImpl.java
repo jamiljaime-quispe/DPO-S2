@@ -10,18 +10,37 @@ import java.sql.*;
 import java.util.ArrayList;
 
 /**
- * MySQL/JDBC implementation of {@link Persistence.UserDAO}.
- * Maps the {@code users} table to {@link Business.Entities.User} objects.
+ * MySQL/JDBC implementation of {@link Persistence.UserDAO}. Maps the {@code users} table to {@link
+ * Business.Entities.User} objects.
+ * <p>
+ * The class belongs to the persistence layer, so it is responsible for reading or writing stored data while
+ * the other layers use cleaner methods.
+ * </p>
  */
 public class UserDAOImpl implements UserDAO {
     private final DatabaseManager db;
 
-    /** Creates the DAO with the shared database manager. */
+    /**
+     * Creates the DAO with the shared database manager.
+     * <p>
+     * The constructor receives the objects or values this class needs and stores them before the rest of
+     * the methods are used.
+     * </p>
+     *
+     * @param db database manager used by persistence classes
+     */
     public UserDAOImpl(DatabaseManager db) {
         this.db = db;
     }
 
-    /** Saves a new user. */
+    /**
+     * Handles save.
+     * <p>
+     * This method inserts a new row in the database using the values from the project object.
+     * </p>
+     *
+     * @param user user used by this operation
+     */
     @Override
     public void save(User user) {
         String sql = "INSERT INTO user (username, email, password, isAdmin) VALUES (?, ?, ?, ?)";
@@ -41,7 +60,16 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
-    /** Finds a user by ID. */
+    /**
+     * Finds by id.
+     * <p>
+     * This method runs the select query for this lookup and turns the database row back into a project
+     * object.
+     * </p>
+     *
+     * @param ID ID used by this operation
+     * @return the matching by ID, or null when it is not found
+     */
     @Override
     public User findById(int id) {
         String sql = "SELECT * FROM user WHERE userId = ?";
@@ -57,7 +85,16 @@ public class UserDAOImpl implements UserDAO {
         return null;
     }
 
-    /** Finds a user by username. */
+    /**
+     * Finds by username.
+     * <p>
+     * This method runs the select query for this lookup and turns the database row back into a project
+     * object.
+     * </p>
+     *
+     * @param username username entered or stored for the user
+     * @return the matching by username, or null when it is not found
+     */
     @Override
     public User findByUsername(String username) {
         String sql = "SELECT * FROM user WHERE username = ?";
@@ -73,7 +110,16 @@ public class UserDAOImpl implements UserDAO {
         return null;
     }
 
-    /** Finds a user by email address. */
+    /**
+     * Finds by email.
+     * <p>
+     * This method runs the select query for this lookup and turns the database row back into a project
+     * object.
+     * </p>
+     *
+     * @param email email entered or stored for the user
+     * @return the matching by email, or null when it is not found
+     */
     @Override
     public User findByEmail(String email) {
         String sql = "SELECT * FROM user WHERE email = ?";
@@ -89,7 +135,14 @@ public class UserDAOImpl implements UserDAO {
         return null;
     }
 
-    /** Deletes a user by ID. */
+    /**
+     * Deletes value.
+     * <p>
+     * This method removes the matching row from the database while hiding the SQL details from the service.
+     * </p>
+     *
+     * @param ID ID used by this operation
+     */
     @Override
     public void delete(int id) {
         String sql = "DELETE FROM user WHERE userId = ?";
@@ -101,7 +154,14 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
-    /** Updates an existing user. */
+    /**
+     * Updates value.
+     * <p>
+     * This method writes the changed values back to the database for an existing row.
+     * </p>
+     *
+     * @param user user used by this operation
+     */
     @Override
     public void update(User user) {
         String sql = "UPDATE user SET username = ?, email = ?, password = ?, isAdmin = ? WHERE userId = ?";
@@ -117,7 +177,18 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
-    /** Converts a database row into a User object. */
+    /**
+     * Converts a database row into a User object. The operation is kept together so the stored data remains
+     * consistent if something goes wrong halfway through.
+     * <p>
+     * This method keeps the SQL work inside persistence so the business layer does not need
+     * database-specific code.
+     * </p>
+     *
+     * @param rs rs used by this operation
+     * @return the result of the operation
+     * @throws SQLException if the operation cannot be completed correctly
+     */
     private User mapRow(ResultSet rs) throws SQLException {
         String id = String.valueOf(rs.getInt("userId"));
         String username = rs.getString("username");
@@ -133,7 +204,14 @@ public class UserDAOImpl implements UserDAO {
         }
     }
 
-    /** Gets the database connection through this DAO's database manager. */
+    /**
+     * Gets the database connection through this DAO's database manager.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @return the current connection
+     */
     private java.sql.Connection getConnection() {
         return db.getConnection();
     }

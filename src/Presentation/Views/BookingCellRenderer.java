@@ -7,6 +7,10 @@ import java.awt.Component;
 
 /**
  * Colors the booking table so own bookings, vacant slots, and occupied slots are easy to distinguish.
+ * <p>
+ * The view builds or updates Swing components and leaves the decisions to controllers and services. This
+ * keeps the screen code focused on what the user sees.
+ * </p>
  */
 class BookingCellRenderer extends DefaultTableCellRenderer {
     private static final int PARKING_STATUS_COLUMN = 3;
@@ -17,13 +21,16 @@ class BookingCellRenderer extends DefaultTableCellRenderer {
 
     /**
      * Returns the table cell component with the booking colors applied.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
      *
-     * @param table      table being painted
-     * @param value      value shown in the cell
+     * @param table table being painted
+     * @param value value shown in the cell
      * @param isSelected whether the row is selected
-     * @param hasFocus   whether the cell has focus
-     * @param row        view row
-     * @param column     view column
+     * @param hasFocus whether the cell has focus
+     * @param row view row
+     * @param column view column
      * @return component used to paint the cell
      */
     @Override
@@ -39,11 +46,15 @@ class BookingCellRenderer extends DefaultTableCellRenderer {
     }
 
     /**
-     * Applies row and status colors using the hidden table columns.
+     * Handles apply booking colors.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param table  table being painted
-     * @param cell   cell being painted
-     * @param row    view row
+     * @param table table being painted
+     * @param cell cell being painted
+     * @param row view row
      * @param column view column
      */
     private void applyBookingColors(JTable table, Component cell, int row, int column) {

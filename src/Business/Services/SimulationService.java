@@ -12,11 +12,15 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Simulates vehicle traffic in the parking lot using a background thread.
- * Simulated vehicles only use spaces that are not reserved.
+ * Simulates vehicle traffic in the parking lot using a background thread. Simulated vehicles only use
+ * spaces that are not reserved.
+ * <p>
+ * The service keeps the business rule in one place before any data is saved, loaded, or shown. This helps
+ * the rest of the project call the same logic consistently.
+ * </p>
  */
 public class SimulationService implements Runnable {
-	private static final int CHAOS_MODE_DELAY_MS = 1000;
+	// private static final int CHAOS_MODE_DELAY_MS = 1000;
 	private static final String SIMULATED_PLATE_PREFIX = "SIM-";
 
 	private ParkingService parkingService;
@@ -30,12 +34,16 @@ public class SimulationService implements Runnable {
 
 	/**
 	 * Constructs a new SimulationService.
+	 * <p>
+	 * The constructor receives the objects or values this class needs and stores them before the rest of the
+	 * methods are used.
+	 * </p>
 	 *
-	 * @param parkingService    service used for entry and exit
-	 * @param config            simulation configuration
-	 * @param random            random number generator
+	 * @param parkingService service used for entry and exit
+	 * @param config simulation configuration
+	 * @param random random number generator
 	 * @param simulatedVehicles list of currently parked simulated vehicles
-	 * @param vehicleDAO        DAO used to avoid duplicate simulated plates
+	 * @param vehicleDAO DAO used to avoid duplicate simulated plates
 	 */
 	public SimulationService(ParkingService parkingService, Config config, Random random,
 			List<Vehicle> simulatedVehicles, VehicleDAO vehicleDAO) {
@@ -46,12 +54,26 @@ public class SimulationService implements Runnable {
 		this.vehicleDAO = vehicleDAO;
 	}
 
-	/** Sets the listener notified after simulation changes. */
+	/**
+	 * Sets the listener notified after simulation changes.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
+	 *
+	 * @param parkingStatusChangeListener action that will run when the related event happens
+	 */
 	public void setParkingStatusChangeListener(ParkingStatusChangeListener parkingStatusChangeListener) {
 		this.parkingStatusChangeListener = parkingStatusChangeListener;
 	}
 
-	/** Runs the background simulation loop. */
+	/**
+	 * Runs the background simulation loop.
+	 * <p>
+	 * This is the body of the background thread. It repeats the simulation while it is active and sleeps
+	 * between steps so the program can keep running normally.
+	 * </p>
+	 */
 	@Override
 	public void run() {
 		loadExistingSimulatedVehiclesSafely();
@@ -75,7 +97,12 @@ public class SimulationService implements Runnable {
 		}
 	}
 
-	/** Starts the simulation in its own background thread. */
+	/**
+	 * Starts the simulation in its own background thread.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	public void startSimulation() {
 		if (running) return;
 
@@ -84,13 +111,24 @@ public class SimulationService implements Runnable {
 		startSimulationThread();
 	}
 
-	/** Stops the simulation and wakes the thread if it is sleeping. */
+	/**
+	 * Stops the simulation and wakes the thread if it is sleeping. The method supports the simulated traffic
+	 * flow while keeping the parking updates coordinated with the rest of the system.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	public void stopSimulation() {
 		running = false;
 		interruptSimulationThread();
 	}
 
-	/** Performs one simulated entry or exit decision. */
+	/**
+	 * Handles simulate step.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	public void simulateStep() {
 		double entryProbability = calculateEntryProbability();
 		if (shouldSimulateEntry(entryProbability)) {
@@ -108,7 +146,12 @@ public class SimulationService implements Runnable {
 		// }
 	}
 
-	/** Simulates one vehicle entering the parking lot. */
+	/**
+	 * Handles simulate entry.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	public void simulateEntry() {
 		VehicleType type = chooseRandomVehicleType();
 
@@ -123,7 +166,12 @@ public class SimulationService implements Runnable {
 		}
 	}
 
-	/** Simulates one vehicle leaving the parking lot. */
+	/**
+	 * Handles simulate exit.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	public void simulateExit() {
 		if (hasNoSimulatedVehicles()) return;
 
@@ -135,7 +183,10 @@ public class SimulationService implements Runnable {
 	}
 
 	/**
-	 * Calculates the chance that the next step should be an entry.
+	 * Handles calculate entry probability.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
 	 *
 	 * @return entry probability between 0 and 1
 	 */
@@ -157,7 +208,10 @@ public class SimulationService implements Runnable {
 	}
 
 	/**
-	 * Generates an unused simulated license plate.
+	 * Handles generate random plate.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
 	 *
 	 * @return generated plate
 	 */
@@ -173,14 +227,30 @@ public class SimulationService implements Runnable {
 		}
 	}
 
-	/** Notifies the parking listener when the simulation changes the lot. */
+	/**
+	 * Notifies the parking listener when the simulation changes the lot. The method supports the simulated
+	 * traffic flow while keeping the parking updates coordinated with the rest of the system.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param message message shown to the user or written to the log
+	 */
 	private void notifyParkingStatusChanged(String message) {
 		if (parkingStatusChangeListener != null) {
 			notifyParkingListener(message);
 		}
 	}
 
-	/** Checks that a simulated plate is not already in use. */
+	/**
+	 * Checks whether plate available.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 * @return true when the condition is met, false otherwise
+	 */
 	private boolean isPlateAvailable(String plate) {
 		if (plateExistsInDatabase(plate)) return false;
 		for (Vehicle vehicle : simulatedVehicles) {
@@ -189,65 +259,155 @@ public class SimulationService implements Runnable {
 		return true;
 	}
 
-	/** Sleeps until the next simulation step. */
+	/**
+	 * Sleeps until the next simulation step. The method supports the simulated traffic flow while keeping the
+	 * parking updates coordinated with the rest of the system.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @throws InterruptedException if the operation cannot be completed correctly
+	 */
 	private void sleepBeforeNextStep() throws InterruptedException {
 		int maxDelay = Math.max(1, getSimulatedVehicleDelay());
 		int delay = randomInt(maxDelay) + 1;
 		Thread.sleep(delay * 1000L);
 	}
 
-	/** Gets the configured maximum simulated vehicle delay. */
+	/**
+	 * Gets the configured maximum simulated vehicle delay.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
+	 * @return the current simulated vehicle delay
+	 */
 	private int getSimulatedVehicleDelay() {
 		return config.getSimulatedVehicleDelay();
 	}
 
-	/** Creates the simulation thread. */
+	/**
+	 * Creates the simulation thread. The method supports the simulated traffic flow while keeping the parking
+	 * updates coordinated with the rest of the system.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 */
 	private void createSimulationThread() {
 		simulationThread = new Thread(this);
 	}
 
-	/** Starts the simulation thread. */
+	/**
+	 * Starts the simulation thread. The method supports the simulated traffic flow while keeping the parking
+	 * updates coordinated with the rest of the system.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	private void startSimulationThread() {
 		simulationThread.start();
 	}
 
-	/** Interrupts the simulation thread if it exists. */
+	/**
+	 * Interrupts the simulation thread if it exists. The method supports the simulated traffic flow while
+	 * keeping the parking updates coordinated with the rest of the system.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	private void interruptSimulationThread() {
 		if (simulationThread != null) simulationThread.interrupt();
 	}
 
-	/** Decides whether the next simulated action should be an entry. */
+	/**
+	 * Handles should simulate entry.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param entryProbability entry probability used by this operation
+	 * @return the result of the operation
+	 */
 	private boolean shouldSimulateEntry(double entryProbability) {
 		return random.nextDouble() < entryProbability;
 	}
 
-	/** Chooses a random vehicle type for simulated entry. */
+	/**
+	 * Handles choose random vehicle type.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @return the result of the operation
+	 */
 	private VehicleType chooseRandomVehicleType() {
 		VehicleType[] types = VehicleType.values();
 		return types[randomInt(types.length)];
 	}
 
-	/** Finds available spaces through the parking service. */
+	/**
+	 * Finds available spaces.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @param type vehicle type involved in the operation
+	 * @return the matching available spaces, or null when it is not found
+	 */
 	private List<ParkingSpace> findAvailableSpaces(VehicleType type) {
 		return parkingService.findAvailableSpaces(type);
 	}
 
-	/** Handles simulated vehicle entry through the parking service. */
+	/**
+	 * Handles vehicle entry.
+	 * <p>
+	 * This method groups the complete parking operation so the controller does not need to know each database
+	 * step.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 * @param type vehicle type involved in the operation
+	 * @return the result of the operation
+	 */
 	private ParkingSpace handleVehicleEntry(String plate, VehicleType type) {
 		return parkingService.handleVehicleEntry(plate, type);
 	}
 
-	/** Handles simulated vehicle exit through the parking service. */
+	/**
+	 * Handles vehicle exit.
+	 * <p>
+	 * This method groups the complete parking operation so the controller does not need to know each database
+	 * step.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 */
 	private void handleVehicleExit(String plate) {
 		parkingService.handleVehicleExit(plate);
 	}
 
-	/** Adds a vehicle to the simulated vehicle list. */
+	/**
+	 * Adds simulated vehicle.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param vehicle vehicle used by this operation
+	 */
 	private void addSimulatedVehicle(Vehicle vehicle) {
 		simulatedVehicles.add(vehicle);
 	}
 
-	/** Loads parked simulated vehicles without stopping the simulation if loading fails. */
+	/**
+	 * Loads parked simulated vehicles without stopping the simulation if loading fails. The method supports
+	 * the simulated traffic flow while keeping the parking updates coordinated with the rest of the system.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 */
 	private void loadExistingSimulatedVehiclesSafely() {
 		try {
 			loadExistingSimulatedVehicles();
@@ -257,7 +417,14 @@ public class SimulationService implements Runnable {
 		}
 	}
 
-	/** Rebuilds the simulated vehicle list from currently parked SIM plates in the database. */
+	/**
+	 * Rebuilds the simulated vehicle list from currently parked SIM plates in the database. The operation is
+	 * kept together so the stored data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 */
 	private void loadExistingSimulatedVehicles() {
 		clearSimulatedVehicles();
 		List<ParkingSpace> spaces = loadAllSpaces();
@@ -268,12 +435,25 @@ public class SimulationService implements Runnable {
 		}
 	}
 
-	/** Clears the in-memory list of parked simulated vehicles. */
+	/**
+	 * Handles clear simulated vehicles.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	private void clearSimulatedVehicles() {
 		simulatedVehicles.clear();
 	}
 
-	/** Checks whether a parking space is occupied by a simulated vehicle. */
+	/**
+	 * Checks whether occupied by simulated vehicle.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param space space used by this operation
+	 * @return true when the condition is met, false otherwise
+	 */
 	private boolean isOccupiedBySimulatedVehicle(ParkingSpace space) {
 		if (space == null || !space.isOccupied() || space.getParkedVehicle() == null) {
 			return false;
@@ -281,47 +461,115 @@ public class SimulationService implements Runnable {
 		return isSimulatedPlate(space.getParkedVehicle().getLicensePlate());
 	}
 
-	/** Checks whether a plate belongs to a simulated vehicle. */
+	/**
+	 * Checks whether simulated plate.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 * @return true when the condition is met, false otherwise
+	 */
 	private boolean isSimulatedPlate(String plate) {
 		return plate != null && plate.startsWith(SIMULATED_PLATE_PREFIX);
 	}
 
-	/** Checks whether there are no simulated vehicles parked. */
+	/**
+	 * Checks whether no simulated vehicles exists.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @return true when the condition is met, false otherwise
+	 */
 	private boolean hasNoSimulatedVehicles() {
 		return simulatedVehicles.isEmpty();
 	}
 
-	/** Chooses one parked simulated vehicle index. */
+	/**
+	 * Handles choose random simulated vehicle index.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @return the result of the operation
+	 */
 	private int chooseRandomSimulatedVehicleIndex() {
 		return randomInt(simulatedVehicles.size());
 	}
 
-	/** Gets a simulated vehicle by index. */
+	/**
+	 * Gets a simulated vehicle by index.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
+	 * @param index index used by this operation
+	 * @return the current simulated vehicle
+	 */
 	private Vehicle getSimulatedVehicle(int index) {
 		return simulatedVehicles.get(index);
 	}
 
-	/** Removes a simulated vehicle by index. */
+	/**
+	 * Handles remove simulated vehicle.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param index index used by this operation
+	 */
 	private void removeSimulatedVehicle(int index) {
 		simulatedVehicles.remove(index);
 	}
 
-	/** Loads every parking space through the parking service. */
+	/**
+	 * Loads all spaces.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @return the loaded all spaces
+	 */
 	private List<ParkingSpace> loadAllSpaces() {
 		return parkingService.getAllSpaces();
 	}
 
-	/** Gets a random integer below the given limit. */
+	/**
+	 * Gets a random integer below the given limit.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param limit limit used by this operation
+	 * @return the result of the operation
+	 */
 	private int randomInt(int limit) {
 		return random.nextInt(limit);
 	}
 
-	/** Notifies the listener about a parking status change. */
+	/**
+	 * Handles notify parking listener.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param message message shown to the user or written to the log
+	 */
 	private void notifyParkingListener(String message) {
 		parkingStatusChangeListener.parkingStatusChanged(message);
 	}
 
-	/** Checks whether a plate already exists in persistence. */
+	/**
+	 * Handles plate exists in database.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 * @return the result of the operation
+	 */
 	private boolean plateExistsInDatabase(String plate) {
 		return vehicleDAO != null && vehicleDAO.findByPlate(plate) != null;
 	}

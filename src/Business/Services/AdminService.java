@@ -10,6 +10,10 @@ import java.util.List;
 
 /**
  * Provides admin-only actions for reservations and parking spaces.
+ * <p>
+ * The service keeps the business rule in one place before any data is saved, loaded, or shown. This helps
+ * the rest of the project call the same logic consistently.
+ * </p>
  */
 public class AdminService {
 	private ParkingService parkingService;
@@ -18,9 +22,13 @@ public class AdminService {
 
 	/**
 	 * Constructs a new AdminService.
+	 * <p>
+	 * The constructor receives the objects or values this class needs and stores them before the rest of the
+	 * methods are used.
+	 * </p>
 	 *
-	 * @param parkingService     service used for parking-space changes
-	 * @param reservationDAO     DAO used for reservation access
+	 * @param parkingService service used for parking-space changes
+	 * @param reservationDAO DAO used for reservation access
 	 * @param transactionManager object that controls database transactions
 	 */
 	public AdminService(ParkingService parkingService, ReservationDAO reservationDAO,
@@ -31,15 +39,17 @@ public class AdminService {
 	}
 
 	/**
-	 * Deletes a vacant parking space.
-	 * If the space has an active reservation, the reservation is moved to another
-	 * compatible space. If none exists, the reservation is cancelled and the user
-	 * will be notified on their next login.
-	 * This method synchronizes the transaction because deleting a space may also
-	 * move or cancel a reservation. Those related database changes must not be
-	 * interrupted by another parking update.
+	 * Deletes a vacant parking space. If the space has an active reservation, the reservation is moved to
+	 * another compatible space. If none exists, the reservation is cancelled and the user will be notified on
+	 * their next login. This method synchronizes the transaction because deleting a space may also move or
+	 * cancel a reservation. Those related database changes must not be interrupted by another parking update.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
 	 *
 	 * @param spaceCode code of the space being removed
+	 * @return the result of the operation
 	 */
 	public DeleteParkingSpaceResult deleteParkingSpace(String spaceCode) {
 		synchronized (transactionLock()) {
@@ -70,10 +80,12 @@ public class AdminService {
 	}
 
 	/**
-	 * Reassigns the active reservation for a space, or cancels it when no suitable
-	 * replacement exists.
-	 * This method synchronizes the transaction because the old reservation and the
-	 * replacement space are chosen and saved together.
+	 * Reassigns the active reservation for a space, or cancels it when no suitable. replacement exists. This
+	 * method synchronizes the transaction because the old reservation and the replacement space are chosen and
+	 * saved together.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
 	 *
 	 * @param spaceCode code of the space being removed
 	 */
@@ -91,44 +103,12 @@ public class AdminService {
 	}
 
 	/**
-	 * Older name kept so existing controller code can still call the same service.
-	 *
-	 * @param spaceCode code of the space being removed
-	 */
-	public void reassignOrDeleteReservation(String spaceCode) {
-		reassignOrCancelReservation(spaceCode);
-	}
-
-	/**
-	 * Cancels a reservation as an admin action.
-	 * The user will be notified the next time they log in.
-	 * This method synchronizes the transaction because the reservation state and
-	 * the space state must be updated together.
-	 *
-	 * @param reservationId ID of the reservation to cancel
-	 */
-	public void cancelReservation(int reservationId) {
-		synchronized (transactionLock()) {
-			try {
-				beginTransaction();
-
-				Reservation reservation = findReservationById(reservationId);
-				if (reservation != null && reservation.isActive()) {
-					cancelReservationInTransaction(reservation);
-				}
-
-				commitTransaction();
-			} catch (RuntimeException e) {
-				rollbackTransaction();
-				throw e;
-			}
-		}
-	}
-
-	/**
-	 * Cancels the active reservation associated with a license plate.
-	 * This method synchronizes the transaction because it finds the active booking
-	 * and frees the reserved space in one protected operation.
+	 * Cancels the active reservation associated with a license plate. This method synchronizes the transaction
+	 * because it finds the active booking and frees the reserved space in one protected operation.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
 	 *
 	 * @param plate license plate associated with the booking
 	 * @return true if an active booking was cancelled
@@ -154,12 +134,16 @@ public class AdminService {
 		}
 	}
 
-	/** Gets the current status of every parking space. */
-	public List<ParkingSpace> getFullParkingStatus() {
-		return loadParkingStatus();
-	}
-
-	/** Reassigns or cancels a reservation while the caller owns the transaction. */
+	/**
+	 * Reassigns or cancels a reservation while the caller owns the transaction. The operation is kept together
+	 * so the stored data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param spaceCode parking space code involved in the operation
+	 * @return the result of the operation
+	 */
 	private ReservationMoveResult reassignOrCancelReservationInTransaction(String spaceCode) {
 		Reservation target = null;
 		for (Reservation reservation : findAllReservations()) {
@@ -199,7 +183,16 @@ public class AdminService {
 		return new ReservationMoveResult(affectedPlate, newSpace != null ? newSpace.getId() : null, newSpace == null);
 	}
 
-	/** Builds the public result returned to the presentation layer. */
+	/**
+	 * Builds delete parking space result.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param spaceCode parking space code involved in the operation
+	 * @param reservationResult reservation result used by this operation
+	 * @return the built delete parking space result
+	 */
 	private DeleteParkingSpaceResult buildDeleteParkingSpaceResult(String spaceCode,
 			ReservationMoveResult reservationResult) {
 		if (reservationResult == null) {
@@ -210,7 +203,16 @@ public class AdminService {
 				reservationResult.getNewSpaceCode(), reservationResult.isReservationCancelled());
 	}
 
-	/** Cancels a reservation while the caller owns the transaction. */
+	/**
+	 * Cancels a reservation while the caller owns the transaction. The operation is kept together so the
+	 * stored data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 *
+	 * @param reservation reservation used by this operation
+	 */
 	private void cancelReservationInTransaction(Reservation reservation) {
 		reservation.cancel();
 		reservation.setCancelledByAdmin(true);
@@ -224,7 +226,18 @@ public class AdminService {
 		}
 	}
 
-	/** Finds the best alternative parking space for a moved reservation. */
+	/**
+	 * Finds best alternative space.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @param alternatives alternatives used by this operation
+	 * @param deletedCode deleted code used by this operation
+	 * @param oldSpace old space used by this operation
+	 * @return the matching best alternative space, or null when it is not found
+	 */
 	private ParkingSpace findBestAlternativeSpace(List<ParkingSpace> alternatives, String deletedCode,
 			ParkingSpace oldSpace) {
 		if (alternatives == null) return null;
@@ -247,71 +260,144 @@ public class AdminService {
 		return fallback;
 	}
 
-	/** Finds a parking space through the parking service. */
+	/**
+	 * Finds parking space.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @param spaceCode parking space code involved in the operation
+	 * @return the matching parking space, or null when it is not found
+	 */
 	private ParkingSpace findParkingSpace(String spaceCode) {
 		return parkingService.findByCode(spaceCode);
 	}
 
-	/** Deletes a parking space through the parking service. */
+	/**
+	 * Deletes parking space through service.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 *
+	 * @param spaceCode parking space code involved in the operation
+	 * @return the result of the operation
+	 */
 	private boolean deleteParkingSpaceThroughService(String spaceCode) {
 		return parkingService.deleteParkingSpace(spaceCode);
 	}
 
-	/** Finds a reservation by ID through persistence. */
-	private Reservation findReservationById(int reservationId) {
-		return reservationDAO.findById(reservationId);
-	}
-
-	/** Finds a reservation by license plate through persistence. */
+	/**
+	 * Finds reservation by plate.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 * @return the matching reservation by plate, or null when it is not found
+	 */
 	private Reservation findReservationByPlate(String plate) {
 		return reservationDAO.findByPlate(plate);
 	}
 
-	/** Loads every parking space through the parking service. */
-	private List<ParkingSpace> loadParkingStatus() {
-		return parkingService.getParkingStatus();
-	}
-
-	/** Loads every reservation through persistence. */
+	/**
+	 * Finds all reservations.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @return the matching all reservations, or null when it is not found
+	 */
 	private List<Reservation> findAllReservations() {
 		return reservationDAO.findAll();
 	}
 
-	/** Finds available spaces through the parking service. */
+	/**
+	 * Finds available spaces.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @param type vehicle type involved in the operation
+	 * @return the matching available spaces, or null when it is not found
+	 */
 	private List<ParkingSpace> findAvailableSpaces(VehicleType type) {
 		return parkingService.findAvailableSpaces(type);
 	}
 
-	/** Updates a reservation through persistence. */
+	/**
+	 * Updates reservation.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 *
+	 * @param reservation reservation used by this operation
+	 */
 	private void updateReservation(Reservation reservation) {
 		reservationDAO.update(reservation);
 	}
 
-	/** Updates a parking space through the parking service. */
+	/**
+	 * Updates a parking space.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 *
+	 * @param space space used by this operation
+	 */
 	private void updateParkingSpace(ParkingSpace space) {
 		parkingService.updateParkingSpace(space);
 	}
 
 	/**
-	 * Gets the shared lock used by synchronized transaction blocks.
-	 * The simulation thread and SwingWorkers can both change parking data, so
-	 * this lock makes one multi-step database operation finish before another begins.
+	 * Gets the shared lock used by synchronized transaction blocks. The simulation thread and SwingWorkers can
+	 * both change parking data, so this lock makes one multi-step database operation finish before another
+	 * begins.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @return the result of the operation
 	 */
 	private Object transactionLock() {
 		return transactionManager != null ? transactionManager : this;
 	}
 
-	/** Starts a transaction when transaction support is available. */
+	/**
+	 * Starts a transaction when transaction support is available. The operation is kept together so the stored
+	 * data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	private void beginTransaction() {
 		if (transactionManager != null) transactionManager.beginTransaction();
 	}
 
-	/** Commits a transaction when transaction support is available. */
+	/**
+	 * Commits a transaction when transaction support is available. The operation is kept together so the
+	 * stored data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	private void commitTransaction() {
 		if (transactionManager != null) transactionManager.commit();
 	}
 
-	/** Rolls back a transaction when transaction support is available. */
+	/**
+	 * Rolls back a transaction when transaction support is available. The operation is kept together so the
+	 * stored data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	private void rollbackTransaction() {
 		if (transactionManager != null) transactionManager.rollback();
 	}

@@ -19,8 +19,12 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 /**
- * Controller for the slot booking management view.
- * Supports both admin mode (manage all bookings) and user mode (manage own bookings).
+ * Controller for the slot booking management view. Supports both admin mode (manage all bookings) and user
+ * mode (manage own bookings).
+ * <p>
+ * The controller receives actions from the view, calls the needed service, and then asks the view to show
+ * the result. This keeps Swing code separate from the business rules.
+ * </p>
  */
 public class AdminSlotBookingController implements SlotBookingActions {
     private static final int ADMIN_MODE = 1;
@@ -39,12 +43,16 @@ public class AdminSlotBookingController implements SlotBookingActions {
 
     /**
      * Constructs the controller and wires it to the given view.
+     * <p>
+     * The constructor receives the objects or values this class needs and stores them before the rest of
+     * the methods are used.
+     * </p>
      *
-     * @param bookingView        the slot booking management view
-     * @param parkingService     the parking service
-     * @param adminService       the admin service
+     * @param bookingView the slot booking management view
+     * @param parkingService the parking service
+     * @param adminService the admin service
      * @param reservationService the reservation service
-     * @param userService        the user service
+     * @param userService the user service
      */
     public AdminSlotBookingController(AdminSlotBookingManagementView bookingView, ParkingService parkingService,
                                       AdminService adminService, ReservationService reservationService,
@@ -58,13 +66,25 @@ public class AdminSlotBookingController implements SlotBookingActions {
         setViewLogoutListener();
     }
 
-    /** Sets the action used when the user logs out from this dialog. */
+    /**
+     * Sets the action used when the user logs out from this dialog.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param logoutAction logout action used by this operation
+     */
     public void setLogoutAction(Runnable logoutAction) {
         this.logoutAction = logoutAction;
     }
 
     /**
      * Configures the view for the given mode and makes it visible.
+     * <p>
+     * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+     * display.
+     * </p>
      *
      * @param mode ADMIN_MODE (1) or USER_MODE (2)
      */
@@ -80,8 +100,11 @@ public class AdminSlotBookingController implements SlotBookingActions {
     }
 
     /**
-     * Reloads the view if it is currently visible.
-     * Safe to call from any thread.
+     * Reloads the view if it is currently visible. Safe to call from any thread.
+     * <p>
+     * This method asks the service for fresh data and sends it back to the visible table or dialog when the
+     * screen needs to change.
+     * </p>
      */
     public void refreshIfVisible() {
         if (!isBookingViewVisible()) return;
@@ -95,7 +118,10 @@ public class AdminSlotBookingController implements SlotBookingActions {
 
     /**
      * Loads all parking spaces and highlights the user's own bookings in USER_MODE.
-     * Uses a generation counter to discard results from stale background tasks.
+     * <p>
+     * This method asks the service for fresh data and sends it back to the visible table or dialog when the
+     * screen needs to change.
+     * </p>
      */
     public void loadBookings() {
         bookingsLoadId++;
@@ -107,7 +133,15 @@ public class AdminSlotBookingController implements SlotBookingActions {
         VehicleType typeForLoad = currentUserBookingType;
 
         new SwingWorker<Set<String>, BookingRow>() {
-            /** Loads booking rows away from the EDT. */
+            /**
+             * Runs the worker task away from the Swing screen thread.
+             * <p>
+             * This runs away from the Swing screen thread so database work or longer calculations do not
+             * freeze the interface while the user is waiting.
+             * </p>
+             *
+             * @return the set of values found for the operation
+             */
             @Override
             protected Set<String> doInBackground() {
                 BookingLoadData loadData = loadBookingRows(modeForLoad, userId, typeForLoad);
@@ -122,7 +156,15 @@ public class AdminSlotBookingController implements SlotBookingActions {
                 return loadData.getLoadedCodes();
             }
 
-            /** Adds loaded booking rows to the table on the EDT. */
+            /**
+             * Applies worker updates on the Swing screen thread.
+             * <p>
+             * This receives the values published by the worker on the Swing screen thread, which makes it
+             * safe to add rows or refresh visible components little by little.
+             * </p>
+             *
+             * @param chunks chunks used by this operation
+             */
             @Override
             protected void process(List<BookingRow> chunks) {
                 if (loadId != bookingsLoadId) return;
@@ -132,7 +174,13 @@ public class AdminSlotBookingController implements SlotBookingActions {
                 }
             }
 
-            /** Finishes refreshing the booking tables. */
+            /**
+             * Finishes the worker task on the Swing screen thread.
+             * <p>
+             * This runs when the worker has finished, so it can read the final result, restore buttons or
+             * cursors, and show the user a message if something failed.
+             * </p>
+             */
             @Override
             protected void done() {
                 if (loadId != bookingsLoadId) return;
@@ -149,7 +197,18 @@ public class AdminSlotBookingController implements SlotBookingActions {
         }.execute();
     }
 
-    /** Loads and orders booking rows for one refresh. */
+    /**
+     * Loads booking rows.
+     * <p>
+     * This method asks the service for fresh data and sends it back to the visible table or dialog when the
+     * screen needs to change.
+     * </p>
+     *
+     * @param modeForLoad mode for load used by this operation
+     * @param userId identifier of the user involved in the operation
+     * @param typeForLoad type for load used by this operation
+     * @return the loaded booking rows
+     */
     private BookingLoadData loadBookingRows(int modeForLoad, int userId, VehicleType typeForLoad) {
         List<ParkingSpace> spaces = loadSpacesForBookingMode(modeForLoad, typeForLoad);
         List<Reservation> userReservations = loadUserReservationsForMode(modeForLoad, userId);
@@ -160,7 +219,17 @@ public class AdminSlotBookingController implements SlotBookingActions {
                 buildBookingRows(orderedSpaces, userBookingCodes));
     }
 
-    /** Loads the spaces that should be shown for the current booking mode. */
+    /**
+     * Loads spaces for booking mode.
+     * <p>
+     * This method asks the service for fresh data and sends it back to the visible table or dialog when the
+     * screen needs to change.
+     * </p>
+     *
+     * @param modeForLoad mode for load used by this operation
+     * @param typeForLoad type for load used by this operation
+     * @return the loaded spaces for booking mode
+     */
     private List<ParkingSpace> loadSpacesForBookingMode(int modeForLoad, VehicleType typeForLoad) {
         if (modeForLoad == USER_MODE && typeForLoad != null) {
             return findAvailableSpaces(typeForLoad);
@@ -168,7 +237,17 @@ public class AdminSlotBookingController implements SlotBookingActions {
         return loadAllSpaces();
     }
 
-    /** Loads reservations only when the current refresh belongs to a regular user. */
+    /**
+     * Loads user reservations for mode.
+     * <p>
+     * This method asks the service for fresh data and sends it back to the visible table or dialog when the
+     * screen needs to change.
+     * </p>
+     *
+     * @param modeForLoad mode for load used by this operation
+     * @param userId identifier of the user involved in the operation
+     * @return the loaded user reservations for mode
+     */
     private List<Reservation> loadUserReservationsForMode(int modeForLoad, int userId) {
         if (modeForLoad == USER_MODE && userId > 0) {
             return getReservationsByUser(userId);
@@ -176,7 +255,16 @@ public class AdminSlotBookingController implements SlotBookingActions {
         return new ArrayList<>();
     }
 
-    /** Collects active reservation space codes for the current user. */
+    /**
+     * Handles collect user booking codes.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param userReservations user reservations used by this operation
+     * @return the set of values found for the operation
+     */
     private Set<String> collectUserBookingCodes(List<Reservation> userReservations) {
         Set<String> userBookingCodes = new HashSet<>();
         for (Reservation reservation : userReservations) {
@@ -187,7 +275,18 @@ public class AdminSlotBookingController implements SlotBookingActions {
         return userBookingCodes;
     }
 
-    /** Orders own reservations first, then every other visible space. */
+    /**
+     * Handles order spaces for display.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param spaces spaces used by this operation
+     * @param userBookingCodes user booking codes used by this operation
+     * @param userReservations user reservations used by this operation
+     * @return the list of values found for the operation
+     */
     private List<ParkingSpace> orderSpacesForDisplay(List<ParkingSpace> spaces, Set<String> userBookingCodes,
                                                      List<Reservation> userReservations) {
         List<ParkingSpace> orderedSpaces = new ArrayList<>();
@@ -196,7 +295,17 @@ public class AdminSlotBookingController implements SlotBookingActions {
         return orderedSpaces;
     }
 
-    /** Adds the current user's active reservation spaces at the top of the table. */
+    /**
+     * Adds user reservation spaces.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param orderedSpaces ordered spaces used by this operation
+     * @param spaces spaces used by this operation
+     * @param userReservations user reservations used by this operation
+     */
     private void addUserReservationSpaces(List<ParkingSpace> orderedSpaces, List<ParkingSpace> spaces,
                                           List<Reservation> userReservations) {
         for (Reservation reservation : userReservations) {
@@ -207,7 +316,13 @@ public class AdminSlotBookingController implements SlotBookingActions {
         }
     }
 
-    /** Clears booking state when the active user session ends. */
+    /**
+     * Handles clear session state.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     public void clearSessionState() {
         bookingsLoadId++;
         clearCurrentMode();
@@ -216,7 +331,17 @@ public class AdminSlotBookingController implements SlotBookingActions {
         clearBookingViewSessionState();
     }
 
-    /** Adds every non-user-reservation space after the user's own bookings. */
+    /**
+     * Adds remaining spaces.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param orderedSpaces ordered spaces used by this operation
+     * @param spaces spaces used by this operation
+     * @param userBookingCodes user booking codes used by this operation
+     */
     private void addRemainingSpaces(List<ParkingSpace> orderedSpaces, List<ParkingSpace> spaces,
                                     Set<String> userBookingCodes) {
         for (ParkingSpace space : spaces) {
@@ -226,7 +351,16 @@ public class AdminSlotBookingController implements SlotBookingActions {
         }
     }
 
-    /** Collects the parking space codes loaded by the worker. */
+    /**
+     * Collects the parking space codes loaded by the worker.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param orderedSpaces ordered spaces used by this operation
+     * @return the set of values found for the operation
+     */
     private Set<String> collectLoadedCodes(List<ParkingSpace> orderedSpaces) {
         Set<String> loadedCodes = new HashSet<>();
         for (ParkingSpace space : orderedSpaces) {
@@ -235,7 +369,17 @@ public class AdminSlotBookingController implements SlotBookingActions {
         return loadedCodes;
     }
 
-    /** Builds the table row objects published by the worker. */
+    /**
+     * Builds the table row objects published by the worker.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param orderedSpaces ordered spaces used by this operation
+     * @param userBookingCodes user booking codes used by this operation
+     * @return the built booking rows
+     */
     private List<BookingRow> buildBookingRows(List<ParkingSpace> orderedSpaces, Set<String> userBookingCodes) {
         List<BookingRow> rows = new ArrayList<>();
         for (ParkingSpace space : orderedSpaces) {
@@ -244,7 +388,17 @@ public class AdminSlotBookingController implements SlotBookingActions {
         return rows;
     }
 
-    /** Applies the final state of a booking table refresh. */
+    /**
+     * Handles finish bookings load.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param loadedCodes loaded codes used by this operation
+     * @param modeForLoad mode for load used by this operation
+     * @param userId identifier of the user involved in the operation
+     */
     private void finishBookingsLoad(Set<String> loadedCodes, int modeForLoad, int userId) {
         removeBookingSpacesNotIn(loadedCodes);
         closeActiveBookingDialogIfTargetUnavailable();
@@ -254,7 +408,16 @@ public class AdminSlotBookingController implements SlotBookingActions {
         }
     }
 
-    /** Gets only active reservations for the current user's reservation tab. */
+    /**
+     * Gets only active reservations for the current user's reservation tab.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param userId identifier of the user involved in the operation
+     * @return the list of values found for the operation
+     */
     private List<Reservation> collectActiveReservations(int userId) {
         List<Reservation> active = new ArrayList<>();
         for (Reservation reservation : getReservationsByUser(userId)) {
@@ -266,10 +429,14 @@ public class AdminSlotBookingController implements SlotBookingActions {
     }
 
     /**
-     * Stores the vehicle chosen by a regular user before showing compatible spaces.
+     * Handles prepare user booking.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
      *
      * @param plate license plate chosen for the new booking
-     * @param type  vehicle type chosen for the new booking
+     * @param type vehicle type chosen for the new booking
      */
     public void prepareUserBooking(String plate, VehicleType type) {
         currentUserBookingPlate = normalizePlate(plate);
@@ -281,10 +448,14 @@ public class AdminSlotBookingController implements SlotBookingActions {
     }
 
     /**
-     * Creates a reservation for the given plate, vehicle type, and space code.
+     * Creates booking.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
      *
-     * @param plate     license plate
-     * @param type      vehicle type
+     * @param plate license plate
+     * @param type vehicle type
      * @param spaceCode target parking space code
      */
     public void createBooking(String plate, VehicleType type, String spaceCode) {
@@ -304,7 +475,16 @@ public class AdminSlotBookingController implements SlotBookingActions {
 
         setLoading(true);
         new SwingWorker<Reservation, Void>() {
-            /** Creates the booking away from the EDT. */
+            /**
+             * Runs the worker task away from the Swing screen thread.
+             * <p>
+             * This runs away from the Swing screen thread so database work or longer calculations do not
+             * freeze the interface while the user is waiting.
+             * </p>
+             *
+             * @return the result of the operation
+             * @throws Exception if the operation cannot be completed correctly
+             */
             @Override
             protected Reservation doInBackground() throws Exception {
                 return createReservation(
@@ -314,7 +494,13 @@ public class AdminSlotBookingController implements SlotBookingActions {
                         spaceCode);
             }
 
-            /** Updates the booking view after creation finishes. */
+            /**
+             * Updates the booking view after creation finishes.
+             * <p>
+             * This runs when the worker has finished, so it can read the final result, restore buttons or
+             * cursors, and show the user a message if something failed.
+             * </p>
+             */
             @Override
             protected void done() {
                 try {
@@ -336,7 +522,17 @@ public class AdminSlotBookingController implements SlotBookingActions {
         }.execute();
     }
 
-    /** Finds a parking space inside a loaded list by code. */
+    /**
+     * Finds space by code.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param spaces spaces used by this operation
+     * @param code parking space code involved in the operation
+     * @return the matching space by code, or null when it is not found
+     */
     private ParkingSpace findSpaceByCode(List<ParkingSpace> spaces, String code) {
         for (ParkingSpace space : spaces) {
             if (space.getId().equals(code)) {
@@ -347,12 +543,16 @@ public class AdminSlotBookingController implements SlotBookingActions {
     }
 
     /**
-     * Reassigns an existing reservation identified by plate to a different space.
+     * Handles edit booking.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
      *
      * @param originalSpaceCode the original space code (for feedback messages)
-     * @param plate             the license plate on the reservation
-     * @param type              the vehicle type
-     * @param spaceCode         the target space code
+     * @param plate the license plate on the reservation
+     * @param type the vehicle type
+     * @param spaceCode the target space code
      */
     public void editBooking(String originalSpaceCode, String plate, VehicleType type, String spaceCode) {
         if (plate == null || plate.isBlank() || spaceCode == null || spaceCode.isBlank()) {
@@ -362,13 +562,28 @@ public class AdminSlotBookingController implements SlotBookingActions {
 
         setLoading(true);
         new SwingWorker<Reservation, Void>() {
-            /** Reassigns the booking away from the EDT. */
+            /**
+             * Runs the worker task away from the Swing screen thread.
+             * <p>
+             * This runs away from the Swing screen thread so database work or longer calculations do not
+             * freeze the interface while the user is waiting.
+             * </p>
+             *
+             * @return the result of the operation
+             * @throws Exception if the operation cannot be completed correctly
+             */
             @Override
             protected Reservation doInBackground() throws Exception {
                 return reassignReservation(normalizePlate(plate), spaceCode);
             }
 
-            /** Updates the booking view after reassignment finishes. */
+            /**
+             * Updates the booking view after reassignment finishes.
+             * <p>
+             * This runs when the worker has finished, so it can read the final result, restore buttons or
+             * cursors, and show the user a message if something failed.
+             * </p>
+             */
             @Override
             protected void done() {
                 try {
@@ -391,11 +606,15 @@ public class AdminSlotBookingController implements SlotBookingActions {
     }
 
     /**
-     * Cancels the reservation for the given space and plate.
-     * In USER_MODE only the current user's own reservation is cancelled.
+     * Cancels the reservation for the given space and plate. In USER_MODE only the current user's own
+     * reservation is cancelled.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
      *
      * @param spaceCode the space code (for feedback messages)
-     * @param plate     the license plate on the reservation
+     * @param plate the license plate on the reservation
      */
     public void deleteBooking(String spaceCode, String plate) {
         if (plate == null || plate.isBlank()) {
@@ -405,7 +624,16 @@ public class AdminSlotBookingController implements SlotBookingActions {
 
         setLoading(true);
         new SwingWorker<Boolean, Void>() {
-            /** Cancels the booking away from the EDT. */
+            /**
+             * Runs the worker task away from the Swing screen thread.
+             * <p>
+             * This runs away from the Swing screen thread so database work or longer calculations do not
+             * freeze the interface while the user is waiting.
+             * </p>
+             *
+             * @return the result of the operation
+             * @throws Exception if the operation cannot be completed correctly
+             */
             @Override
             protected Boolean doInBackground() throws Exception {
                 if (currentMode == USER_MODE) {
@@ -416,7 +644,13 @@ public class AdminSlotBookingController implements SlotBookingActions {
                 return cancelReservationByPlateAsAdmin(normalizePlate(plate));
             }
 
-            /** Updates the booking view after cancellation finishes. */
+            /**
+             * Updates the booking view after cancellation finishes.
+             * <p>
+             * This runs when the worker has finished, so it can read the final result, restore buttons or
+             * cursors, and show the user a message if something failed.
+             * </p>
+             */
             @Override
             protected void done() {
                 try {
@@ -442,23 +676,50 @@ public class AdminSlotBookingController implements SlotBookingActions {
         }.execute();
     }
 
-    /** Normalizes a license plate entered by the user. */
+    /**
+     * Handles normalize plate.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param plate license plate involved in the operation
+     * @return the result of the operation
+     */
     private String normalizePlate(String plate) {
         if (plate == null) return "";
         return plate.trim().toUpperCase();
     }
 
-    /** Sets this controller on the booking view. */
+    /**
+     * Sets this controller on the booking view.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     */
     private void setViewController() {
         bookingView.setActions(this);
     }
 
-    /** Connects the booking dialog logout button to this controller. */
+    /**
+     * Connects the booking dialog logout button to this controller.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     */
     private void setViewLogoutListener() {
         bookingView.addLogoutListener(e -> logoutIfConfirmed());
     }
 
-    /** Logs out from the booking dialog after confirmation. */
+    /**
+     * Logs out from the booking dialog after confirmation.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void logoutIfConfirmed() {
         if (logoutAction != null && bookingView.confirmLogout()) {
             bookingView.dispose();
@@ -466,132 +727,337 @@ public class AdminSlotBookingController implements SlotBookingActions {
         }
     }
 
-    /** Sets the booking view mode. */
+    /**
+     * Sets the booking view mode.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param mode mode used by this operation
+     */
     private void setBookingViewMode(int mode) {
         bookingView.setMode(mode);
     }
 
-    /** Sets the selected user booking vehicle on the view. */
+    /**
+     * Sets the selected user booking vehicle on the view.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param plate license plate involved in the operation
+     * @param type vehicle type involved in the operation
+     */
     private void setUserBookingVehicle(String plate, VehicleType type) {
         bookingView.setUserBookingVehicle(plate, type);
     }
 
-    /** Clears the bookings table. */
+    /**
+     * Handles clear bookings table.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void clearBookingsTable() {
         bookingView.clearBookingsTable();
     }
 
-    /** Shows the booking view. */
+    /**
+     * Shows the booking view.
+     * <p>
+     * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+     * display.
+     * </p>
+     */
     private void showBookingView() {
         bookingView.setVisible(true);
     }
 
-    /** Clears user-related data from the booking view. */
+    /**
+     * Clears user-related data from the booking view.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void clearBookingViewSessionState() {
         bookingView.clearSessionViewState();
     }
 
-    /** Resets the mode so this controller keeps no role from the previous session. */
+    /**
+     * Handles clear current mode.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void clearCurrentMode() {
         currentMode = ADMIN_MODE;
     }
 
-    /** Checks whether the booking view is visible. */
+    /**
+     * Checks whether the booking view is visible.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @return true when the condition is met, false otherwise
+     */
     private boolean isBookingViewVisible() {
         return bookingView != null && bookingView.isVisible();
     }
 
-    /** Checks whether the current thread is the EDT. */
+    /**
+     * Checks whether event dispatch thread.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @return true when the condition is met, false otherwise
+     */
     private boolean isEventDispatchThread() {
         return SwingUtilities.isEventDispatchThread();
     }
 
-    /** Runs a task on the EDT. */
+    /**
+     * Handles run on event dispatch thread.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param task task used by this operation
+     */
     private void runOnEventDispatchThread(Runnable task) {
         SwingUtilities.invokeLater(task);
     }
 
-    /** Sets the booking view loading state. */
+    /**
+     * Sets the booking view loading state.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param loading true while the screen is waiting for an operation to finish
+     */
     private void setLoading(boolean loading) {
         bookingView.setLoading(loading);
     }
 
-    /** Gets the current logged-in user ID. */
+    /**
+     * Gets the current logged-in user ID.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @return the current current user ID
+     */
     private int getCurrentUserId() {
         return userService.getLastLoggedInUserId();
     }
 
-    /** Finds available spaces through the reservation service. */
+    /**
+     * Finds available spaces.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param type vehicle type involved in the operation
+     * @return the matching available spaces, or null when it is not found
+     */
     private List<ParkingSpace> findAvailableSpaces(VehicleType type) {
         return reservationService.getAvailableSpaces(type);
     }
 
-    /** Loads every parking space through the parking service. */
+    /**
+     * Loads all spaces.
+     * <p>
+     * This method asks the service for fresh data and sends it back to the visible table or dialog when the
+     * screen needs to change.
+     * </p>
+     *
+     * @return the loaded all spaces
+     */
     private List<ParkingSpace> loadAllSpaces() {
         return parkingService.getAllSpaces();
     }
 
-    /** Gets reservations belonging to a user. */
+    /**
+     * Gets reservations belonging to a user.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @param userId identifier of the user involved in the operation
+     * @return the current reservations by user
+     */
     private List<Reservation> getReservationsByUser(int userId) {
         return reservationService.getReservationsByUser(userId);
     }
 
-    /** Adds one booking row to the view. */
+    /**
+     * Adds one booking row to the view.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param space space used by this operation
+     * @param userBooking user booking used by this operation
+     */
     private void addBookingToTable(ParkingSpace space, boolean userBooking) {
         bookingView.addBookingToTable(space, userBooking);
     }
 
-    /** Removes booking rows not present in the latest load. */
+    /**
+     * Handles remove booking spaces not in.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param loadedCodes loaded codes used by this operation
+     */
     private void removeBookingSpacesNotIn(Set<String> loadedCodes) {
         bookingView.removeBookingSpacesNotIn(loadedCodes);
     }
 
-    /** Closes a booking dialog if its target is no longer available. */
+    /**
+     * Closes a booking dialog if its target is no longer available.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void closeActiveBookingDialogIfTargetUnavailable() {
         bookingView.closeActiveBookingDialogIfTargetUnavailable();
     }
 
-    /** Closes a cancellation dialog if its target is no longer valid. */
+    /**
+     * Closes a cancellation dialog if its target is no longer valid.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     */
     private void closeActiveCancelDialogIfTargetUnavailable() {
         bookingView.closeActiveCancelDialogIfTargetUnavailable();
     }
 
-    /** Updates the reservation table. */
+    /**
+     * Updates reservations table.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param reservations reservations used by this operation
+     */
     private void updateReservationsTable(List<Reservation> reservations) {
         bookingView.updateReservationsTable(reservations);
     }
 
-    /** Shows an error in the booking view. */
+    /**
+     * Shows an error in the booking view.
+     * <p>
+     * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+     * display.
+     * </p>
+     *
+     * @param message message shown to the user or written to the log
+     */
     private void showError(String message) {
         bookingView.showError(message);
     }
 
-    /** Shows an informational message in the booking view. */
+    /**
+     * Shows an informational message in the booking view.
+     * <p>
+     * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+     * display.
+     * </p>
+     *
+     * @param message message shown to the user or written to the log
+     */
     private void showInfo(String message) {
         bookingView.showInfo(message);
     }
 
-    /** Shows the slot bookings tab. */
+    /**
+     * Shows slot bookings tab.
+     * <p>
+     * This method prepares the information needed for a dialog and lets the view handle the actual Swing
+     * display.
+     * </p>
+     */
     private void showSlotBookingsTab() {
         bookingView.showSlotBookingsTab();
     }
 
-    /** Creates a reservation through the reservation service. */
+    /**
+     * Creates reservation.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param userId identifier of the user involved in the operation
+     * @param plate license plate involved in the operation
+     * @param type vehicle type involved in the operation
+     * @param spaceCode parking space code involved in the operation
+     * @return the created reservation
+     */
     private Reservation createReservation(int userId, String plate, VehicleType type, String spaceCode) {
         return reservationService.createReservation(userId, plate, type, spaceCode);
     }
 
-    /** Reassigns a reservation through the reservation service. */
+    /**
+     * Handles reassign reservation.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param plate license plate involved in the operation
+     * @param spaceCode parking space code involved in the operation
+     * @return the result of the operation
+     */
     private Reservation reassignReservation(String plate, String spaceCode) {
         return reservationService.reassignReservation(plate, spaceCode);
     }
 
-    /** Cancels a user reservation through the reservation service. */
+    /**
+     * Handles cancel reservation by plate for user.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param userId identifier of the user involved in the operation
+     * @param plate license plate involved in the operation
+     * @return true when the condition is met, false otherwise
+     */
     private boolean cancelReservationByPlateForUser(int userId, String plate) {
         return reservationService.cancelReservationByPlateForUser(userId, plate);
     }
 
-    /** Cancels a reservation through the admin service. */
+    /**
+     * Handles cancel reservation by plate as admin.
+     * <p>
+     * This method keeps the controller action separate from the view code and from the business rule
+     * itself.
+     * </p>
+     *
+     * @param plate license plate involved in the operation
+     * @return true when the condition is met, false otherwise
+     */
     private boolean cancelReservationByPlateAsAdmin(String plate) {
         return adminService.cancelReservationByPlate(plate);
     }

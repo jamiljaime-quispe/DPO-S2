@@ -10,8 +10,12 @@ import java.awt.event.ActionListener;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Modal dialog shown when an admin clicks a parking space in the status table.
- * Displays space details, the active reservation (if any), and a button to cancel it.
+ * Modal dialog shown when an admin clicks a parking space in the status table. Displays space details, the
+ * active reservation (if any), and a button to cancel it.
+ * <p>
+ * The view builds or updates Swing components and leaves the decisions to controllers and services. This
+ * keeps the screen code focused on what the user sees.
+ * </p>
  */
 public class ParkingSpaceDetailsView extends JDialog {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -30,13 +34,27 @@ public class ParkingSpaceDetailsView extends JDialog {
     private JButton closeButton;
     private ParkingSpace displayedSpace;
 
-    /** Creates the parking-space details dialog. */
+    /**
+     * Creates the parking-space details dialog.
+     * <p>
+     * The constructor receives the objects or values this class needs and stores them before the rest of
+     * the methods are used.
+     * </p>
+     *
+     * @param parent parent used by this operation
+     */
     public ParkingSpaceDetailsView(Frame parent) {
         super(parent, "Parking Space Details", true);
         initComponents();
     }
 
-    /** Builds the details dialog components. */
+    /**
+     * Builds the details dialog components.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     private void initComponents() {
         setLayout(new BorderLayout(10, 10));
         getContentPane().setBackground(new Color(245, 247, 250));
@@ -91,7 +109,17 @@ public class ParkingSpaceDetailsView extends JDialog {
         add(buttonPanel, BorderLayout.SOUTH);
     }
 
-    /** Adds one label-value row to the details panel. */
+    /**
+     * Adds row.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param panel panel used by this operation
+     * @param label label used by this operation
+     * @param value value used by this operation
+     */
     private void addRow(JPanel panel, String label, JLabel value) {
         JLabel name = new JLabel(label);
         name.setFont(new Font("SansSerif", Font.BOLD, 13));
@@ -102,7 +130,15 @@ public class ParkingSpaceDetailsView extends JDialog {
         panel.add(value);
     }
 
-    /** Applies the main button style. */
+    /**
+     * Handles style primary button.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param b b used by this operation
+     */
     private void stylePrimaryButton(JButton b) {
         b.setForeground(Color.WHITE);
         b.setBackground(new Color(33, 99, 168));
@@ -113,14 +149,29 @@ public class ParkingSpaceDetailsView extends JDialog {
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
-    /** Opens the dialog with the selected space details. */
+    /**
+     * Opens the dialog with the selected space details.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param space space used by this operation
+     */
     public void displaySpaceDetails(ParkingSpace space) {
         updateSpaceDetails(space);
         setLocationRelativeTo(getParent());
         setVisible(true);
     }
 
-    /** Updates the displayed space details. */
+    /**
+     * Updates space details.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
+     *
+     * @param space space used by this operation
+     */
     public void updateSpaceDetails(ParkingSpace space) {
         displayedSpace = space;
         Reservation reservation = space.getReservation();
@@ -150,13 +201,25 @@ public class ParkingSpaceDetailsView extends JDialog {
         }
     }
 
-    /** Gets the code of the space currently displayed. */
+    /**
+     * Gets the code of the space currently displayed.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @return the current displayed space code
+     */
     public String getDisplayedSpaceCode() {
         if (displayedSpace == null) return "";
         return displayedSpace.getId();
     }
 
-    /** Clears the displayed space so the dialog keeps no user data after logout. */
+    /**
+     * Clears the displayed space so the dialog keeps no user data after logout.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
+     */
     public void clearSessionViewState() {
         displayedSpace = null;
         codeValue.setText("");
@@ -173,7 +236,14 @@ public class ParkingSpaceDetailsView extends JDialog {
         setVisible(false);
     }
 
-    /** Gets the license plate of the active reservation being displayed. */
+    /**
+     * Gets the license plate of the active reservation being displayed.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @return the current displayed reservation plate
+     */
     public String getDisplayedReservationPlate() {
         if (displayedSpace == null
                 || displayedSpace.getReservation() == null
@@ -183,17 +253,41 @@ public class ParkingSpaceDetailsView extends JDialog {
         return displayedSpace.getReservation().getVehicle().getLicensePlate();
     }
 
-    /** Sets the listener for the cancel-reservation button. */
+    /**
+     * Sets the listener for the cancel-reservation button.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param listener action that will run when the related event happens
+     */
     public void setCancelReservationListener(ActionListener listener) {
         cancelReservationButton.addActionListener(listener);
     }
 
-    /** Sets the listener for the logout button. */
+    /**
+     * Sets the listener for the logout button.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param listener action that will run when the related event happens
+     */
     public void setLogoutListener(ActionListener listener) {
         logoutButton.addActionListener(listener);
     }
 
-    /** Enables or disables the dialog while work is running. */
+    /**
+     * Enables or disables the dialog while work is running.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param loading true while the screen is waiting for an operation to finish
+     */
     public void setLoading(boolean loading) {
         setCursor(Cursor.getPredefinedCursor(loading ? Cursor.WAIT_CURSOR : Cursor.DEFAULT_CURSOR));
         cancelReservationButton.setEnabled(!loading);
@@ -201,21 +295,26 @@ public class ParkingSpaceDetailsView extends JDialog {
         closeButton.setEnabled(!loading);
     }
 
-    /** Shows an error message owned by this dialog. */
+    /**
+     * Shows an error message owned by this dialog.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     *
+     * @param message message shown to the user or written to the log
+     */
     public void showError(String message) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
-    /** Shows an information message owned by this dialog. */
-    public void showInfo(String message) {
-        JOptionPane.showMessageDialog(this, message, "Info", JOptionPane.INFORMATION_MESSAGE);
-    }
-
     /**
      * Asks the admin to confirm reservation cancellation from the details dialog.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
      *
      * @param spaceCode parking space code
-     * @param plate     booked license plate
+     * @param plate booked license plate
      * @return true if the admin confirms
      */
     public boolean confirmCancelReservation(String spaceCode, String plate) {
@@ -226,7 +325,14 @@ public class ParkingSpaceDetailsView extends JDialog {
         return confirm == JOptionPane.YES_OPTION;
     }
 
-    /** Asks the admin to confirm logout from the details dialog. */
+    /**
+     * Asks the admin to confirm logout from the details dialog.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     *
+     * @return the answer chosen by the user
+     */
     public boolean confirmLogout() {
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Are you sure you want to log out?",
@@ -235,7 +341,16 @@ public class ParkingSpaceDetailsView extends JDialog {
         return confirm == JOptionPane.YES_OPTION;
     }
 
-    /** Gets the parked or reserved plate shown in the details dialog. */
+    /**
+     * Gets the parked or reserved plate shown in the details dialog.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param space space used by this operation
+     * @return the result of the operation
+     */
     private String resolveLicensePlate(ParkingSpace space) {
         if (space.getParkedVehicle() != null) {
             return space.getParkedVehicle().getLicensePlate();

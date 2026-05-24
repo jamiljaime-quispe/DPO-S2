@@ -6,40 +6,66 @@ import Business.Entities.ParkingSpace;
 import Business.Entities.VehicleType;
 
 /**
- * Data access interface for parking spaces.
+ * Data access interface for parking spaces. This interface keeps the promise clear so another class can use
+ * it without depending on a specific implementation.
+ * <p>
+ * The interface lets the business layer ask for stored data without depending on the class that talks
+ * directly to the database.
+ * </p>
  */
 public interface ParkingSpaceDAO {
 
     /**
-     * Persists a new parking space to the database.
+     * Persists a new parking space to the database. The operation is kept together so the stored data
+     * remains consistent if something goes wrong halfway through.
+     * <p>
+     * This helper keeps the step named and separate, which makes the larger operation easier to read and
+     * follow.
+     * </p>
      *
      * @param space the parking space to save
      */
     void save(ParkingSpace space);
 
     /**
-     * Updates the full state (occupancy, reservation, parked vehicle) of an existing space.
+     * Updates value.
+     * <p>
+     * This helper keeps the step named and separate, which makes the larger operation easier to read and
+     * follow.
+     * </p>
      *
      * @param space the parking space with updated state
      */
     void update(ParkingSpace space);
 
     /**
-     * Updates only the editable details (floor, vehicle type) of an existing space.
+     * Updates details.
+     * <p>
+     * This helper keeps the step named and separate, which makes the larger operation easier to read and
+     * follow.
+     * </p>
      *
      * @param space the parking space with updated details
      */
     void updateDetails(ParkingSpace space);
 
     /**
-     * Deletes a parking space by its code.
+     * Deletes value.
+     * <p>
+     * This helper keeps the step named and separate, which makes the larger operation easier to read and
+     * follow.
+     * </p>
      *
      * @param code the space code to delete
      */
     void delete(String code);
 
     /**
-     * Retrieves a parking space by its code.
+     * Finds a record by its code.
+     * <p>
+     * This helper keeps the step named and separate, which makes the larger operation easier to read and
+     * follow.
+     * </p>
      *
      * @param code the space code
      * @return the parking space, or null if not found
@@ -47,14 +73,22 @@ public interface ParkingSpaceDAO {
     ParkingSpace findByCode(String code);
 
     /**
-     * Retrieves all parking spaces.
+     * Finds all.
+     * <p>
+     * This helper keeps the step named and separate, which makes the larger operation easier to read and
+     * follow.
+     * </p>
      *
      * @return list of all spaces; empty if none
      */
     List<ParkingSpace> findAll();
 
     /**
-     * Retrieves all vacant, unreserved parking spaces that match the given vehicle type.
+     * Finds available by type.
+     * <p>
+     * This helper keeps the step named and separate, which makes the larger operation easier to read and
+     * follow.
+     * </p>
      *
      * @param type the vehicle type to filter by
      * @return list of available spaces; empty if none

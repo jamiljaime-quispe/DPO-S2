@@ -16,6 +16,10 @@ import java.util.List;
 
 /**
  * Panel that draws the occupancy bars for the last hour.
+ * <p>
+ * The view builds or updates Swing components and leaves the decisions to controllers and services. This
+ * keeps the screen code focused on what the user sees.
+ * </p>
  */
 class OccupancyChartPanel extends JPanel {
     private static final int PAD_LEFT = 50;
@@ -28,7 +32,11 @@ class OccupancyChartPanel extends JPanel {
     private List<OccupancyRecord> data = new ArrayList<>();
 
     /**
-     * Stores the data to draw on the next repaint.
+     * Sets the data.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
      *
      * @param data occupancy records to show
      */
@@ -41,7 +49,10 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Gives the chart a stable preferred size.
+     * Gets the preferred size.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
      *
      * @return preferred chart size
      */
@@ -51,7 +62,11 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Draws the bar chart.
+     * Handles paint component.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
      * @param g graphics context
      */
@@ -89,7 +104,11 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Creates a graphics copy with the chart rendering settings.
+     * Creates chart graphics.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
      *
      * @param g original graphics context
      * @return prepared graphics context
@@ -103,9 +122,13 @@ class OccupancyChartPanel extends JPanel {
 
     /**
      * Paints the chart background.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param g2     graphics context
-     * @param width  component width
+     * @param g2 graphics context
+     * @param width component width
      * @param height component height
      */
     private void paintChartBackground(Graphics2D g2, int width, int height) {
@@ -114,10 +137,14 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Draws the empty-state message when there are no occupancy records.
+     * Handles draw no data message.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param g2     graphics context
-     * @param width  component width
+     * @param g2 graphics context
+     * @param width component width
      * @param height component height
      */
     private void drawNoDataMessage(Graphics2D g2, int width, int height) {
@@ -129,9 +156,13 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Draws Y-axis grid lines and their numeric labels.
+     * Handles draw yaxis grid and labels.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param g2     graphics context
+     * @param g2 graphics context
      * @param chartH chart height
      * @param chartW chart width
      * @param yScale highest value shown on the axis
@@ -155,9 +186,13 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Draws the horizontal and vertical chart axes.
+     * Handles draw axes.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param g2     graphics context
+     * @param g2 graphics context
      * @param chartH chart height
      * @param chartW chart width
      */
@@ -169,9 +204,13 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Draws the Y-axis title.
+     * Handles draw yaxis title.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param g2     graphics context
+     * @param g2 graphics context
      * @param chartH chart height
      */
     private void drawYAxisTitle(Graphics2D g2, int chartH) {
@@ -185,15 +224,19 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Draws the occupancy bars.
+     * Handles draw bars.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param g2     graphics context
-     * @param n      number of records
+     * @param g2 graphics context
+     * @param n number of records
      * @param yScale highest value shown on the axis
      * @param chartH chart height
      * @param chartW chart width
-     * @param slotW  width reserved for one bar
-     * @param gap    gap between bars
+     * @param slotW width reserved for one bar
+     * @param gap gap between bars
      */
     private void drawBars(Graphics2D g2, int n, int yScale, int chartH, int chartW, double slotW, double gap) {
         for (int i = 0; i < n; i++) {
@@ -210,12 +253,16 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Draws the X-axis labels from 59 to 0 minutes ago.
+     * Handles draw xaxis labels.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param g2     graphics context
-     * @param n      number of records
+     * @param g2 graphics context
+     * @param n number of records
      * @param chartH chart height
-     * @param slotW  width reserved for one bar
+     * @param slotW width reserved for one bar
      */
     private void drawXAxisLabels(Graphics2D g2, int n, int chartH, double slotW) {
         g2.setFont(new Font("SansSerif", Font.PLAIN, X_LABEL_FONT_SIZE));
@@ -229,9 +276,13 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Draws the X-axis title.
+     * Handles draw xaxis title.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param g2     graphics context
+     * @param g2 graphics context
      * @param chartH chart height
      * @param chartW chart width
      */
@@ -245,10 +296,14 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Calculates a proportional slot width so all minute bars fill the chart width.
+     * Handles calculate slot width.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
      * @param chartWidth drawable chart width
-     * @param count      number of bars
+     * @param count number of bars
      * @return width reserved for each bar
      */
     private double calculateSlotWidth(int chartWidth, int count) {
@@ -256,7 +311,11 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Calculates the visual gap between bars.
+     * Handles calculate gap.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
      * @param slotWidth width reserved for each bar
      * @return gap between bars
@@ -266,11 +325,15 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Calculates the left edge of a bar.
+     * Handles calculate bar x.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param index     bar index
+     * @param index bar index
      * @param slotWidth width reserved for each bar
-     * @param gap       gap between bars
+     * @param gap gap between bars
      * @return x coordinate
      */
     private int calculateBarX(int index, double slotWidth, double gap) {
@@ -281,14 +344,18 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Calculates a bar width without leaving unused pixels at the right side.
+     * Handles calculate bar width.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param index      bar index
-     * @param count      number of bars
+     * @param index bar index
+     * @param count number of bars
      * @param chartWidth drawable chart width
-     * @param slotWidth  width reserved for each bar
-     * @param gap        gap between bars
-     * @param x          bar x coordinate
+     * @param slotWidth width reserved for each bar
+     * @param gap gap between bars
+     * @param x bar x coordinate
      * @return bar width
      */
     private int calculateBarWidth(int index, int count, int chartWidth, double slotWidth, double gap, int x) {
@@ -302,9 +369,13 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Calculates the center of one minute slot.
+     * Handles calculate slot center.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param index     slot index
+     * @param index slot index
      * @param slotWidth width reserved for each bar
      * @return x coordinate of the slot center
      */
@@ -313,12 +384,16 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Draws one rotated X-axis label so all 60 minute labels can fit.
+     * Handles draw vertical xaxis label.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param g2    graphics context
+     * @param g2 graphics context
      * @param label label to draw
-     * @param x     label x coordinate
-     * @param y     label y coordinate
+     * @param x label x coordinate
+     * @param y label y coordinate
      */
     private void drawVerticalXAxisLabel(Graphics2D g2, String label, int x, int y) {
         Graphics2D labelGraphics = (Graphics2D) g2.create();
@@ -330,7 +405,11 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Finds the largest occupancy value shown in the chart.
+     * Finds maximum occupancy.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
      * @return largest occupancy count
      */
@@ -345,15 +424,19 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Draws numeric occupancy values above the bars.
+     * Handles draw bar values.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param g2     graphics context
-     * @param n      number of records
+     * @param g2 graphics context
+     * @param n number of records
      * @param yScale highest value shown on the axis
      * @param chartH chart height
      * @param chartW chart width
-     * @param slotW  width reserved for one bar
-     * @param gap    gap between bars
+     * @param slotW width reserved for one bar
+     * @param gap gap between bars
      */
     private void drawBarValues(Graphics2D g2, int n, int yScale, int chartH, int chartW, double slotW,
                                double gap) {
@@ -371,11 +454,15 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Draws one rotated value label above a bar so all 60 values can fit.
+     * Handles draw vertical bar value.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
-     * @param g2     graphics context
-     * @param label  value label
-     * @param x      label x coordinate
+     * @param g2 graphics context
+     * @param label value label
+     * @param x label x coordinate
      * @param barTop top of the bar
      */
     private void drawVerticalBarValue(Graphics2D g2, String label, int x, int barTop) {
@@ -390,7 +477,11 @@ class OccupancyChartPanel extends JPanel {
     }
 
     /**
-     * Formats one X-axis label as minutes ago.
+     * Handles format minute offset.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
      *
      * @param index current index
      * @param total total records shown

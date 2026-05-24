@@ -18,18 +18,37 @@ import Persistence.DatabaseManager;
 import Persistence.ReservationDAO;
 
 /**
- * MySQL/JDBC implementation of {@link Persistence.ReservationDAO}.
- * Maps the {@code reservations} table to {@link Business.Entities.Reservation} objects.
+ * MySQL/JDBC implementation of {@link Persistence.ReservationDAO}. Maps the {@code reservations} table to
+ * {@link Business.Entities.Reservation} objects.
+ * <p>
+ * The class belongs to the persistence layer, so it is responsible for reading or writing stored data while
+ * the other layers use cleaner methods.
+ * </p>
  */
 public class ReservationDAOImpl implements ReservationDAO {
     private final DatabaseManager db;
 
-    /** Creates the DAO with the shared database manager. */
+    /**
+     * Creates the DAO with the shared database manager.
+     * <p>
+     * The constructor receives the objects or values this class needs and stores them before the rest of
+     * the methods are used.
+     * </p>
+     *
+     * @param db database manager used by persistence classes
+     */
     public ReservationDAOImpl(DatabaseManager db) {
         this.db = db;
     }
 
-    /** Saves a new reservation. */
+    /**
+     * Handles save.
+     * <p>
+     * This method inserts a new row in the database using the values from the project object.
+     * </p>
+     *
+     * @param reservation reservation used by this operation
+     */
     @Override
     public void save(Reservation reservation) {
         String sql = """
@@ -57,7 +76,14 @@ public class ReservationDAOImpl implements ReservationDAO {
         }
     }
 
-    /** Deletes a reservation by ID. */
+    /**
+     * Deletes value.
+     * <p>
+     * This method removes the matching row from the database while hiding the SQL details from the service.
+     * </p>
+     *
+     * @param ID ID used by this operation
+     */
     @Override
     public void delete(int id) {
         String sql = "DELETE FROM reservation WHERE reservationId = ?";
@@ -70,7 +96,16 @@ public class ReservationDAOImpl implements ReservationDAO {
         }
     }
 
-    /** Finds a reservation by ID. */
+    /**
+     * Finds by id.
+     * <p>
+     * This method runs the select query for this lookup and turns the database row back into a project
+     * object.
+     * </p>
+     *
+     * @param ID ID used by this operation
+     * @return the matching by ID, or null when it is not found
+     */
     @Override
     public Reservation findById(int id) {
         String sql = baseReservationQuery() + " WHERE r.reservationId = ?";
@@ -86,7 +121,16 @@ public class ReservationDAOImpl implements ReservationDAO {
         return null;
     }
 
-    /** Loads reservations that belong to a user. */
+    /**
+     * Finds by user.
+     * <p>
+     * This method runs the select query for this lookup and turns the database row back into a project
+     * object.
+     * </p>
+     *
+     * @param userId identifier of the user involved in the operation
+     * @return the matching by user, or null when it is not found
+     */
     @Override
     public List<Reservation> findByUser(int userId) {
         String sql = baseReservationQuery() + " WHERE u.userId = ? ORDER BY r.reservationDate DESC";
@@ -105,7 +149,16 @@ public class ReservationDAOImpl implements ReservationDAO {
         return reservations;
     }
 
-    /** Finds the active reservation for a license plate. */
+    /**
+     * Finds by plate.
+     * <p>
+     * This method runs the select query for this lookup and turns the database row back into a project
+     * object.
+     * </p>
+     *
+     * @param plate license plate involved in the operation
+     * @return the matching by plate, or null when it is not found
+     */
     @Override
     public Reservation findByPlate(String plate) {
         String sql = baseReservationQuery() + " WHERE r.licensePlate = ? AND r.isActive = TRUE";
@@ -121,7 +174,15 @@ public class ReservationDAOImpl implements ReservationDAO {
         return null;
     }
 
-    /** Loads all reservations. */
+    /**
+     * Finds all.
+     * <p>
+     * This method runs the select query for this lookup and turns the database row back into a project
+     * object.
+     * </p>
+     *
+     * @return the matching all, or null when it is not found
+     */
     @Override
     public List<Reservation> findAll() {
         String sql = baseReservationQuery() + " ORDER BY r.reservationDate DESC";
@@ -138,7 +199,14 @@ public class ReservationDAOImpl implements ReservationDAO {
         return reservations;
     }
 
-    /** Updates an existing reservation. */
+    /**
+     * Updates value.
+     * <p>
+     * This method writes the changed values back to the database for an existing row.
+     * </p>
+     *
+     * @param reservation reservation used by this operation
+     */
     @Override
     public void update(Reservation reservation) {
         String sql = """
@@ -168,7 +236,15 @@ public class ReservationDAOImpl implements ReservationDAO {
         }
     }
 
-    /** Builds the common reservation query used by the finder methods. */
+    /**
+     * Handles base reservation query.
+     * <p>
+     * This method keeps the SQL work inside persistence so the business layer does not need
+     * database-specific code.
+     * </p>
+     *
+     * @return the result of the operation
+     */
     private String baseReservationQuery() {
         return """
                 SELECT r.reservationId, r.licensePlate, r.reservationDate,
@@ -184,7 +260,18 @@ public class ReservationDAOImpl implements ReservationDAO {
                 """;
     }
 
-    /** Converts a database row into a Reservation object. */
+    /**
+     * Converts a database row into a Reservation object. The operation is kept together so the stored data
+     * remains consistent if something goes wrong halfway through.
+     * <p>
+     * This method keeps the SQL work inside persistence so the business layer does not need
+     * database-specific code.
+     * </p>
+     *
+     * @param rs rs used by this operation
+     * @return the result of the operation
+     * @throws SQLException if the operation cannot be completed correctly
+     */
     private Reservation mapRow(ResultSet rs) throws SQLException {
         VehicleType vehicleType = VehicleType.valueOf(rs.getString("vehicleType"));
         String spaceCode = rs.getString("code");
@@ -237,7 +324,14 @@ public class ReservationDAOImpl implements ReservationDAO {
         return reservation;
     }
 
-    /** Gets the database connection through this DAO's database manager. */
+    /**
+     * Gets the database connection through this DAO's database manager.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @return the current connection
+     */
     private java.sql.Connection getConnection() {
         return db.getConnection();
     }

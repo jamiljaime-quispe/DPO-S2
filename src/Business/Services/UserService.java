@@ -19,6 +19,10 @@ import java.util.regex.Pattern;
 
 /**
  * Handles user authentication, registration, and account management.
+ * <p>
+ * The service keeps the business rule in one place before any data is saved, loaded, or shown. This helps
+ * the rest of the project call the same logic consistently.
+ * </p>
  */
 public class UserService {
 	private UserDAO userDAO;
@@ -32,8 +36,12 @@ public class UserService {
 
 	/**
 	 * Constructs a new UserService.
+	 * <p>
+	 * The constructor receives the objects or values this class needs and stores them before the rest of the
+	 * methods are used.
+	 * </p>
 	 *
-	 * @param userDAO    the data access object for users
+	 * @param userDAO the data access object for users
 	 * @param vehicleDAO the data access object for vehicles
 	 * @param parkingSpaceDAO the data access object for parking spaces
 	 * @param reservationDAO the data access object for reservations
@@ -50,11 +58,13 @@ public class UserService {
 	}
 
 	/**
-	 * Authenticates a user by username or email and password.
-	 * Admin username is always "admin"; password is checked against config value
-	 * by the caller (AuthController), not here.
-	 * 
-	 * @param id       username or email
+	 * Authenticates a user by username or email and password. Admin username is always "admin"; password is
+	 * checked against config value by the caller (AuthController), not here.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param ID username or email
 	 * @param password plain text password
 	 * @return authenticated User (Admin or Client), or null if credentials invalid
 	 */
@@ -76,11 +86,13 @@ public class UserService {
 	}
 
 	/**
-	 * Registers a new client.
-	 * Validates username uniqueness, email format and password policy.
-	 * 
+	 * Registers a new client. Validates username uniqueness, email format and password policy.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
 	 * @param username desired username
-	 * @param email    email address
+	 * @param email email address
 	 * @param password plain text password
 	 * @return newly created Client, or null if any validation fails
 	 */
@@ -100,9 +112,12 @@ public class UserService {
 	}
 
 	/**
-	 * Validates that a password meets the minimum policy:
-	 * at least 8 characters, one uppercase letter, one lowercase letter, one digit.
-	 * 
+	 * Validates that a password meets the minimum policy:. at least 8 characters, one uppercase letter, one
+	 * lowercase letter, one digit.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
 	 * @param password password to validate
 	 * @return true if the password meets the policy
 	 */
@@ -123,8 +138,11 @@ public class UserService {
 	}
 
 	/**
-	 * Checks that an email address matches a standard format.
-	 * 
+	 * Checks whether email valid.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
 	 * @param email email to validate
 	 * @return true if the format is valid
 	 */
@@ -136,8 +154,12 @@ public class UserService {
 	}
 
 	/**
-	 * Checks that a username is not already taken in the database.
-	 * 
+	 * Checks that a username is not already taken in the database. The operation is kept together so the
+	 * stored data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
 	 * @param username username to check
 	 * @return true if available
 	 */
@@ -148,7 +170,10 @@ public class UserService {
 	}
 
 	/**
-	 * Checks that an email address is not already used by another account.
+	 * Checks whether email available.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
 	 *
 	 * @param email email to check
 	 * @return true if available
@@ -160,12 +185,15 @@ public class UserService {
 	}
 
 	/**
-	 * Deletes a user account and all associated data.
-	 * Occupied spaces are freed before persistence cascades vehicles and reservations.
-	 * This method synchronizes the transaction because the user's parked vehicles
-	 * are cleared before the user row is deleted. Both changes must be committed
-	 * together so no space remains occupied by a deleted account.
-	 * 
+	 * Deletes a user account and all associated data. Occupied spaces are freed before persistence cascades
+	 * vehicles and reservations. This method synchronizes the transaction because the user's parked vehicles
+	 * are cleared before the user row is deleted. Both changes must be committed together so no space remains
+	 * occupied by a deleted account.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 *
 	 * @param userId ID of the user to delete
 	 */
 	public void deleteUser(int userId) {
@@ -189,7 +217,14 @@ public class UserService {
 		}
 	}
 
-	/** Frees spaces occupied by vehicles owned by the user being deleted. */
+	/**
+	 * Handles clear parked vehicles for user.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param vehicles vehicles used by this operation
+	 */
 	private void clearParkedVehiclesForUser(List<Vehicle> vehicles) {
 		if (parkingSpaceDAO == null || vehicles == null || vehicles.isEmpty()) return;
 
@@ -211,7 +246,15 @@ public class UserService {
 		}
 	}
 
-	/** Deletes all reservations associated with the user being deleted. */
+	/**
+	 * Deletes reservations for user.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 *
+	 * @param userId identifier of the user involved in the operation
+	 */
 	private void deleteReservationsForUser(int userId) {
 		if (reservationDAO == null || userId <= 0) return;
 
@@ -221,7 +264,15 @@ public class UserService {
 		}
 	}
 
-	/** Deletes all vehicle records owned by the user being deleted. */
+	/**
+	 * Deletes vehicles for user.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 *
+	 * @param vehicles vehicles used by this operation
+	 */
 	private void deleteVehiclesForUser(List<Vehicle> vehicles) {
 		if (vehicles == null || vehicles.isEmpty()) return;
 
@@ -230,80 +281,29 @@ public class UserService {
 		}
 	}
 
-	/** Clears the current session if it belongs to the deleted user. */
+	/**
+	 * Handles clear session if it belongs to.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param userId identifier of the user involved in the operation
+	 */
 	private void clearSessionIfItBelongsTo(int userId) {
 		if (lastLoggedInUserId == userId) {
 			clearSession();
 		}
 	}
 
-	/**
-	 * Retrieves a user by their numeric ID.
-	 * 
-	 * @param userId user ID
-	 * @return User, or null if not found
-	 */
-	public User getUserById(int userId) {
-		return findUserById(userId);
-	}
 
 	/**
-	 * Registers a vehicle and associates it with a user.
-	 * This method synchronizes the transaction because saving the vehicle and
-	 * refreshing the user record belong to the same account update.
-	 * 
-	 * @param userId  owner's user ID
-	 * @param vehicle vehicle to register
-	 */
-	public void addVehicle(int userId, Vehicle vehicle) {
-		synchronized (transactionLock()) {
-			try {
-				beginTransaction();
-				saveVehicleRecord(vehicle);
-				User user = findUserById(userId);
-				if (user != null) {
-					user.addVehicle(vehicle);
-					updateUserRecord(user);
-				}
-				commitTransaction();
-			} catch (RuntimeException e) {
-				rollbackTransaction();
-				throw e;
-			}
-		}
-	}
-
-	/**
-	 * Removes a vehicle from the system and from the user's vehicle list.
-	 * This method synchronizes the transaction because the vehicle deletion and
-	 * user update must stay consistent.
+	 * Authenticates a user and returns their role code. Admin password is intentionally not checked here;
+	 * AuthController verifies it against config.json.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
 	 *
-	 * @param userId owner's user ID
-	 * @param plate  license plate of the vehicle to remove
-	 */
-	public void removeVehicle(int userId, String plate) {
-		synchronized (transactionLock()) {
-			try {
-				beginTransaction();
-				deleteVehicleRecord(plate);
-				User user = findUserById(userId);
-				if (user != null) {
-					user.removeVehicle(plate);
-					updateUserRecord(user);
-				}
-				commitTransaction();
-			} catch (RuntimeException e) {
-				rollbackTransaction();
-				throw e;
-			}
-		}
-	}
-
-	/**
-	 * Authenticates a user and returns their role code.
-	 * Admin password is intentionally not checked here; AuthController verifies it against config.json.
-	 *
-	 * @param id       username or email
+	 * @param ID username or email
 	 * @param password plain-text password
 	 * @return 1 for admin, 2 for regular user, 0 for invalid credentials
 	 */
@@ -315,19 +315,44 @@ public class UserService {
 		return "ADMIN".equals(user.getUserType()) ? 1 : 2;
 	}
 
-	/** Gets the username of the currently logged-in user. */
+	/**
+	 * Gets the username of the currently logged-in user.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
+	 * @return the current last logged in username
+	 */
 	public String getLastLoggedInUsername() { return lastLoggedInUsername; }
 
-	/** Gets the ID of the currently logged-in user, or -1 if none. */
+	/**
+	 * Gets the ID of the currently logged-in user, or -1 if none.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
+	 *
+	 * @return the current last logged in user ID
+	 */
 	public int getLastLoggedInUserId() { return lastLoggedInUserId; }
 
-	/** Clears the current session state without deleting the account (called on logout). */
+	/**
+	 * Handles clear session.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	public void clearSession() {
 		lastLoggedInUserId = -1;
 		lastLoggedInUsername = null;
 	}
 
-	/** Deletes the currently logged-in user's account and clears session state. */
+	/**
+	 * Deletes current user.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 */
 	public void deleteCurrentUser() {
 		if (lastLoggedInUserId != -1) {
 			deleteUser(lastLoggedInUserId);
@@ -336,10 +361,13 @@ public class UserService {
 	}
 
 	/**
-	 * Registers a new client account. Convenience wrapper over signup().
+	 * Handles register.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
 	 *
 	 * @param username desired username
-	 * @param email    email address
+	 * @param email email address
 	 * @param password plain-text password
 	 * @return true if registration succeeded
 	 */
@@ -347,106 +375,226 @@ public class UserService {
 		return signup(username, email, password) != null;
 	}
 
-	/** Finds a user by username through persistence. */
+	/**
+	 * Finds user by username.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @param username username entered or stored for the user
+	 * @return the matching user by username, or null when it is not found
+	 */
 	private User findUserByUsername(String username) {
 		return userDAO.findByUsername(username);
 	}
 
-	/** Finds a user by email through persistence. */
+	/**
+	 * Finds user by email.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @param email email entered or stored for the user
+	 * @return the matching user by email, or null when it is not found
+	 */
 	private User findUserByEmail(String email) {
 		return userDAO.findByEmail(email);
 	}
 
-	/** Finds a user by ID through persistence. */
-	private User findUserById(int userId) {
-		return userDAO.findById(userId);
-	}
 
-	/** Saves a user through persistence. */
+	/**
+	 * Handles save user record.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param user user used by this operation
+	 */
 	private void saveUserRecord(User user) {
 		userDAO.save(user);
 	}
 
-	/** Updates a user through persistence. */
-	private void updateUserRecord(User user) {
-		userDAO.update(user);
-	}
 
-	/** Deletes a user through persistence. */
+	/**
+	 * Deletes user record.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 *
+	 * @param userId identifier of the user involved in the operation
+	 */
 	private void deleteUserRecord(int userId) {
 		userDAO.delete(userId);
 	}
 
-	/** Finds reservations belonging to a user through persistence. */
+	/**
+	 * Finds reservations by user.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @param userId identifier of the user involved in the operation
+	 * @return the matching reservations by user, or null when it is not found
+	 */
 	private List<Reservation> findReservationsByUser(int userId) {
 		return reservationDAO.findByUser(userId);
 	}
 
-	/** Deletes a reservation through persistence. */
+	/**
+	 * Deletes reservation record.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 *
+	 * @param reservationId reservation ID used by this operation
+	 */
 	private void deleteReservationRecord(int reservationId) {
 		reservationDAO.delete(reservationId);
 	}
 
-	/** Finds vehicles belonging to a user through persistence. */
+	/**
+	 * Finds vehicles by user.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @param userId identifier of the user involved in the operation
+	 * @return the matching vehicles by user, or null when it is not found
+	 */
 	private List<Vehicle> findVehiclesByUser(int userId) {
 		return vehicleDAO.findByUser(userId);
 	}
 
-	/** Saves a vehicle through persistence. */
-	private void saveVehicleRecord(Vehicle vehicle) {
-		vehicleDAO.save(vehicle);
-	}
 
-	/** Deletes a vehicle through persistence. */
+	/**
+	 * Deletes vehicle record.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 *
+	 * @param plate license plate involved in the operation
+	 */
 	private void deleteVehicleRecord(String plate) {
 		vehicleDAO.delete(plate);
 	}
 
-	/** Loads every parking space through persistence. */
+	/**
+	 * Loads all parking spaces.
+	 * <p>
+	 * This method obtains the needed data through the persistence interfaces and returns it in a form the
+	 * controller can use.
+	 * </p>
+	 *
+	 * @return the loaded all parking spaces
+	 */
 	private List<ParkingSpace> loadAllParkingSpaces() {
 		return parkingSpaceDAO.findAll();
 	}
 
-	/** Updates a parking space through persistence. */
+	/**
+	 * Updates parking space record.
+	 * <p>
+	 * This method checks the rule for the operation and then asks persistence to save the change in the
+	 * database.
+	 * </p>
+	 *
+	 * @param space space used by this operation
+	 */
 	private void updateParkingSpaceRecord(ParkingSpace space) {
 		parkingSpaceDAO.update(space);
 	}
 
-	/** Hashes a password through the password helper. */
+	/**
+	 * Checks whether h password exists.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param password password entered by the user
+	 * @return true when the condition is met, false otherwise
+	 */
 	private String hashPassword(String password) {
 		return PasswordUtil.hash(password);
 	}
 
-	/** Checks a password against a stored hash. */
+	/**
+	 * Handles password matches.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param password password entered by the user
+	 * @param storedPassword password entered by the user
+	 * @return the result of the operation
+	 */
 	private boolean passwordMatches(String password, String storedPassword) {
 		return PasswordUtil.verify(password, storedPassword);
 	}
 
-	/** Checks whether text matches a regular expression. */
+	/**
+	 * Handles matches pattern.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @param regex regex used by this operation
+	 * @param text text used by this operation
+	 * @return the result of the operation
+	 */
 	private boolean matchesPattern(String regex, String text) {
 		return Pattern.matches(regex, text);
 	}
 
 	/**
-	 * Gets the shared lock used by synchronized transaction blocks.
-	 * The simulation thread and SwingWorkers can both change parking data, so
-	 * this lock makes one multi-step database operation finish before another begins.
+	 * Gets the shared lock used by synchronized transaction blocks. The simulation thread and SwingWorkers can
+	 * both change parking data, so this lock makes one multi-step database operation finish before another
+	 * begins.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 *
+	 * @return the result of the operation
 	 */
 	private Object transactionLock() {
 		return transactionManager != null ? transactionManager : this;
 	}
 
-	/** Starts a transaction when transaction support is available. */
+	/**
+	 * Starts a transaction when transaction support is available. The operation is kept together so the stored
+	 * data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	private void beginTransaction() {
 		if (transactionManager != null) transactionManager.beginTransaction();
 	}
 
-	/** Commits a transaction when transaction support is available. */
+	/**
+	 * Commits a transaction when transaction support is available. The operation is kept together so the
+	 * stored data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	private void commitTransaction() {
 		if (transactionManager != null) transactionManager.commit();
 	}
 
-	/** Rolls back a transaction when transaction support is available. */
+	/**
+	 * Rolls back a transaction when transaction support is available. The operation is kept together so the
+	 * stored data remains consistent if something goes wrong halfway through.
+	 * <p>
+	 * This method keeps the business decision in the service layer before anything is sent back to the screen.
+	 * </p>
+	 */
 	private void rollbackTransaction() {
 		if (transactionManager != null) transactionManager.rollback();
 	}

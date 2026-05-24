@@ -12,18 +12,39 @@ import Persistence.DatabaseManager;
 import Persistence.OccupancyDAO;
 
 /**
- * MySQL/JDBC implementation of {@link Persistence.OccupancyDAO}.
- * Reads and writes to the {@code occupancy_log} table.
+ * MySQL/JDBC implementation of {@link Persistence.OccupancyDAO}. Reads and writes to the {@code
+ * occupancy_log} table.
+ * <p>
+ * The class belongs to the persistence layer, so it is responsible for reading or writing stored data while
+ * the other layers use cleaner methods.
+ * </p>
  */
 public class OccupancyDAOImpl implements OccupancyDAO {
     private final DatabaseManager db;
 
-    /** Creates the DAO with the shared database manager. */
+    /**
+     * Creates the DAO with the shared database manager.
+     * <p>
+     * The constructor receives the objects or values this class needs and stores them before the rest of
+     * the methods are used.
+     * </p>
+     *
+     * @param db database manager used by persistence classes
+     */
     public OccupancyDAOImpl(DatabaseManager db) {
         this.db = db;
     }
 
-    /** Saves one occupancy value in the database. */
+    /**
+     * Saves one occupancy value in the database. The operation is kept together so the stored data remains
+     * consistent if something goes wrong halfway through.
+     * <p>
+     * This method inserts a new row in the database using the values from the project object.
+     * </p>
+     *
+     * @param timestamp timestamp used by this operation
+     * @param occupancy occupancy used by this operation
+     */
     @Override
     public void saveRecord(LocalDateTime timestamp, int occupancy) {
         String sql = """
@@ -40,7 +61,14 @@ public class OccupancyDAOImpl implements OccupancyDAO {
         }
     }
 
-    /** Loads occupancy values recorded during the last hour. */
+    /**
+     * Gets the last hour data.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @return the current last hour data
+     */
     @Override
     public List<OccupancyRecord> getLastHourData() {
         String sql = """
@@ -67,13 +95,26 @@ public class OccupancyDAOImpl implements OccupancyDAO {
         return data;
     }
 
-    /** Removes seconds and smaller values through the epoch-minute value. */
+    /**
+     * Handles normalize to minute.
+     * <p>
+     * This method keeps the SQL work inside persistence so the business layer does not need
+     * database-specific code.
+     * </p>
+     *
+     * @param timestamp timestamp used by this operation
+     * @return the result of the operation
+     */
     private LocalDateTime normalizeToMinute(LocalDateTime timestamp) {
         return toLocalDateTime(toEpochMinute(timestamp));
     }
 
     /**
-     * Converts a date to minutes elapsed since January 1, 1970.
+     * Handles to epoch minute.
+     * <p>
+     * This method keeps the SQL work inside persistence so the business layer does not need
+     * database-specific code.
+     * </p>
      *
      * @param timestamp date to convert
      * @return epoch minute for the date
@@ -84,6 +125,9 @@ public class OccupancyDAOImpl implements OccupancyDAO {
 
     /**
      * Gets the current minute using January 1, 1970 as reference.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
      *
      * @return current epoch minute
      */
@@ -92,7 +136,12 @@ public class OccupancyDAOImpl implements OccupancyDAO {
     }
 
     /**
-     * Converts an epoch minute back to local date-time for database use.
+     * Converts an epoch minute back to local date-time for database use. The operation is kept together so
+     * the stored data remains consistent if something goes wrong halfway through.
+     * <p>
+     * This method keeps the SQL work inside persistence so the business layer does not need
+     * database-specific code.
+     * </p>
      *
      * @param epochMinute minute elapsed since January 1, 1970
      * @return local date-time at that minute
@@ -101,7 +150,14 @@ public class OccupancyDAOImpl implements OccupancyDAO {
         return LocalDateTime.ofInstant(Instant.ofEpochSecond(epochMinute * 60), ZoneId.systemDefault());
     }
 
-    /** Gets the database connection through this DAO's database manager. */
+    /**
+     * Gets the database connection through this DAO's database manager.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @return the current connection
+     */
     private java.sql.Connection getConnection() {
         return db.getConnection();
     }

@@ -12,9 +12,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
- * Modal dialog for slot booking management.
- * Used by both admins (manage all bookings) and regular users (manage their own bookings).
- * Shows all parking spaces with colour-coded rows and provides Add, Edit, and Cancel booking controls.
+ * Modal dialog for slot booking management. Used by both admins (manage all bookings) and regular users
+ * (manage their own bookings). Shows all parking spaces with colour-coded rows and provides Add, Edit, and
+ * Cancel booking controls.
+ * <p>
+ * The view builds or updates Swing components and leaves the decisions to controllers and services. This
+ * keeps the screen code focused on what the user sees.
+ * </p>
  */
 public class AdminSlotBookingManagementView extends JDialog {
     private static final int ADMIN_MODE = 1;
@@ -46,13 +50,27 @@ public class AdminSlotBookingManagementView extends JDialog {
     private String userBookingPlate;
     private VehicleType userBookingType;
 
-    /** Creates the booking management dialog. */
+    /**
+     * Creates the booking management dialog.
+     * <p>
+     * The constructor receives the objects or values this class needs and stores them before the rest of
+     * the methods are used.
+     * </p>
+     *
+     * @param parent parent used by this operation
+     */
     public AdminSlotBookingManagementView(Frame parent) {
         super(parent, "Manage Slot Bookings", true);
         initComponents();
     }
 
-    /** Builds the booking management components. */
+    /**
+     * Handles init components.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     private void initComponents() {
         configureDialog();
         JScrollPane bookingsScrollPane = createBookingsTable();
@@ -64,7 +82,13 @@ public class AdminSlotBookingManagementView extends JDialog {
         wireButtonActions();
     }
 
-    /** Applies the base dialog layout and size. */
+    /**
+     * Applies the base dialog layout and size.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     private void configureDialog() {
         setLayout(new BorderLayout(10, 10));
         getContentPane().setBackground(new Color(245, 247, 250));
@@ -73,7 +97,15 @@ public class AdminSlotBookingManagementView extends JDialog {
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
     }
 
-    /** Creates the main booking table and returns it inside a scroll pane. */
+    /**
+     * Creates bookings table.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     *
+     * @return the created bookings table
+     */
     private JScrollPane createBookingsTable() {
         String[] columns = {"Code", "Floor", "Type", "Parking Status", "Booking", "Booked Plate", "Booked At", "My Booking"};
         tableModel = new NonEditableTableModel(columns, 0);
@@ -97,7 +129,13 @@ public class AdminSlotBookingManagementView extends JDialog {
         return scrollPane;
     }
 
-    /** Creates the user's reservation panel. */
+    /**
+     * Creates reservations panel.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     */
     private void createReservationsPanel() {
         String[] reservationColumns = {"Space Code", "Floor", "Type", "License Plate", "Booked At", "Status"};
         reservationsTableModel = new NonEditableTableModel(reservationColumns, 0);
@@ -116,7 +154,15 @@ public class AdminSlotBookingManagementView extends JDialog {
         reservationsPanel.add(reservationsScrollPane, BorderLayout.CENTER);
     }
 
-    /** Creates the tabs used by the booking dialog. */
+    /**
+     * Creates the tabs used by the booking dialog.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     *
+     * @param bookingsScrollPane bookings scroll pane used by this operation
+     */
     private void createTabbedPane(JScrollPane bookingsScrollPane) {
         tabbedPane = new JTabbedPane();
         tabbedPane.addTab("Slot bookings", bookingsScrollPane);
@@ -124,7 +170,13 @@ public class AdminSlotBookingManagementView extends JDialog {
         add(tabbedPane, BorderLayout.CENTER);
     }
 
-    /** Creates and styles the action buttons. */
+    /**
+     * Creates action buttons.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     */
     private void createActionButtons() {
         addButton = new JButton("Add Booking");
         editButton = new JButton("Edit Booking");
@@ -142,7 +194,13 @@ public class AdminSlotBookingManagementView extends JDialog {
         deleteButton.setEnabled(false);
     }
 
-    /** Wires table selection changes to button state updates. */
+    /**
+     * Handles wire selection listeners.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     private void wireSelectionListeners() {
         bookingsTable.getSelectionModel().addListSelectionListener(e -> {
             updateActionButtons();
@@ -152,7 +210,13 @@ public class AdminSlotBookingManagementView extends JDialog {
         });
     }
 
-    /** Adds the bottom action button panel. */
+    /**
+     * Adds action button panel.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     private void addActionButtonPanel() {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         buttonPanel.setOpaque(false);
@@ -164,7 +228,13 @@ public class AdminSlotBookingManagementView extends JDialog {
         add(buttonPanel, BorderLayout.SOUTH);
     }
 
-    /** Wires action buttons to their handlers. */
+    /**
+     * Handles wire button actions.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     private void wireButtonActions() {
         addButton.addActionListener(e -> showAddBookingDialog());
         editButton.addActionListener(e -> showEditBookingDialog());
@@ -174,7 +244,12 @@ public class AdminSlotBookingManagementView extends JDialog {
         });
     }
 
-    /** Opens the dialog used to book the selected slot. */
+    /**
+     * Opens the dialog used to book the selected slot.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     */
     private void showAddBookingDialog() {
         if (currentMode != USER_MODE) return;
 
@@ -244,7 +319,12 @@ public class AdminSlotBookingManagementView extends JDialog {
         dialog.setVisible(true);
     }
 
-    /** Opens the dialog used by admins to reassign a booking. */
+    /**
+     * Opens the dialog used by admins to reassign a booking.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     */
     private void showEditBookingDialog() {
         if (currentMode != ADMIN_MODE) return;
 
@@ -288,7 +368,15 @@ public class AdminSlotBookingManagementView extends JDialog {
         dialog.setVisible(true);
     }
 
-    /** Applies the main button style. */
+    /**
+     * Handles style primary button.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param b b used by this operation
+     */
     private void stylePrimaryButton(JButton b) {
         b.setForeground(Color.WHITE);
         b.setBackground(new Color(33, 99, 168));
@@ -299,7 +387,12 @@ public class AdminSlotBookingManagementView extends JDialog {
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
-    /** Opens the correct cancellation confirmation for the selected booking. */
+    /**
+     * Shows delete confirmation.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     */
     private void showDeleteConfirmation() {
         String spaceCode;
         String plate;
@@ -328,7 +421,15 @@ public class AdminSlotBookingManagementView extends JDialog {
         }
     }
 
-    /** Opens the user confirmation dialog for cancelling a booking. */
+    /**
+     * Opens the user confirmation dialog for cancelling a booking.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     *
+     * @param spaceCode parking space code involved in the operation
+     * @param plate license plate involved in the operation
+     */
     private void showUserCancelBookingDialog(String spaceCode, String plate) {
         JDialog dialog = createCancelDialog("Confirm Cancellation");
         trackActiveCancelBookingDialog(dialog, spaceCode, plate);
@@ -365,7 +466,15 @@ public class AdminSlotBookingManagementView extends JDialog {
         dialog.setVisible(true);
     }
 
-    /** Opens the admin confirmation dialog for cancelling a booking. */
+    /**
+     * Opens the admin confirmation dialog for cancelling a booking.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     *
+     * @param spaceCode parking space code involved in the operation
+     * @param plate license plate involved in the operation
+     */
     private void showAdminCancelBookingDialog(String spaceCode, String plate) {
         JDialog dialog = createCancelDialog("Confirm Cancel");
         trackActiveCancelBookingDialog(dialog, spaceCode, plate);
@@ -394,7 +503,16 @@ public class AdminSlotBookingManagementView extends JDialog {
         dialog.setVisible(true);
     }
 
-    /** Creates a small confirmation dialog. */
+    /**
+     * Creates a small confirmation dialog.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     *
+     * @param title title used by this operation
+     * @return the created cancel dialog
+     */
     private JDialog createCancelDialog(String title) {
         JDialog dialog = new JDialog(this, title, true);
         dialog.setLayout(new GridLayout(2, 2, 10, 10));
@@ -405,7 +523,17 @@ public class AdminSlotBookingManagementView extends JDialog {
         return dialog;
     }
 
-    /** Stores the currently open cancellation dialog. */
+    /**
+     * Stores the currently open cancellation dialog.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param dialog dialog used by this operation
+     * @param spaceCode parking space code involved in the operation
+     * @param plate license plate involved in the operation
+     */
     private void trackActiveCancelBookingDialog(JDialog dialog, String spaceCode, String plate) {
         activeCancelBookingDialog = dialog;
         activeCancelBookingSpaceCode = spaceCode;
@@ -415,14 +543,25 @@ public class AdminSlotBookingManagementView extends JDialog {
         dialog.addWindowListener(new WindowClosedAction(() -> clearActiveCancelBookingDialogIfMatches(dialog)));
     }
 
-    /** Clears the tracked cancellation dialog state. */
+    /**
+     * Clears the tracked cancellation dialog state.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
+     */
     private void clearActiveCancelBookingDialog() {
         activeCancelBookingDialog = null;
         activeCancelBookingSpaceCode = null;
         activeCancelBookingPlate = null;
     }
 
-    /** Closes the tracked cancellation dialog if one is open. */
+    /**
+     * Closes the tracked cancellation dialog if one is open.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     private void closeActiveCancelBookingDialog() {
         if (activeCancelBookingDialog != null) {
             activeCancelBookingDialog.dispose();
@@ -430,7 +569,16 @@ public class AdminSlotBookingManagementView extends JDialog {
         clearActiveCancelBookingDialog();
     }
 
-    /** Creates the dialog used for booking or reassignment. */
+    /**
+     * Creates the dialog used for booking or reassignment.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     *
+     * @param title title used by this operation
+     * @return the created booking dialog
+     */
     private JDialog createBookingDialog(String title) {
         JDialog dialog = new JDialog(this, title, true);
         dialog.setLayout(new GridLayout(3, 2, 10, 10));
@@ -441,7 +589,16 @@ public class AdminSlotBookingManagementView extends JDialog {
         return dialog;
     }
 
-    /** Stores the currently open booking dialog. */
+    /**
+     * Stores the currently open booking dialog.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param dialog dialog used by this operation
+     * @param spaceCodeField parking space code involved in the operation
+     */
     private void trackActiveBookingDialog(JDialog dialog, JTextField spaceCodeField) {
         activeBookingDialog = dialog;
         activeBookingSpaceCodeField = spaceCodeField;
@@ -450,13 +607,24 @@ public class AdminSlotBookingManagementView extends JDialog {
         dialog.addWindowListener(new WindowClosedAction(() -> clearActiveBookingDialogIfMatches(dialog)));
     }
 
-    /** Clears the tracked booking dialog state. */
+    /**
+     * Clears the tracked booking dialog state.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
+     */
     private void clearActiveBookingDialog() {
         activeBookingDialog = null;
         activeBookingSpaceCodeField = null;
     }
 
-    /** Closes the tracked booking dialog if one is open. */
+    /**
+     * Closes the tracked booking dialog if one is open.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     private void closeActiveBookingDialog() {
         if (activeBookingDialog != null) {
             activeBookingDialog.dispose();
@@ -464,7 +632,17 @@ public class AdminSlotBookingManagementView extends JDialog {
         clearActiveBookingDialog();
     }
 
-    /** Adds the common booking fields to a dialog. */
+    /**
+     * Adds the common booking fields to a dialog.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param dialog dialog used by this operation
+     * @param plateField plate field used by this operation
+     * @param spaceCodeField parking space code involved in the operation
+     */
     private void addBookingFields(JDialog dialog, JTextField plateField, JTextField spaceCodeField) {
         dialog.add(new JLabel("License Plate:"));
         dialog.add(plateField);
@@ -473,15 +651,13 @@ public class AdminSlotBookingManagementView extends JDialog {
         dialog.add(spaceCodeField);
     }
 
-    /** Replaces the booking table with the given spaces. */
-    public void updateBookings(List<ParkingSpace> spaces) {
-        clearBookingsTable();
-        for (ParkingSpace space : spaces) {
-            addBookingToTable(space, false);
-        }
-    }
 
-    /** Clears both booking tables. */
+    /**
+     * Handles clear bookings table.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
+     */
     public void clearBookingsTable() {
         tableModel.setRowCount(0);
         if (reservationsTableModel != null) {
@@ -489,7 +665,12 @@ public class AdminSlotBookingManagementView extends JDialog {
         }
     }
 
-    /** Clears booking data and closes child dialogs when a user session ends. */
+    /**
+     * Clears booking data and closes child dialogs when a user session ends.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
+     */
     public void clearSessionViewState() {
         closeActiveBookingDialog();
         closeActiveCancelBookingDialog();
@@ -500,12 +681,17 @@ public class AdminSlotBookingManagementView extends JDialog {
         setVisible(false);
     }
 
-    /** Adds or updates one booking row. */
-    public void addBookingToTable(ParkingSpace space) {
-        addBookingToTable(space, false);
-    }
 
-    /** Adds or updates one booking row and marks the current user's bookings. */
+    /**
+     * Adds booking to table.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param space space used by this operation
+     * @param myBooking my booking used by this operation
+     */
     public void addBookingToTable(ParkingSpace space, boolean myBooking) {
         Object[] rowData = buildBookingRow(space, myBooking);
         int existingRow = findBookingRow(space.getId());
@@ -529,7 +715,17 @@ public class AdminSlotBookingManagementView extends JDialog {
         updateActionButtons();
     }
 
-    /** Builds a table row for a parking space booking state. */
+    /**
+     * Builds booking row.
+     * <p>
+     * This helper builds one Swing component used by the screen, keeping layout code separate from event
+     * logic.
+     * </p>
+     *
+     * @param space space used by this operation
+     * @param myBooking my booking used by this operation
+     * @return the built booking row
+     */
     private Object[] buildBookingRow(ParkingSpace space, boolean myBooking) {
         return new Object[]{
                 space.getId(),
@@ -543,7 +739,16 @@ public class AdminSlotBookingManagementView extends JDialog {
         };
     }
 
-    /** Finds the booking table row for a parking space code. */
+    /**
+     * Finds booking row.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param code parking space code involved in the operation
+     * @return the matching booking row, or null when it is not found
+     */
     private int findBookingRow(String code) {
         for (int row = 0; row < tableModel.getRowCount(); row++) {
             String currentCode = String.valueOf(tableModel.getValueAt(row, 0));
@@ -555,7 +760,15 @@ public class AdminSlotBookingManagementView extends JDialog {
         return -1;
     }
 
-    /** Removes booking rows that are no longer visible. */
+    /**
+     * Handles remove booking spaces not in.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param visibleCodes visible codes used by this operation
+     */
     public void removeBookingSpacesNotIn(java.util.Set<String> visibleCodes) {
         for (int row = tableModel.getRowCount() - 1; row >= 0; row--) {
             String currentCode = String.valueOf(tableModel.getValueAt(row, 0));
@@ -567,7 +780,13 @@ public class AdminSlotBookingManagementView extends JDialog {
         updateActionButtons();
     }
 
-    /** Closes an open booking dialog if the selected space changed. */
+    /**
+     * Closes an open booking dialog if the selected space changed.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     public void closeActiveBookingDialogIfTargetUnavailable() {
         if (activeBookingDialog == null
                 || !activeBookingDialog.isVisible()
@@ -603,7 +822,13 @@ public class AdminSlotBookingManagementView extends JDialog {
         }
     }
 
-    /** Closes an open cancellation dialog if the booking changed. */
+    /**
+     * Closes an open cancellation dialog if the booking changed.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     public void closeActiveCancelDialogIfTargetUnavailable() {
         if (activeCancelBookingDialog == null
                 || !activeCancelBookingDialog.isVisible()
@@ -640,17 +865,38 @@ public class AdminSlotBookingManagementView extends JDialog {
         }
     }
 
-    /** Shows an error message owned by this dialog. */
+    /**
+     * Shows an error message owned by this dialog.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     *
+     * @param message message shown to the user or written to the log
+     */
     public void showError(String message) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
-    /** Shows an information message owned by this dialog. */
+    /**
+     * Shows an information message owned by this dialog.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     *
+     * @param message message shown to the user or written to the log
+     */
     public void showInfo(String message) {
         JOptionPane.showMessageDialog(this, message, "Info", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    /** Asks the user to confirm logout from this dialog. */
+    /**
+     * Asks the user to confirm logout from this dialog.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     *
+     * @return the answer chosen by the user
+     */
     public boolean confirmLogout() {
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Are you sure you want to log out?",
@@ -660,7 +906,11 @@ public class AdminSlotBookingManagementView extends JDialog {
     }
 
     /**
-     * Adds a listener to the logout button.
+     * Adds logout listener.
+     * <p>
+     * This connects a Swing action with the code that should run when the user clicks a button or interacts
+     * with the screen.
+     * </p>
      *
      * @param listener action to run when logout is clicked
      */
@@ -668,7 +918,14 @@ public class AdminSlotBookingManagementView extends JDialog {
         logoutButton.addActionListener(listener);
     }
 
-    /** Replaces the current user's reservation list. */
+    /**
+     * Updates reservations table.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
+     *
+     * @param reservations reservations used by this operation
+     */
     public void updateReservationsTable(List<Reservation> reservations) {
         if (reservationsTableModel == null) return;
         reservationsTableModel.setRowCount(0);
@@ -692,7 +949,15 @@ public class AdminSlotBookingManagementView extends JDialog {
         }
     }
 
-    /** Sets the dialog mode: admin or regular user. */
+    /**
+     * Sets the dialog mode: admin or regular user.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param mode mode used by this operation
+     */
     public void setMode(int mode) {
         currentMode = mode;
 
@@ -722,7 +987,15 @@ public class AdminSlotBookingManagementView extends JDialog {
         updateActionButtons();
     }
 
-    /** Enables or disables controls while work is running. */
+    /**
+     * Sets the loading.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param loading true while the screen is waiting for an operation to finish
+     */
     public void setLoading(boolean loading) {
         this.loading = loading;
         setCursor(Cursor.getPredefinedCursor(loading ? Cursor.WAIT_CURSOR : Cursor.DEFAULT_CURSOR));
@@ -735,6 +1008,10 @@ public class AdminSlotBookingManagementView extends JDialog {
 
     /**
      * Sets the actions used by this dialog.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
      *
      * @param actions controller-backed actions for this dialog
      */
@@ -742,14 +1019,28 @@ public class AdminSlotBookingManagementView extends JDialog {
         this.actions = actions;
     }
 
-    /** Stores the vehicle chosen by the user for a new booking. */
+    /**
+     * Sets the user booking vehicle.
+     * <p>
+     * The setter keeps the field change inside this object instead of letting other classes touch the field
+     * directly.
+     * </p>
+     *
+     * @param plate license plate involved in the operation
+     * @param type vehicle type involved in the operation
+     */
     public void setUserBookingVehicle(String plate, VehicleType type) {
         userBookingPlate = plate;
         userBookingType = type;
         updateActionButtons();
     }
 
-    /** Shows the table used to choose a slot for a new booking. */
+    /**
+     * Shows slot bookings tab.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
+     */
     public void showSlotBookingsTab() {
         if (tabbedPane != null) {
             tabbedPane.setSelectedIndex(0);
@@ -757,7 +1048,10 @@ public class AdminSlotBookingManagementView extends JDialog {
     }
 
     /**
-     * Asks a regular user which vehicle they want to reserve for.
+     * Prompts for for booking vehicle.
+     * <p>
+     * This method shows a dialog or message to the user while keeping direct Swing work inside the view.
+     * </p>
      *
      * @return selected plate and type, or null if cancelled
      */
@@ -792,7 +1086,12 @@ public class AdminSlotBookingManagementView extends JDialog {
         }
     }
 
-    /** Enables or disables booking buttons based on the selection. */
+    /**
+     * Updates action buttons.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
+     */
     private void updateActionButtons() {
         boolean admin = currentMode == ADMIN_MODE;
         boolean user = currentMode == USER_MODE;
@@ -832,7 +1131,16 @@ public class AdminSlotBookingManagementView extends JDialog {
         logoutButton.setEnabled(!loading);
     }
 
-    /** Checks whether a selected slot can be booked by a user. */
+    /**
+     * Checks whether selected slot available for booking.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param selectedRow selected row used by this operation
+     * @return true when the condition is met, false otherwise
+     */
     private boolean isSelectedSlotAvailableForBooking(int selectedRow) {
         int modelRow = bookingsTable.convertRowIndexToModel(selectedRow);
         String status = String.valueOf(tableModel.getValueAt(modelRow, 3));
@@ -840,20 +1148,46 @@ public class AdminSlotBookingManagementView extends JDialog {
         return "Vacant".equals(status) && "Available".equals(reservation);
     }
 
-    /** Checks whether a selected slot is reserved. */
+    /**
+     * Checks whether selected slot reserved.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param selectedRow selected row used by this operation
+     * @return true when the condition is met, false otherwise
+     */
     private boolean isSelectedSlotReserved(int selectedRow) {
         int modelRow = bookingsTable.convertRowIndexToModel(selectedRow);
         String reservation = String.valueOf(tableModel.getValueAt(modelRow, 4));
         return "Reserved".equals(reservation);
     }
 
-    /** Checks whether a selected slot belongs to the current user's bookings. */
+    /**
+     * Checks whether selected user booking.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     *
+     * @param selectedRow selected row used by this operation
+     * @return true when the condition is met, false otherwise
+     */
     private boolean isSelectedUserBooking(int selectedRow) {
         int modelRow = bookingsTable.convertRowIndexToModel(selectedRow);
         return Boolean.TRUE.equals(tableModel.getValueAt(modelRow, MY_BOOKING_COLUMN));
     }
 
-    /** Gets the plate shown for a parking space. */
+    /**
+     * Gets the plate shown for a parking space.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @param space space used by this operation
+     * @return the current license plate
+     */
     private String getLicensePlate(ParkingSpace space) {
         if (space.getParkedVehicle() != null) {
             return space.getParkedVehicle().getLicensePlate();
@@ -863,7 +1197,15 @@ public class AdminSlotBookingManagementView extends JDialog {
         return "";
     }
 
-    /** Gets the reservation date shown for a parking space. */
+    /**
+     * Gets the reservation date shown for a parking space.
+     * <p>
+     * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+     * </p>
+     *
+     * @param space space used by this operation
+     * @return the current reservation date
+     */
     private String getReservationDate(ParkingSpace space) {
         if (space.getReservation() != null && space.getReservation().getReservationDate() != null) {
             return space.getReservation().getReservationDate().format(DATE_FORMAT);
@@ -871,13 +1213,22 @@ public class AdminSlotBookingManagementView extends JDialog {
         return "";
     }
 
-    /** Resets the hidden dialog mode so it keeps no role from the previous session. */
+    /**
+     * Resets the hidden dialog mode so it keeps no role from the previous session.
+     * <p>
+     * This helper keeps a small part of the Swing screen named so the larger view method stays easier to
+     * read.
+     * </p>
+     */
     private void resetModeAfterSession() {
         currentMode = ADMIN_MODE;
     }
 
     /**
      * Clears the booking dialog state if the closed dialog is still the tracked dialog.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
      *
      * @param dialog dialog that has just closed
      */
@@ -889,6 +1240,9 @@ public class AdminSlotBookingManagementView extends JDialog {
 
     /**
      * Clears the cancellation dialog state if the closed dialog is still the tracked dialog.
+     * <p>
+     * This method changes visible fields, buttons, or table rows after a controller provides new data.
+     * </p>
      *
      * @param dialog dialog that has just closed
      */

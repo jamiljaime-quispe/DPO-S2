@@ -3,8 +3,12 @@ package Business.Entities;
 import java.time.LocalDateTime;
 
 /**
- * Represents a parking space reservation made by a client.
- * Includes admin-cancellation tracking for user notification at next login.
+ * Represents a parking space reservation made by a client. Includes admin-cancellation tracking for user
+ * notification at next login.
+ * <p>
+ * The class stores project data in a clear object so the services, controllers, and persistence code can
+ * pass the same information around safely.
+ * </p>
  */
 public class Reservation {
 	private int id;
@@ -19,11 +23,15 @@ public class Reservation {
 
 	/**
 	 * Constructs a new Reservation.
+	 * <p>
+	 * The constructor receives the objects or values this class needs and stores them before the rest of the
+	 * methods are used.
+	 * </p>
 	 *
-	 * @param id              the reservation ID (0 for new, assigned by the database)
-	 * @param user            the client who made the reservation
-	 * @param vehicle         the vehicle being reserved for
-	 * @param parkingSpace    the parking space being reserved
+	 * @param ID the reservation ID (0 for new, assigned by the database)
+	 * @param user the client who made the reservation
+	 * @param vehicle the vehicle being reserved for
+	 * @param parkingSpace the parking space being reserved
 	 * @param reservationDate the date and time the reservation was created
 	 */
 	public Reservation(int id, Client user, Vehicle vehicle, ParkingSpace parkingSpace,
@@ -41,6 +49,9 @@ public class Reservation {
 
 	/**
 	 * Gets the reservation ID.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the reservation ID
 	 */
@@ -48,6 +59,9 @@ public class Reservation {
 
 	/**
 	 * Gets the client who made the reservation.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the client who made the reservation
 	 */
@@ -55,6 +69,9 @@ public class Reservation {
 
 	/**
 	 * Gets the vehicle associated with this reservation.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the reserved vehicle
 	 */
@@ -62,6 +79,9 @@ public class Reservation {
 
 	/**
 	 * Gets the parking space associated with this reservation.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the reserved parking space
 	 */
@@ -69,6 +89,9 @@ public class Reservation {
 
 	/**
 	 * Gets the date and time the reservation was created.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the reservation date and time
 	 */
@@ -76,6 +99,10 @@ public class Reservation {
 
 	/**
 	 * Returns whether this reservation was cancelled by an admin.
+	 * <p>
+	 * This helper keeps the step named and separate, which makes the larger operation easier to read and
+	 * follow.
+	 * </p>
 	 *
 	 * @return true if this reservation was cancelled by an admin
 	 */
@@ -83,6 +110,10 @@ public class Reservation {
 
 	/**
 	 * Returns whether the user has been notified of the admin cancellation.
+	 * <p>
+	 * This helper keeps the step named and separate, which makes the larger operation easier to read and
+	 * follow.
+	 * </p>
 	 *
 	 * @return true if the user has already been notified
 	 */
@@ -90,6 +121,10 @@ public class Reservation {
 
 	/**
 	 * Returns whether the reservation is currently active.
+	 * <p>
+	 * This helper keeps the step named and separate, which makes the larger operation easier to read and
+	 * follow.
+	 * </p>
 	 *
 	 * @return true if the reservation is currently active
 	 */
@@ -97,13 +132,21 @@ public class Reservation {
 
 	/**
 	 * Sets the reservation ID.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
-	 * @param id the new reservation ID
+	 * @param ID the new reservation ID
 	 */
 	public void setId(int id) { this.id = id; }
 
 	/**
 	 * Sets the client who made the reservation.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param user the new client
 	 */
@@ -111,6 +154,10 @@ public class Reservation {
 
 	/**
 	 * Sets the parking space associated with this reservation.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param parkingSpace the new parking space
 	 */
@@ -118,6 +165,10 @@ public class Reservation {
 
 	/**
 	 * Sets whether this reservation was cancelled by an admin.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param cancelledByAdmin true if cancelled by an admin
 	 */
@@ -125,6 +176,10 @@ public class Reservation {
 
 	/**
 	 * Sets whether the user has been notified of the admin cancellation.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param notified true if the user has been notified
 	 */
@@ -132,55 +187,48 @@ public class Reservation {
 
 	/**
 	 * Sets the active status of the reservation.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param active the new active status
 	 */
 	public void setActive(boolean active) { this.isActive = active; }
 
 	/**
-	 * Returns the code of the space this reservation was originally on,
-	 * captured by the admin when the original space was deleted or the
-	 * reservation was cancelled. Used to notify the user at next login.
+	 * Returns the code of the space this reservation was originally on,. captured by the admin when the
+	 * original space was deleted or the reservation was cancelled. Used to notify the user at next login.
+	 * <p>
+	 * The getter keeps the field private while still giving the rest of the project a clear way to read it.
+	 * </p>
 	 *
 	 * @return the previous space code, or null if not applicable
 	 */
 	public String getPreviousSpaceCode() { return previousSpaceCode; }
 
 	/**
-	 * Records the code of the space this reservation was originally on
-	 * before being reassigned or cancelled by an admin.
+	 * Records the code of the space this reservation was originally on. before being reassigned or cancelled
+	 * by an admin.
+	 * <p>
+	 * The setter keeps the field change inside this object instead of letting other classes touch the field
+	 * directly.
+	 * </p>
 	 *
 	 * @param previousSpaceCode the original space code, or null to clear
 	 */
 	public void setPreviousSpaceCode(String previousSpaceCode) { this.previousSpaceCode = previousSpaceCode; }
 
-	/**
-	 * Marks this reservation as active.
-	 */
-	public void confirm() {
-		this.isActive = true;
-	}
 
 	/**
-	 * Marks this reservation as inactive (cancelled).
+	 * Handles cancel.
+	 * <p>
+	 * This helper keeps the step named and separate, which makes the larger operation easier to read and
+	 * follow.
+	 * </p>
 	 */
 	public void cancel() {
 		this.isActive = false;
 	}
 
-	/**
-	 * Returns a human-readable summary of this reservation.
-	 *
-	 * @return a string with the key reservation fields
-	 */
-	public String getReservationInfo() {
-		return "Reservation{"
-				+ "id=" + id
-				+ ", user=" + (user != null ? user.getUsername() : "null")
-				+ ", vehicle=" + (vehicle != null ? vehicle.getLicensePlate() : "null")
-				+ ", space=" + (parkingSpace != null ? parkingSpace.getId() : "null")
-				+ ", date=" + reservationDate
-				+ ", active=" + isActive
-				+ "}";
-	}
 }
